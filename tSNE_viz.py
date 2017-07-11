@@ -1,34 +1,33 @@
-from sklearn.manifold import TSNE as tsne
-import math
-from collections import Counter
-import numpy as np
-import pickle
+"""
 
+
+"""
+import logging
+import os
+import math
+import pickle
+import itertools
+from collections import Counter
+
+import numpy as np
 import matplotlib
-matplotlib.use('Qt4Agg')
+matplotlib.use('Qt4Agg')  # noqa
+from matplotlib import pyplot as plt
+from matplotlib import patches
 from PyQt4 import QtGui
 from PyQt4 import QtCore
 from PyQt4.QtCore import Qt
-
-from matplotlib import pyplot as plt
-from matplotlib import patches
-
-import itertools
+from sklearn.manifold import TSNE as tsne
 
 
-
-########################################################
-##
-## DEFAULT PARAMETER
-##
-
+# DEFAULT PARAMETER
 
 BASE_PATH       = '/home/sofian/ovh/'
 
-DATA_PATH       = BASE_PATH+'data/set/'
-TSNE_DATA_PATH  = BASE_PATH+'data/set/tSNE/'
-MODEL_PATH      = BASE_PATH+'data/models/'
-GRAPH_PATH      = BASE_PATH+'graph/'
+DATA_PATH       = os.path.join(BASE_PATH, 'data/set/')  
+TSNE_DATA_PATH  = os.path.join(BASE_PATH, 'data/set/tSNE/')
+MODEL_PATH      = os.path.join(BASE_PATH, 'data/models/')
+GRAPH_PATH      = os.path.join(BASE_PATH, 'graph/')
 
 # File containing data to be t-SNEed
 INPUT_FILE_BASE_NAME = 'one_hot'
@@ -37,7 +36,7 @@ INPUT_FILE_BASE_NAME = 'one_hot'
 VERSION = '_20170614'
 
 # default RN for predictions
-DEFAULT_RN='one_hot_1000-600-300-200-100_RN'
+DEFAULT_RN = 'one_hot_1000-600-300-200-100_RN'
 
 # t-SNE parameters
 # best tuple so far is (50,1000,pca,15000)
@@ -54,15 +53,11 @@ REDUCTION_SIZE_FACTOR = 15
 # True  -> find new projection for t-SNE
 DO_CALCULUS = False
 
-##
-##
-#########################################################
 
-
-
-def load_raw_data(file_base_name=INPUT_FILE_BASE_NAME, output_name='account', path=DATA_PATH, version=VERSION, reduction_factor=REDUCTION_SIZE_FACTOR):
+def load_raw_data(file_base_name=INPUT_FILE_BASE_NAME, output_name='account', path=DATA_PATH, version=VERSION,
+        reduction_factor=REDUCTION_SIZE_FACTOR):
     """
-    Loads and return the data for tSNE
+    Loads and returns the data for tSNE
     One-hotted and regular ML-encoding
     
     File to load should :
@@ -89,12 +84,12 @@ def load_raw_data(file_base_name=INPUT_FILE_BASE_NAME, output_name='account', pa
     x_small         = x[:int(x.shape[0]/REDUCTION_SIZE_FACTOR)]             ; del x
     y_small         = y[:int(y.shape[0]/REDUCTION_SIZE_FACTOR)]             ; del y
 
-    print(xy.keys())
-    print(x_small[0])
-    print(y_small[0])
+    logging.info(xy.keys())
+    logging.info(x_small[0])
+    logging.info(y_small[0])
 
     if output_name+'_encoder' in xy.keys():
-        print("found encoder")
+        logging.info("found encoder")
         class_encoder = xy[output_name+'_encoder'][()] # I don't understant either but it is a 0-d array (...)
         decoder_dic = {class_encoder[k].argsort()[-1]:k for k in class_encoder.keys()}
         class_decoder = lambda oh:decoder_dic[np.argsort(oh)[-1]]
@@ -139,14 +134,14 @@ def learn_tSNE(x, params=PARAMS, version=VERSION, path=TSNE_DATA_PATH, reduction
     models, x_transformed = {},{}
     
     for perplexity, learning_rate, init, n_iter in itertools.product(perplexities, learning_rates, inits, n_iters):
-        print("learning model",params, end = '..')
+        logging.info("learning model",params, end = '..')
         param = (perplexity, learning_rate, init, n_iter)
         models[param] = tsne(perplexity=perplexity, learning_rate=learning_rate, init=init, n_iter=n_iter)
         x_transformed[param] = models[param].fit_transform(x)
         
         name = ''.join( '_'+str(p) for p in param)
         np.savez(path+'embedded_x_1-'+str(reduction_size_factor)+name+version+'.npz', x_2D=x_transformed[param], model=models[param])
-        print("done!")
+        logging.info("done!")
 
     return x_transformed, models
     
@@ -182,7 +177,7 @@ def load_tSNE(params=PARAMS, version=VERSION, path=TSNE_DATA_PATH, reduction_siz
         
     for perplexity, learning_rate, init, n_iter in itertools.product(perplexities, learning_rates, inits, n_iters):
         
-        print("loading model ", params, end='...')
+        logging.info("loading model ", params, end='...')
         try:
             param = (perplexity, learning_rate, init, n_iter)
             name = ''.join( '_'+str(p) for p in param)
@@ -191,11 +186,11 @@ def load_tSNE(params=PARAMS, version=VERSION, path=TSNE_DATA_PATH, reduction_siz
             try:
                 models[param] = np.load(path+'embedded_x_1-'+str(reduction_size_factor)+name+version+'.npz')['model']
             except KeyError:
-                print("old version, model not found, only embedded data")
-            print("done!")
+                logging.info("old version, model not found, only embedded data")
+            logging.info("done!")
 
         except FileNotFoundError as e:
-            print(" not found", e)
+            logging.info(" not found", e)
 
     return x_transformed, models
     
@@ -223,8 +218,8 @@ def show_class_distribution(originals):
     c = Counter(originals[:,1])
     bar(c)
     plt.show()
-    print(c)
-    print(len(c))
+    logging.info(c)
+    logging.info(len(c))
 
 ###########################
 
@@ -285,8 +280,8 @@ def separate_prediction(y_pred_decoded, y_true_decoded, name_of_void): #TODO
     # Sort good / bad / not predictions
     for i, pred in enumerate(y_pred_decoded):
         """
-        print(name_of_void)
-        print(y_true[i])
+        logging.info(name_of_void)
+        logging.info(y_true[i])
         """
         if name_of_void == y_true_decoded[i]:
             index_not_predicted.add(i)
@@ -402,13 +397,11 @@ def make_grids( proj,
                     grid_null_proportion[x][y] = grid_null[x][y]/float(grid_sum[x][y])
     
     return grid_bad, grid_good, grid_null, grid_total, grid_proportion, grid_null_proportion, grid_sum
-    
-    
-        
+
 
 def show_occurences(x,y, grid, resolution, amplitude):
     """
-    Find key associated with biggest value in  fragment ofgrid containing (x,y)
+    Finds key associated with the largest value in the grid fragment containing (x, y)
     Use it with visualization.grid_total to get the most frequent label
 
     :param resolution: size of grid (number of square by row/column)
@@ -430,26 +423,27 @@ def show_occurences(x,y, grid, resolution, amplitude):
         return max(grid[z1][z2], key = grid[z1][z2].get)
 
 
-def dist(a,b):
+def dist(a, b):
     """
     Euclidian distance
     """
     return ((a[0]-b[0])**2+(a[1]-b[1])**2)**.5
 
-def find_nearest(x,y, all_data):
+
+def find_nearest(x, y, all_data):
     """
-    Find nearest point in all_data (not optimized!)
+    Finds the nearest point in all_data (not optimized!)
 
     :type all_data: array( (float,float) )
     :return: (x_nearest,y_nearest), index_nearest
     :rtype: (float, float), int
     """
 
-    best_distance = 100000
-    best_point    = [0,0]
+    best_distance = float('inf')
+    best_point = None
     idx = 0
 
-    print("searching nearest point to", x, ":",y)
+    logging.info("searching nearest point to", x, ":",y)
 
     for i,point in enumerate(all_data):
         new_dist = dist([x,y], point)
@@ -457,7 +451,7 @@ def find_nearest(x,y, all_data):
             best_point    = point
             best_distance = new_dist
             idx = i
-    print("nearest seems to be ", best_point, " at distance ", best_distance)
+    logging.info("nearest seems to be ", best_point, " at distance ", best_distance)
 
     return point, idx
 
@@ -476,13 +470,13 @@ def find_similar(account_encoded, y_true_decoded, embedded):
     idxs     = []
     similars = []
 
-    print("similar to ", account_encoded.argsort()[-1])
+    logging.info("similar to ", account_encoded.argsort()[-1])
 
     for i,account in enumerate(y_true_decoded[:len(embedded)]):
         if account == account_encoded:
             similars.append(embedded[i])
             idxs.append(i)
-    print("found ", len(similars), " similars points")
+    logging.info("found ", len(similars), " similars points")
 
     return np.array(similars), idxs
 
@@ -540,8 +534,8 @@ class Vizualization:
             self.proj_by_id[self.y_true_decoded[idx]].append(projection)
 
         # convert dict values to np.array    
-        for classe in self.proj_by_id:
-            self.proj_by_id[classe] = np.array(self.proj_by_id[classe])
+        for class_ in self.proj_by_id:
+            self.proj_by_id[class_] = np.array(self.proj_by_id[class_])
         
         self.resolution = resolution
         self.class_decoder = class_decoder
@@ -567,36 +561,33 @@ class Vizualization:
         y_proj_amplitude = int(max(-min(np.array(self.proj)[:,1]), max(np.array(self.proj)[:,1])))+1
         
         self.amplitude      = 2*max(x_proj_amplitude, y_proj_amplitude)
-
         
-        (
-                index_bad_predicted, 
-                index_good_predicted,
-                index_not_predicted,
-                )                      = separate_prediction(
-                                                                self.y_pred_decoded,
-                                                                self.y_true_decoded,
-                                                                special_class,
-                                                                )
-
+        index_bad_predicted, index_good_predicted, index_not_predicted = separate_prediction(
+            self.y_pred_decoded,
+            self.y_true_decoded,
+            special_class                                                              
+        )
+        
         all_accounts = [*class_encoder.keys()]
         
         (
-                self.grid_bad,    
-                self.grid_good,
-                self.grid_null,
-                self.grid_total,
-                self.grid_proportion,
-                self.grid_null_proportion,
-                self.grid_sum,
-                )                      = make_grids(
-                                                        self.proj,
-                                                        self.y_true_decoded,
-                                                        index_good_predicted,
-                                                        index_bad_predicted,
-                                                        index_not_predicted,
-                                                        self.resolution,
-                                                        )
+            self.grid_bad,    
+            self.grid_good,
+            self.grid_null,
+            self.grid_total,
+            self.grid_proportion,
+            self.grid_null_proportion,
+            self.grid_sum,
+            
+        ) = make_grids(
+        
+            self.proj,
+            self.y_true_decoded,
+            index_good_predicted,
+            index_bad_predicted,
+            index_not_predicted,
+            self.resolution,
+        )
         #TODO put this monstruosity in make_grids
         self.grid_total_individual = {}
         self.grid_proportion_individual        = {k:{k2:{} for k2 in self.grid_total[k]} for k in self.grid_total}
@@ -631,30 +622,23 @@ class Vizualization:
         self.x_proj_good = np.array([ self.proj[i] for i in index_good_predicted ])
         self.x_proj_bad  = np.array([ self.proj[i] for i in index_bad_predicted ])
         self.x_proj_null = np.array([ self.proj[i] for i in index_not_predicted ])        
-                    
-
-
-        
-
     
     #######################################
     # Similarity functions to draw clusters
 
     def get_dominant(self, x_g, y_g):
         """
-        Return dominant classe of cluster
+        Returns dominant class of cluster
         """
         return max(self.grid_total[x_g][y_g], key=self.grid_total[x_g][y_g].get)
-
     
     def contains_dominant(self, x0y0, xy):
         """
-        Check if two clusters have same dominant label
+        Checks if two clusters have same dominant label
 
         :type x0y0: (int, int) cluster coordinates
         :type xy: (int, int) cluster coordinates
         """
-
         x0, y0 = x0y0
         x, y   = xy
         if self.grid_total[x][y] == {} or self.grid_total[x0][y0]=={}:
@@ -664,10 +648,9 @@ class Vizualization:
 
         return (dominant == other_dominant)
 
-
     def comparable_proportion(self, x0y0, xy, diff=0.10):
         """
-        Check if cluster have comparable *proportion*
+        Checks if cluster have comparable *proportion*
         
         :param diff: percent of max difference in proportion for two similar clusters
         :type x0y0: (int, int) cluster coordinates
@@ -675,26 +658,24 @@ class Vizualization:
         """
         x0, y0 = x0y0
         x, y   = xy
+        
+        grid_prop_x_y = self.grid_proportion[x][y]
+        grid_prop_x0_y0 = self.grid_proportion[x0][y0]
+        
+        return (grid_prop_x_y * (1+diff) < grid_prop_x_y < grid_prop_x_y * (1-diff))
 
-        if self.grid_proportion[x][y] < self.grid_proportion[x0][y0] * (1+diff)\
-                and self.grid_proportion[x][y] > self.grid_proportion[x0][y0] * (1-diff):
-            return True        
-    
-
-
-    def find_specific_clusters(self, classe):
+    def find_specific_clusters(self, class_):
         """
-        Find all clusters which contains :param classe:
+        Finds all clusters which contain :param class_:
 
-        :param classe: label (decoded) to look for
+        :param class_: label (decoded) to look for
         """
         grid_axis_iterator = range(int(-self.resolution/2)-1,int(self.resolution/2)+1)
         selected_clusters = set()
         for i,j in itertools.product(grid_axis_iterator, grid_axis_iterator):
-            if self.grid_total[i][j].get(classe, 0) > 0:
+            if self.grid_total[i][j].get(class_, 0) > 0:
                 selected_clusters.add((i,j))
-        return selected_clusters        
-
+        return selected_clusters
 
     def find_similar_clusters( self, x_g, y_g, \
                                similarity_check=contains_dominant,\
@@ -714,7 +695,6 @@ class Vizualization:
         :type x_g: int
         :type y_g: int
         """
-
         similar_clusters = []
 
         if propagation=='proximity':
@@ -748,7 +728,6 @@ class Vizualization:
         :param similars: the set of similar tiles within the already_checked' ones
         :param x0y0: is the original tile from which we compare new ones
         """
-
         
         x0,y0 = x0y0
         x,y   = xy
@@ -756,81 +735,79 @@ class Vizualization:
         if (x,y) in already_checked:
             return already_checked, similars
 
-        already_checked.add((x,y))
+        already_checked.add((x, y))
 
-        if similarity_check(self, (x,y), (x0,y0)):
+        if similarity_check(self, (x, y), (x0, y0)):
 
-            similars.add((x,y))
+            similars.add((x, y))
 
             if x+1 < self.resolution/2:
-                already_checked, similars = self.proximity_search( (x0,y0), (x+1,y),\
-                                                                already_checked,\
-                                                                similars,\
+                already_checked, similars = self.proximity_search((x0, y0), (x+1, y),
+                                                                already_checked,
+                                                                similars,
                                                                 similarity_check )
             if x-1 > -self.resolution/2:    
-                already_checked, similars = self.proximity_search( (x0,y0), (x-1,y),\
-                                                                already_checked,\
-                                                                similars,\
+                already_checked, similars = self.proximity_search( (x0,y0), (x-1,y),
+                                                                already_checked,
+                                                                similars,
                                                                 similarity_check )
             if y+1 < self.resolution/2:
-                already_checked, similars = self.proximity_search( (x0,y0), (x,y+1),\
-                                                                already_checked,\
-                                                                similars,\
+                already_checked, similars = self.proximity_search( (x0,y0), (x,y+1),
+                                                                already_checked,
+                                                                similars,
                                                                 similarity_check )
             if y-1 > -self.resolution/2:    
-                already_checked, similars = self.proximity_search( (x0,y0), (x,y-1),\
-                                                                already_checked,\
-                                                                similars,\
+                already_checked, similars = self.proximity_search( (x0,y0), (x,y-1),
+                                                                already_checked,
+                                                                similars,
                                                                 similarity_check )
         return already_checked, similars        
 
 
-    def update_showonly(self, classe):
+    def update_showonly(self, class_):
         """
-        Hide all other label but classe
+        Hide all other label but class_
 
-        :param classe: label (decoded) to search and plot
+        :param class_: label (decoded) to search and plot
         """
 
-        print("begin hidding...")
+        logging.info("begin hiding...")
         self.ax.clear()
 
-        classe_str = self.textboxs['show_only'].text()
-
-        similars = self.proj_by_id[ classe ]
-        self.ax.scatter(x=similars[:,0],y=similars[:,1], color='g', marker='+')
-        print("done")  
+        similars = self.proj_by_id[ class_ ]
+        self.ax.scatter(x=similars[:, 0], y=similars[:, 1], color='g', marker='+')
+        logging.info("done")  
 
         plt.draw()
     
-    def update_showall(self, classe, color="green"):
+    def update_showall(self, class_, color="green"):
         """
-        Colorize on label with specific color
+        Colorizes on label with specific color
 
-        :param classe: label (decoded) to colorize
-        :param color: color to use for :param classe:
+        :param class_: label (decoded) to colorize
+        :param color: color to use for :param class_:
         """
         
-        print("begin colorizing...", end='')
-        similars = self.proj_by_id[classe]            
+        logging.info("begin colorizing...")
+        similars = self.proj_by_id[class_]            
         
         self.ax.scatter(similars[:,0], similars[:,1], color=color, marker='+')
 
         #similarity_check = contains_dominant if not self.ctrl_held else lambda x:x
-        similar_clusters = self.find_specific_clusters(classe=classe)
+        similar_clusters = self.find_specific_clusters(class_=class_)
 
         for x_g,y_g in similar_clusters:
-            print("colorizing cluster", x_g, y_g)
+            logging.info("colorizing cluster", x_g, y_g)
             self.update_summary(x_g,y_g)
             self.ax.add_patch( self.colorize_rect(x_g, y_g) )
 
         self.print_summary(self.summary_axe)
         plt.draw()
-        print("done")        
+        logging.info("done")        
 
     def add_text_panel(self, name, update):
         """
-        Add a text panel (how surprising) and bind it to a function
+        Adds a text panel (how surprising) and bind it to a function
 
         :param name: name of Widget
         :param update: function to bind returnPressed event of textpanel
@@ -854,18 +831,18 @@ class Vizualization:
     def onmodifier_press(self, event):
         if event.key == 'shift':
             self.shift_held = True
-            print("shift held")
+            logging.info("shift held")
         if event.key == 'ctrl':
             self.ctrl_held = True
-            print("ctrl held")
+            logging.info("ctrl held")
         
     def onmodifier_release(self, event):
         if event.key == 'shift':
             self.shift_held = False
-            print("shift unheld")
+            logging.info("shift unheld")
         if event.key == 'ctrl':
             self.ctrl_held  =False 
-            print("ctrl unheld")
+            logging.info("ctrl unheld")
     
     '''
     def onmotion(self, event):
@@ -898,7 +875,7 @@ class Vizualization:
                 graph.add_patch(rect)
                 self.cursor_ids[cursor_idx] = id(rect)
 
-            print("cursor position:", (x_g,y_g))
+            logging.info("cursor position:", (x_g,y_g))
         
         plt.draw()
     '''    
@@ -937,14 +914,14 @@ class Vizualization:
 
                 nearest, idx   = find_nearest(x,y,self.proj)
                 class_nearest  = self.y_true_decoded[idx]
-                print("looking for class ", class_nearest)
+                logging.info("looking for class", class_nearest)
                 similars, _    = find_similar(class_nearest, self.y_true_decoded, self.proj)
                 
                 self.ax.scatter(self.x_proj_good[:,0], self.x_proj_good[:,1], color='b', marker="+")
                 self.ax.scatter(self.x_proj_bad[:,0], self.x_proj_bad[:,1], color='r', marker='+')
                 self.ax.scatter(similars[:,0], similars[:,1], color='green', marker='+')
                 
-                self.ax.set_title('dominant class : '+str(show_occurences_total(x,y, self.grid_total, self.resolution, self.amplitude))\
+                self.ax.set_title('dominant class: '+str(show_occurences_total(x,y, self.grid_total, self.resolution, self.amplitude))\
                              +', colorizing '+str(self.labels[idx]))
                 
                 
@@ -953,14 +930,12 @@ class Vizualization:
             self.print_summary(self.summary_axe)
             
             selected_tx = find_projected_in_rect(x, y, self.proj, self.resolution, self.amplitude, transactions_raw)
-            print('\n\n----------------------\nSelected transactions :\n')
+            logging.info('\n\n' + ('-'*12)  + '\nSelected transactions:')
             for tx in selected_tx:
-                print(tx)
+                logging.info(tx)
                 
 
-            print('xdata:',x,' ydata:',y, 'grid_x:',x_g, 'grid_y', y_g,'\n------------------\n\n')
-            
-            plt.draw()
+            logging.debug('x=%s y=%s x_grid=%s y_grid=%s\n', x, y, x_g, y_g)
 
         elif button == 2:
             
@@ -971,20 +946,16 @@ class Vizualization:
             #similarity_check = contains_dominant if not self.ctrl_held else lambda x:x
             similar_clusters = self.find_similar_clusters(x_g, y_g, propagation=propagation)
 
-            for x_g,y_g in similar_clusters:
+            for x_g, y_g in similar_clusters:
                 self.update_summary(x_g,y_g)
                 self.ax.add_patch( self.colorize_rect(x_g, y_g) )
             self.print_summary(self.summary_axe)
 
-            
         elif button == 3:
             
             # reboot vizualization
             self.reset_summary()
             self.reset_viz()
-
-            plt.draw()
-            
         
         plt.draw()
                 
@@ -1039,9 +1010,9 @@ class Vizualization:
             for y in self.grid_proportion[x]:
                 if self.grid_proportion[x][y] != -1:
 
-                    red   = int(255* (self.grid_proportion[x][y]))
-                    green = int(255*self.grid_null_proportion[x][y])
-                    blue  = int(255*(1-self.grid_proportion[x][y]))
+                    red   = int(255* self.grid_proportion[x][y])
+                    green = int(255* self.grid_null_proportion[x][y])
+                    blue  = int(255* (1-self.grid_proportion[x][y]))
 
                     color = rgb_to_hex(red, green, blue)
 
@@ -1061,18 +1032,20 @@ class Vizualization:
 
     def heatmap_entropy(self):
         """
-        Prepare the patches for an entropy heatmap
+        Prepares the patches for an entropy heatmap
 
-        This method is a  heatmap_builder returning a list of patches to be plotted somewhere
-        The maximum entropy for the Vizualization is calculated and used as normalization parameter,
+        This method is a heatmap_builder returning a list of patches to be
+        plotted somewhere
+        The maximum entropy for the Vizualization is calculated and used as
+        normalization parameter,
         The plot is actually a logplot as it is more eye-friendly
         ..seealso:: add_heatmap
         
         """
 
         all_patches=[]
-        nb_classe = len(self.grid_total_individual)
-        normalization = -math.log(1/nb_classe)
+        nb_class_ = len(self.grid_total_individual)
+        normalization = -math.log(1/nb_class_)
 
         for x in self.grid_total:
             for y in self.grid_total[x]:
@@ -1096,8 +1069,6 @@ class Vizualization:
                                 )
         return all_patches
 
-    
-                
     def heatmap_density(self):
         """
         Prepare the patches for a density heatmap
@@ -1184,9 +1155,6 @@ class Vizualization:
             self.local_proportion[c] = (self.local_proportion[c]*self.local_effectif[c] + self.grid_proportion_individual[x_g][y_g][c]*to_include.get(c,0))\
                     / (self.local_effectif[c] + to_include.get(c, 0))
             self.local_effectif[c]  += self.grid_total[x_g][y_g].get(c, 0)
-
-
-
     
     def print_summary(self, axe):
         """
@@ -1228,8 +1196,6 @@ class Vizualization:
             axe.add_patch(p)
         axe.set_xlim(-self.amplitude/2, self.amplitude/2)    
         axe.set_ylim(-self.amplitude/2, self.amplitude/2)    
-
-
         
     def plot(self):
         """
@@ -1258,39 +1224,36 @@ class Vizualization:
         self.f.canvas.mpl_connect('key_press_event', self.onmodifier_press)
         self.f.canvas.mpl_connect('key_release_event', self.onmodifier_release)
 
-        
         ##################################
-        #add textbox
+        # add textbox
         self.textboxs={}
         
         def textbox_function_showonly(self):
             """
             Wrapper for textbox, to use self.update_showonly without specifying parameters
             """
-            classe_str = self.textboxs['show_only'].text()
-            if classe_str == '':
+            class_str = self.textboxs['show_only'].text()
+            if class_str == '':
                 self.reset_viz()
             else:    
-                classe = int(classe_str)
-                self.update_showonly(classe)
+                class_ = int(class_str)
+                self.update_showonly(class_)
 
         def textbox_function_showall(self):
             """
             Wrapper for textbox, to use self.update_showall without specifying parameters
             """
-            classe_str = self.textboxs['show_all'].text()
-            if classe_str == '':
+            class_str = self.textboxs['show_all'].text()
+            if class_str == '':
                 self.reset_viz()
             else:    
-                classe = int(classe_str)
-                self.update_showall(classe)
+                class_ = int(class_str)
+                self.update_showall(class_)
         
         self.textboxs['show_only'] = self.add_text_panel('show_only', self.textbox_function_showonly)
         self.textboxs['show_all'] = self.add_text_panel('show_all', self.textbox_function_showall)
        
         ######################################
-
-
 
         #draw heatmap
         self.add_heatmap(self.heatmap_proportion, self.heat_proportion)
@@ -1299,11 +1262,10 @@ class Vizualization:
         #draw scatter plot
         self.reset_viz()
 
-            
 
 def print_and_save_all(x, resolution, params=PARAMS, version=VERSION, path=GRAPH_PATH):
     """
-    Legacy do not use
+    :warning: Legacy do not use
     """
     for resolution in [80,150,300]:
         for perplexity in perplexities:
@@ -1317,18 +1279,16 @@ def print_and_save_all(x, resolution, params=PARAMS, version=VERSION, path=GRAPH
                         plt.show()
                         print(param)
     print('done')
-      
 
 
-def learn_predictions(
-            x,y,
-            path=MODEL_PATH,
-            version=VERSION,
-            nameRN = DEFAULT_RN,
-            format_from_one_hot=True,
-            save=True,
-        ):
-    
+def predict_rnn(
+        x,y,
+        path=MODEL_PATH,
+        version=VERSION,
+        nameRN = DEFAULT_RN,
+        format_from_one_hot=True,
+        save=True,
+    ):
     """
     Run the predict function on (:param x:,:param y:)
     Will be using a RN, which may need to reformulate its prediction
@@ -1355,12 +1315,12 @@ def learn_predictions(
 
     return x_predicted
 
+
 def load_predictions(path=MODEL_PATH, version=VERSION, nameRN=DEFAULT_RN):
     """
-    Simply load the predictions stored with learn_predictions function
+    Simply load the predictions stored with predict_rnn function
     """
     return np.load(path+'predictions'+version+'.npz')['pred']
-
 
 
 def reformat_prediction_to_real_onehot(predictions):
@@ -1380,9 +1340,10 @@ def reformat_prediction_to_real_onehot(predictions):
 
 
 if __name__ == '__main__':
-
-    print("Starting script")
-    print("----------------------------")
+    
+    logging.basicConfig(level=logging.DEBUG)
+    
+    logging.info("Starting script")
 
     PARAMS['perplexities']   = [40,50]
     PARAMS['learning_rates'] = [800, 1000]
@@ -1390,39 +1351,39 @@ if __name__ == '__main__':
     PARAMS['n_iters']        = [15000]
 
 
-    print("loading raw data...", end='')
+    logging.info("raw_data=loading")
     x_small, y_small, class_encoder, class_decoder = load_raw_data()
-    print('done')
+    logging.info('raw_data=loaded')
 
     if DO_CALCULUS:
-        print("learning..", end='')
+        
+        logging.info("t-sne=learning")
         x_transformed, models = learn_tSNE(
-                                            PARAMS,
-                                            VERSION,
-                                            x_small,
-                                            TSNE_DATA_PATH,
-                                            REDUCTION_SIZE_FACTOR,
-                                            )
-        print('done')
+            PARAMS,
+            VERSION,
+            x_small,
+            TSNE_DATA_PATH,
+            REDUCTION_SIZE_FACTOR,
+        )
+        logging.info('t-sne=ready')
     else:
-        print("loading learning...", end='')
+        logging.info("t-sne=loading")
         x_transformed, models = load_tSNE(
                 PARAMS,
                 VERSION,
                 TSNE_DATA_PATH,
                 REDUCTION_SIZE_FACTOR,
                 )
-        print("done")
+        logging.info('t-sne=ready')
     
     x_2D = x_transformed[(50,1000,'pca',15000)]
-
 
     ###############
     # PREDICT
 
     print('loading RN predictions...')
     if DO_CALCULUS:
-        x_predicted = learn_predictions(x_small, y_small, path=MODEL_PATH, version=VERSION)
+        x_predicted = predict_rnn(x_small, y_small, path=MODEL_PATH, version=VERSION)
     else:
         x_predicted = load_predictions(path=MODEL_PATH, version=VERSION)
     print("done")
