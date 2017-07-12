@@ -1,0 +1,9 @@
+numpy
+logging
+sklearn
+matplotlib
+keras
+PyQt4
+
+# manakin-ml-shared when used
+# problem with qt4
