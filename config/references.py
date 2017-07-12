@@ -1,6 +1,6 @@
 import os
 
-BASE_PATH       = '/home/sofian/ovh/'
+BASE_PATH       = '/home/sofian/'
 
 DATA_PATH       = os.path.join(BASE_PATH, 'data/set/')  
 TSNE_DATA_PATH  = os.path.join(BASE_PATH, 'data/set/tSNE/')

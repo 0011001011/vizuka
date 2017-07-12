@@ -14,6 +14,9 @@ VERSION : _20170614
 # default RN for predictions
 DEFAULT_RN : one_hot_1000-600-300-200-100_RN
 
+# data output name (labels)
+OUTPUT_NAME = 'account'
+
 # t-SNE parameters
 # best tuple so far is (50,1000,pca,15000)
 PARAMS : 
