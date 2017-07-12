@@ -17,8 +17,19 @@ data_viz needs the following files:
     * parameters for t-SNE (optional, default ones are provided)
 * raw transactions (optional) which will be used to display additional human-understandable info.
 
+Usage
+-----
+Change the config file (currently the .py one)
+Run the main
 
-These data should be structured:
+#TODO do it right
+
+
+File structures
+---------------
+
+Your files should be structured this way :
+(samples are provided in the data folder, you still need to find the raw/processed datas as it too heavy to be put here.
 
 * pre-processed transactions:
     * type: npz
@@ -97,10 +108,3 @@ All the following are relative path inside $(BASE_PATH)
 
 * DO_CALCULUS: does the main should learn (if not will learn) the t-SNE representations / RN predictions
     * e.g: True
-
-Usage
------
-Change the config file (currently the .py one)
-Run the main
-
-#TODO do it right
