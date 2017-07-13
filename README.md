@@ -19,10 +19,15 @@ data_viz needs the following files:
 
 Usage
 -----
+
+###How to run?
 Change the config file (currently the .py one).
 Run the main.
 
-The main window represents all the data in 2D space. Blue are good-predicted transactions, Red are the bad ones, Green are the special class (by default the label 0).
+###How to use ?
+Navigate inside the 2D space and look at the data, selecting it in the main window (the big one). Only this one is interactive. Data is grouped by buckets ('tiles' inside 'grids' in the code), you can select buckets individually (left click) or by similarity (middle click).
+
+Main window represents all the data in 2D space. Blue are good-predicted transactions, Red are the bad ones, Green are the special class (by default the label 0).
 
 Below are three subplots :
 * a summary of the data inside the selected buckets (see navigation)
@@ -31,8 +36,12 @@ Below are three subplots :
 
 Data viz navigation :
 * left click selects a bucket of data
-* right click reset all in-memory buckets
 * middle click selects a bunch of similar buckets according to your method (#TODO MenuList to select bunching process)
+* right click reset all in-memory buckets
+
+Other options:
+* show one label with the 'Show one label' field
+* select all buckets containing a label with 'Select all with label'
 
 
 File structures
