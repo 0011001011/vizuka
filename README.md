@@ -19,8 +19,19 @@ data_viz needs the following files:
 
 Usage
 -----
-Change the config file (currently the .py one)
-Run the main
+Change the config file (currently the .py one).
+Run the main.
+
+The main window represents all the data in 2D space. Blue are good-predicted transactions, Red are the bad ones, Green are the special class (by default the label 0).
+Below are three subplots :
+    - a summary of the data inside the selected buckets (see navigation)
+    - a heatmap of the red/blue/green representation
+    - a heatmap of the entropy of the buckets (normalized with the theorical max entropy of all labels)
+
+Data viz navigation :
+    - left click selects a bucket of data
+    - right click reset all in-memory buckets
+    - middle click selects a bunch of similar buckets according to your method (#TODO MenuList to select bunching process)
 
 #TODO do it right
 
