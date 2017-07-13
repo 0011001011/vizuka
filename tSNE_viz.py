@@ -1235,11 +1235,11 @@ class Vizualization:
         self.textboxs = {}
         logging.info("textboxs=adding")
         self.textboxs['show_only'] = self.add_text_panel(
-            'show_only',
+            'Show one label',
             self.textbox_function_showonly
         )
         self.textboxs['show_all'] = self.add_text_panel(
-            'show_all',
+            'Select all with label',
             self.textbox_function_showall
         )
         logging.info("textboxs=ready")
