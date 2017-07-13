@@ -1,4 +1,5 @@
 import dim_reduction
+import labelling
 from config.references import (
     DATA_PATH,
     VERSION,
@@ -32,34 +33,6 @@ from PyQt4.QtCore import Qt
 from shared_helpers import config
 DATA_VIZ_CONFIG = config.load_config(__package__)
 """
-
-##########################
-
-
-def bar(d):
-    """
-    Show a bar histogram from dict
-    """
-    x = [l for l in d.keys()]
-    y = [d[l] for l in x]
-
-    graduation = np.linspace(0, len(y), len(y))
-    plt.bar(height=y, left=graduation)
-    plt.xticks(graduation, [str(i) for i in x])
-
-
-def show_class_distribution(originals):
-    """
-    Show bar plot with occurence of classes
-    """
-    c = Counter(originals[:, 1])
-    bar(c)
-    plt.show()
-    logging.info(c)
-    logging.info(len(c))
-
-###########################
-
 
 def rgb_to_hex(red, green, blue):
     """
@@ -1174,13 +1147,14 @@ class Vizualization:
             )
             self.local_effectif[c] += self.grid_total[x_g][y_g].get(c, 0)
 
-    def print_summary(self, axe):
+    def print_summary(self, axe, max_row=15):
         """
         Print a short summary with basic stats (occurrence, classification rate) on an axe
 
         This method gets its data mainly from self.local_proportion and self.local_effectif,
         these objects are self-updated when needed and contain the data of the user-selected clusters
-
+        
+        :param max_row: max number of row to add in table summary
         :param axe: the matplotlib axe in which the stats will be plotted
         """
 
@@ -1206,8 +1180,8 @@ class Vizualization:
         row_labels.append('all')
 
         axe.table(
-            cellText=values,
-            rowLabels=row_labels,
+            cellText=values[:max_row],
+            rowLabels=row_labels[:max_row],
             colLabels=self.cols,
             loc='center'
         )
@@ -1250,14 +1224,13 @@ class Vizualization:
         def wrapper_show_occurences_total(x, y):
             return show_occurences_total(x, y, self.grid_total, self.resolution, self.amplitude)
         
-        logging.info("mouseEvents=adding")
         # add mouse event
+        logging.info("mouseEvents=adding")
         self.f.canvas.mpl_connect('button_press_event', self.onclick)
         self.f.canvas.mpl_connect('key_press_event', self.onmodifier_press)
         self.f.canvas.mpl_connect('key_release_event', self.onmodifier_release)
         logging.info("mouseEvents=ready")
 
-        ##################################
         # add textbox
         self.textboxs = {}
         logging.info("textboxs=adding")
@@ -1265,17 +1238,14 @@ class Vizualization:
             'show_only',
             self.textbox_function_showonly
         )
-
         self.textboxs['show_all'] = self.add_text_panel(
             'show_all',
             self.textbox_function_showall
         )
         logging.info("textboxs=ready")
 
-        ######################################
-
         # draw heatmap
-        logging.info("heatmap=calcluating")
+        logging.info("heatmap=calculating")
         self.add_heatmap(self.heatmap_proportion, self.heat_proportion)
         self.add_heatmap(self.heatmap_entropy, self.heat_entropy)
         logging.info("heatmap=ready")
@@ -1286,66 +1256,6 @@ class Vizualization:
         logging.info('Vizualization=ready')
 
 
-def predict_rnn(
-    x, y,
-    path=MODEL_PATH,
-    version=VERSION,
-    nameRN=DEFAULT_RN,
-    format_from_one_hot=True,
-    save=True,
-):
-
-    """
-    Run the predict function on (:param x:,:param y:)
-    Will be using a RN, which may need to reformulate its prediction
-        ([0.001, 0.98767,0.00001678] should become [0,1,0])
-
-    :param path: path to look for the models
-    :param version: version of the model (e.g 20170614)
-    :param format_from_one_hot: boolean to transform (0.00000461,0.00044486,0.99984] to [0,0,1]
-    :param save: if True predictions will be saved in :param path:
-
-    :return: vector of predictions
-    """
-
-    predictor = keras.models.load_model(path + nameRN + version)
-    x_predicted = predictor.predict(x)
-
-    # x_predicted_one_hot needs to be reformulated a bit
-    if format_from_one_hot:
-        x_predicted = reformat_prediction_to_real_onehot(x_predicted)
-
-    x_predicted = np.array(x_predicted)
-    if save:
-        np.savez(
-            path + 'predictions' + version + '.npz',
-            pred=x_predicted
-        )
-
-    return x_predicted
-
-
-def load_predictions(path=MODEL_PATH, version=VERSION, nameRN=DEFAULT_RN):
-    """
-    Simply load the predictions stored with predict_rnn function
-    """
-    return np.load(path + 'predictions' + version + '.npz')['pred']
-
-
-def reformat_prediction_to_real_onehot(predictions):
-    """
-    Return [0,0,1] from [0.00009493, 0.000036783,0.99345]
-    """
-
-    blank = [False] * len(predictions[0])
-    x_predicted_formatted = []
-
-    for i in predictions:
-        one_hot_vector = blank.copy()
-        one_hot_vector[i.argsort()[-1]] = True
-        x_predicted_formatted.append(one_hot_vector)
-
-    return x_predicted_formatted
 
 
 if __name__ == '__main__':
@@ -1399,7 +1309,7 @@ if __name__ == '__main__':
 
     if DO_CALCULUS:
         logging.info('RNpredictions=predicting')
-        x_predicted = predict_rnn(
+        x_predicted = labelling.predict_rnn(
             x_small,
             y_small,
             path=MODEL_PATH,
@@ -1408,7 +1318,7 @@ if __name__ == '__main__':
         logging.info('RNpredictions=ready')
     else:
         logging.info('RNpredictions=loading')
-        x_predicted = load_predictions(
+        x_predicted = labelling.load_predict(
             path=MODEL_PATH,
             version=VERSION
         )
