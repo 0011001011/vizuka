@@ -2,6 +2,38 @@ import numpy as np
 from matplotlib import pyplot as plt
 from sklearn.cluster import KMeans
 
+
+class Clusterizer():
+
+        def __init__(self, n_clusters, *args, **kwargs):
+            """
+            Builds a clusterizer object e.g: kmeans
+
+            :param n_clusters: number of clusters
+            :param *args **kwargs: parameters passed to the clusterizer engine
+            """
+            self.engine = None
+
+        def predict(self, xs):
+            """
+            Gives the cluster in which the data is
+
+            :params xys: array-like of (x,y) points
+            :return: array-like of cluster id
+            """
+            return (0,)*len(xs)
+
+class KmeansClusterizer(Clusterizer):
+
+    def __init__(self, n_clusters, *args, **kwargs):
+        self.engine = KMeans(n_clusters=n_clusters, *args, **kwargs)
+
+    def fit(self, xs):
+        self.engine.fit(xs)
+
+    def predict(self, xs):
+        return self.engine.predict(xs)
+
 def clusterize(data, method='kmeans', n_clusters=120):
     """
     Clusterize the data with specified algorithm
@@ -14,7 +46,7 @@ def clusterize(data, method='kmeans', n_clusters=120):
     clusterizer = None
 
     if method == 'kmeans':
-        clusterizer = KMeans(n_clusters=n_clusters)
+        clusterizer = KmeansClusterizer(n_clusters=n_clusters)
     clusterizer.fit(data)
 
     return clusterizer
