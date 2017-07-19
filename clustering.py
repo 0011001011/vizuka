@@ -1,15 +1,17 @@
+from tSNE_viz import find_amplitude, find_grid_positions
+
 import numpy as np
 from matplotlib import pyplot as plt
 from sklearn.cluster import KMeans
+import ipdb
 
 
 class Clusterizer():
 
-        def __init__(self, n_clusters, *args, **kwargs):
+        def __init__(self, *args, **kwargs):
             """
             Builds a clusterizer object e.g: kmeans
 
-            :param n_clusters: number of clusters
             :param *args **kwargs: parameters passed to the clusterizer engine
             """
             self.engine = None
@@ -25,7 +27,7 @@ class Clusterizer():
 
 class KmeansClusterizer(Clusterizer):
 
-    def __init__(self, n_clusters, *args, **kwargs):
+    def __init__(self, n_clusters=120, *args, **kwargs):
         self.engine = KMeans(n_clusters=n_clusters, *args, **kwargs)
 
     def fit(self, xs):
@@ -34,9 +36,29 @@ class KmeansClusterizer(Clusterizer):
     def predict(self, xs):
         return self.engine.predict(xs)
 
-def clusterize(data, method='kmeans', n_clusters=120):
+class DummyClusterizer(Clusterizer):
+    def __init__(self, resolution):
+        self.resolution = resolution
+
+    def fit(self, xs):
+        self.amplitude = find_amplitude(xs)
+
+    def predict(self, xys):
+
+        attributed_cluster = []
+        xgygs = find_grid_positions(xys, self.resolution, self.amplitude)
+
+        attributed_cluster = [
+                xgyg[0] + (xgyg[1]+self.resolution/2+2)*self.resolution
+                for xgyg in xgygs
+                ]
+
+        return attributed_cluster
+
+def make_clusterizer(xs, method='kmeans', **kwargs):
     """
     Clusterize the data with specified algorithm
+    Naively assume you pass the right parameters for the right algo
 
     :param data: array with shape (n,2) of in put to clusterize
     :param method: algo to use, supported: kmeans
@@ -44,10 +66,11 @@ def clusterize(data, method='kmeans', n_clusters=120):
     """
     
     clusterizer = None
-
     if method == 'kmeans':
-        clusterizer = KmeansClusterizer(n_clusters=n_clusters)
-    clusterizer.fit(data)
+        clusterizer = KmeansClusterizer(kwargs['n_clusters'])
+    else:
+        clusterizer = DummyClusterizer(kwargs['resolution'])
+    clusterizer.fit(xs)
 
     return clusterizer
 
@@ -59,7 +82,7 @@ def plot_clusters(data, clusterizer):
     :param clusterizer: ..seealso::clusterizer
     """
 
-    h = .02     # point in the grid[x_min, x_max]x[y_min, y_max].
+    h = .2     # point in the grid[x_min, x_max]x[y_min, y_max].
 
     # Plot the decision boundary
     x_min, x_max = data[:, 0].min() - 1, data[:, 0].max() + 1
@@ -68,6 +91,7 @@ def plot_clusters(data, clusterizer):
 
     # Obtain labels
     Z = clusterizer.predict(np.c_[xx.ravel(), yy.ravel()])
+    ipdb.set_trace()
 
     # Put the result into a color plot
     Z = Z.reshape(xx.shape)
@@ -98,7 +122,7 @@ if __name__ == '__main__':
     datas_sets, models = dr.load_tSNE()
     datas = datas_sets[50, 1000, 'pca', 15000]
 
-    clusterizer = clusterize(datas)
+    clusterizer = make_clusterizer(datas, method='kmeans', n_clusters=80)
     f, ax = plot_clusters(datas, clusterizer)
 
     plt.show()
