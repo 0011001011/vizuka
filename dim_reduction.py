@@ -73,10 +73,6 @@ def load_raw_data(
     x_small = x[:int(x.shape[0] / REDUCTION_SIZE_FACTOR)]; del x # noqa
     y_small = y[:int(y.shape[0] / REDUCTION_SIZE_FACTOR)]; del y # noqa
     
-    logging.info(xy.keys())
-    logging.info(x_small[0])
-    logging.info(y_small[0])
-
     if output_name + '_encoder' in xy.keys():
         logging.info("found encoder")
         # I don't understant either but it is a 0-d array (...)
