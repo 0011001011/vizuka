@@ -1,4 +1,12 @@
 from tSNE_viz import find_amplitude, find_grid_positions
+'''
+Clustering engine to use with Vizualization
+
+3 methods :
+    init    - with different params
+    fit     - to prepare the algo for the data
+    predict - to find out the cluster of a (x,y)
+''' 
 
 import numpy as np
 from matplotlib import pyplot as plt
