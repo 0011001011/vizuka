@@ -1317,16 +1317,17 @@ class Vizualization:
         all_patches = []
         centroid_label = {}
         
-        self.entropys = []
+        entropys = []
 
         for idx,xy in enumerate(self.mesh_centroids):
 
             current_centroid_label = self.centroids_label[idx]
             x, y = xy[0], xy[1]
+            current_entropy = 0
             
             try:
                 if len(self.index_by_label[current_centroid_label]) == 0:
-                    current_entropy = 1
+                    current_entropy = 0
                 else:
                     current_entropy = (
                         cross_entropy(
@@ -1334,16 +1335,21 @@ class Vizualization:
                             self.class_by_cluster[current_centroid_label]
                             )
                         )
-                    self.entropys.append(current_entropy)
             except KeyError:
-                current_entropy = 1
+                current_entropy = 0 # cluster does not exist -> empty dummy cluster
+            entropys.append(current_entropy)
 
-        min_entropys = min(self.entropys)
-        max_entropys = max(self.entropys)
+        min_entropys = min(entropys)
+        max_entropys = max(entropys)
         amplitude_entropys = max_entropys - min_entropys
 
         for idx, xy in enumerate(self.mesh_centroids):
-            coef = int((self.entropys[idx] - min_entropys) / amplitude_entropys * 255)
+            try:
+                current_entropy = entropys[idx]
+            except IndexError:
+                current_entropy = min_entropys
+
+            coef = int((current_entropy - min_entropys) / amplitude_entropys * 255)
             color = rgb_to_hex(coef, coef, coef)
             x, y = xy[0], xy[1]
 
@@ -1571,6 +1577,7 @@ class Vizualization:
 
         # main subplot with the scatter plot
         self.heat_proportion = plt.subplot(3, 1, (1, 2))
+        self.heat_proportion.set_title('Heatmap: correctVSincorrect predictions')
 
         # summary_subplot with table of local stats
         self.summary_axe = plt.subplot(3, 2, 5)
@@ -1579,7 +1586,9 @@ class Vizualization:
         # heatmap subplots
         # contain proportion of correct prediction and entropy
         self.ax = plt.subplot(3, 4, 11)
+        self.ax.set_title('Observations')
         self.heat_entropy = plt.subplot(3, 4, 12)
+        self.heat_entropy.set_title('Heatmap: cross-entropy localVSglobal')
 
         self.axes_needing_borders = (self.ax, self.heat_proportion, self.heat_entropy)
 
