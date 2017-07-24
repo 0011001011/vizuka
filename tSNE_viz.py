@@ -30,6 +30,7 @@ from matplotlib import patches
 from PyQt4 import QtGui
 from PyQt4.QtCore import Qt
 import ipdb
+import pandas as pd
 
 """
 from shared_helpers import config
@@ -337,7 +338,7 @@ def find_similar(account_encoded, y_true_decoded, embedded):
     idxs = []
     similars = []
 
-    logging.info("similar to ", account_encoded.argsort()[-1])
+    logging.info("similar to "+str(account_encoded.argsort()[-1]))
 
     for i, account in enumerate(y_true_decoded[:len(embedded)]):
         if account == account_encoded:
@@ -347,10 +348,21 @@ def find_similar(account_encoded, y_true_decoded, embedded):
 
     return np.array(similars), idxs
 
+def find_projected_in_cluster(cluster, cluster_by_idx):
+    """
+    Returns raw x in cluster containing (param:x,param:y)
+    """
+    selected_idx = set()
+
+    for idx, current_cluster in enumerate(cluster_by_idx):
+        if cluster == current_cluster:
+            selected_idx.add(idx)
+
+    return selected_idx
 
 def find_projected_in_rect(x, y, proj, resolution, amplitude, transactions_raw):
     """
-    Returns raw transactions in cluster containing (param:x,param:y)
+    Returns raw transactions in tile containing (param:x,param:y)
     """
 
     x_g, y_g = find_grid_position(x, y, resolution, amplitude)
@@ -375,9 +387,17 @@ class Vizualization:
     Mouse control and keyboard shortcuts are used (later: QtButtons) ..seealso:: self.controls
     """
 
-    def __init__(self, y_pred, y_true, proj, resolution=100,
-                 special_class=0,
-                 class_decoder=(lambda x: x), class_encoder=(lambda x: x)):
+    def __init__(
+            self,
+            x_raw,
+            proj,
+            y_pred,
+            y_true,
+            resolution=100,
+            special_class=0,
+            class_decoder=(lambda x: x), class_encoder=(lambda x: x),
+            output_path='output.csv',
+            ):
         """
         Central function, draw heatmap + scatter plot + zoom + annotations on tSNE data
 
@@ -390,11 +410,15 @@ class Vizualization:
 
         logging.info("Vizualization=generating")
 
+        self.manual_cluster_color = 'purple'
+        self.output_path = output_path
+
         self.y_pred = y_pred
         self.y_true = y_true
         self.y_true_decoded = [class_decoder(y) for y in self.y_true]
         self.y_pred_decoded = [class_decoder(y) for y in self.y_pred]
         self.proj = proj
+        self.x_raw = x_raw
 
         self.proj_by_id = {y: [] for y in self.y_true_decoded}
 
@@ -417,7 +441,7 @@ class Vizualization:
         self.local_proportion = {}
         self.local_classes = set()
         self.local_sum = 0
-        self.current_cluster = []
+        self.currently_selected_cluster = []
         self.cursor_ids = [0]
 
         # Get the real labels found in true y
@@ -514,15 +538,20 @@ class Vizualization:
 
         logging.info("grid=ready")
         # Sort good/bad/not predictions in t-SNE space
+        logging.info("projections=sorting")
         self.x_proj_good = np.array([self.proj[i] for i in self.index_good_predicted])
         self.x_proj_bad  = np.array([self.proj[i] for i in self.index_bad_predicted])
         self.x_proj_null = np.array([self.proj[i] for i in self.index_not_predicted])
+        logging.info("projections=ready")
         
         #self.clusterizer = clustering.DummyClusterizer(resolution=self.resolution)
+        logging.info('clustering engine=fitting')
         self.clusterizer = clustering.KmeansClusterizer()
         self.clusterizer.fit(self.proj)
+        logging.info('clustering engine=ready')
         #self.similarity_measure = lambda x,y:0
         self.similarity_measure = bhattacharyya
+        self.normalize_frontier = True
         
 
     #######################################
@@ -648,7 +677,7 @@ class Vizualization:
 
         return similar_clusters
 
-    def proximity_search(self, x0y0, xy, already_checked, similars, similarity_check):
+    def proximity_search(self, x0y0, xy, already_checked, similars, similarity_check): #TODO
         """
         Recursive function that check if (recursively) adjacent tiles are similar
 
@@ -674,12 +703,15 @@ class Vizualization:
 
             similars.add((x, y))
 
-            if x + 1 < self.resolution / 2:
-                already_checked, similars = self.proximity_search((x0, y0), (x + 1, y),
-                                                                  already_checked,
-                                                                  similars,
-                                                                  similarity_check)
-            if x - 1 > -self.resolution / 2:
+            if x + self.size_centroid < self.amplitude:
+                already_checked, similars = self.proximity_search(
+                        (x0, y0),
+                        (x + self.size_centroid, y),
+                        already_checked,
+                        similars,
+                        similarity_check
+                        )
+            if x - self.size_centroid > -self.amplitude:
                 already_checked, similars = self.proximity_search((x0, y0), (x - 1, y),
                                                                   already_checked,
                                                                   similars,
@@ -737,8 +769,9 @@ class Vizualization:
         similar_clusters = self.find_specific_clusters(class_=class_)
 
         for x_g, y_g in similar_clusters:
+            clicked_cluster = self.clusterizer.predict([(x,y)])[0] #TODO SOON
             logging.info("colorizing cluster", x_g, y_g)
-            self.update_summary(x_g, y_g)
+            self.update_summary(clicked_cluster)
             self.ax.add_patch(self.colorize_rect(x_g, y_g))
 
         self.print_summary(self.summary_axe)
@@ -788,7 +821,23 @@ class Vizualization:
         dock.setWidget(panel)
 
         return menulist
-        
+
+    def add_button(self, name, action):
+        """
+        Adds a simple button
+        """
+        root = self.f.canvas.manager.window
+        panel = QtGui.QWidget()
+        hbox = QtGui.QHBoxLayout(panel)
+
+        button = QtGui.QPushButton(name)
+        button.clicked.connect(action)
+        hbox.addWidget(button)
+        panel.setLayout(hbox)
+
+        dock = QtGui.QDockWidget(name, root)
+        root.addDockWidget(Qt.RightDockWidgetArea, dock)
+        dock.setWidget(panel)
 
     def add_text_panel(self, name, update):
         """
@@ -964,22 +1013,26 @@ class Vizualization:
                     ', colorizing ',
                     str(self.labels[idx])
                 ]))
+            
 
-            self.update_summary(x_g, y_g)
+            clicked_cluster = self.clusterizer.predict([(x,y)])[0]
+
+            self.delimit_cluster(clicked_cluster, color=self.manual_cluster_color)
+            self.update_summary(clicked_cluster)
+
             self.ax.add_patch(self.colorize_rect(x_g, y_g))
             self.print_summary(self.summary_axe)
 
-            selected_tx = find_projected_in_rect(
-                x, y,
-                self.proj,
-                self.resolution,
-                self.amplitude,
-                transactions_raw
+            selected_x_idx = find_projected_in_cluster(
+                clicked_cluster,
+                self.cluster_by_idx,
             )
 
+            """
             logging.info('\n\n' + ('-' * 12) + '\nSelected transactions:')
-            for tx in selected_tx:
-                logging.info(tx)
+            for idx in selected_x_idx:
+                logging.info(self.x_raw[idx])
+            """
 
             logging.debug('x=%s y=%s x_grid=%s y_grid=%s\n', x, y, x_g, y_g)
 
@@ -1021,7 +1074,15 @@ class Vizualization:
         Reset (graphically) the vizualization
         ..note:: does not touch the summary array, for this use self.reset_summary()
         """
-        self.ax.clear()
+        logging.info("scatterplot: removing specific objects")
+        for i in self.ax.get_children():
+            if isinstance(i, matplotlib.collections.PathCollection):
+                i.remove()
+            elif isinstance(i, matplotlib.lines.Line2D):
+                if i.get_color() == self.manual_cluster_color:
+                    i.remove()
+        
+        logging.info("scatterplot: drawing observations")
         self.ax.scatter(
             self.x_proj_good[:, 0],
             self.x_proj_good[:, 1],
@@ -1039,6 +1100,7 @@ class Vizualization:
             marker='x',
             color='g'
         )
+        logging.info("scatterplot: ready")
 
     def reset_summary(self):
         """
@@ -1048,7 +1110,7 @@ class Vizualization:
         self.local_proportion = {}
         self.local_classes = set()
         self.local_sum = 0
-        self.current_cluster = []
+        self.currently_selected_cluster = []
 
     def colorize_rect(self, x_g, y_g):
         """
@@ -1076,8 +1138,8 @@ class Vizualization:
         clusteriser of the vizualization
         """
 
-        predictions = self.clusterizer.predict(self.proj)
-        all_cluster_labels = set(predictions)
+        self.cluster_by_idx = self.clusterizer.predict(self.proj)
+        all_cluster_labels = set(self.cluster_by_idx)
         
         index_by_label = { label:[] for label in all_cluster_labels }
 
@@ -1090,39 +1152,125 @@ class Vizualization:
         cluster_null = dict()
         cluster_good = dict()
         cluster_bad  = dict()
-
-        for idx, label in enumerate(predictions):
+        cluster_good_count_by_class = dict()
+        cluster_bad_count_by_class  = dict()
+        
+        for idx, label in enumerate(self.cluster_by_idx):
             index_by_label[label].append(idx)
             class_by_cluster[label][self.y_true_decoded[idx]]+=1
 
+        logging.info('clustering: analyze each one')
         for label in all_cluster_labels:
             count = len(index_by_label[label])
 
             cluster_good[label] = 0
             cluster_bad[label]  = 0
             cluster_null[label] = 0
+            cluster_good_count_by_class[label]={}
+            cluster_bad_count_by_class[label]={}
 
             for i in index_by_label[label]:
                 if i in self.index_good_predicted:
                     cluster_good[label]+=1
+                    try:
+                        cluster_good_count_by_class[label][self.y_true_decoded[i]]+=1
+                    except KeyError:
+                        cluster_good_count_by_class[label][self.y_true_decoded[i]]=1
                 else:
                     cluster_bad[label]+=1
+                    try:
+                        cluster_bad_count_by_class[label][self.y_true_decoded[i]]+=1
+                    except KeyError:
+                        cluster_bad_count_by_class[label][self.y_true_decoded[i]]=1
                 if i in self.index_not_predicted:
                     cluster_null[label]+=1
         
+        logging.info('labelling: mesh centroids')
         centroids_label = self.clusterizer.predict(self.mesh_centroids)
+        logging.info('labelling: done')
 
         self.centroids_label       = centroids_label
         self.cluster_good_count    = cluster_good
         self.cluster_bad_count     = cluster_bad
+        self.cluster_good_count_by_class    = cluster_good_count_by_class
+        self.cluster_bad_count_by_class     = cluster_bad_count_by_class
         self.cluster_null_count    = cluster_null
         self.index_by_label        = index_by_label
         self.class_by_cluster      = class_by_cluster
+
+    def delimit_cluster(self, cluster, **kwargs):
+        """
+        Delimits one cluster by drawing lines around it
+        """
+        size = len(self.centroids_label)
+        borders = set()
     
-    def apply_borders(self, frontier_builder, *args):
+        for idx, xy in enumerate(self.mesh_centroids):
+            if self.centroids_label[idx] == cluster:
+                label_down_neighbor = self.centroids_label[max(idx-self.resolution,0)]
+                label_left_neighbor = self.centroids_label[max(idx-1,0)]
+                label_right_neighbor = self.centroids_label[min(idx+1,size-1)]
+                label_up_neighbor = self.centroids_label[min(idx+self.resolution,size-1)]
+                
+                x, y = xy
+
+                if label_down_neighbor != cluster:
+                    for axe in self.axes_needing_borders:
+                          axe.add_artist(
+                              matplotlib.lines.Line2D(
+                                  xdata = (
+                                      x-self.size_centroid/2,
+                                      x+self.size_centroid/2),
+                                  ydata = (
+                                      y-self.size_centroid/2,),
+                                  **kwargs,
+                                  )
+                              )
+                if label_up_neighbor != cluster:
+                    for axe in self.axes_needing_borders:
+                          axe.add_artist(
+                              matplotlib.lines.Line2D(
+                                  xdata = (
+                                      x-self.size_centroid/2,
+                                      x+self.size_centroid/2),
+                                  ydata = (
+                                      y+self.size_centroid/2,),
+                                  **kwargs,
+                                  )
+                              )
+                if label_left_neighbor != cluster:
+                    for axe in self.axes_needing_borders:
+                          axe.add_artist(
+                              matplotlib.lines.Line2D(
+                                  xdata = (
+                                      x-self.size_centroid/2,),
+                                  ydata = (
+                                      y-self.size_centroid/2,
+                                      y+self.size_centroid/2,),
+                                  **kwargs,
+                                  )
+                              )
+                if label_right_neighbor != cluster:
+                    for axe in self.axes_needing_borders:
+                          axe.add_artist(
+                              matplotlib.lines.Line2D(
+                                  xdata = (
+                                      x+self.size_centroid/2,),
+                                  ydata = (
+                                      y-self.size_centroid/2,
+                                      y+self.size_centroid/2,),
+                                  **kwargs,
+                                  )
+                              )
+        plt.draw()
+    
+    def apply_borders(self, normalize_frontier, frontier_builder, *args):
         """
         Returns the line to draw the clusters border
         
+        :param normalize_frontier: sset to True if the value given by
+        the :param frontier_builder: needs some normalization, if True
+        it will be set between [0,1]
         :param frontier_builder: function that takes two dicts
         (clusters) and compute a frontier density (typically
         based on a similarity measure)
@@ -1131,6 +1279,7 @@ class Vizualization:
         axes = args[0]
         frontier = {}
         
+        logging.info('borders: calculating')
         for idx,xy in enumerate(self.mesh_centroids):
 
             current_centroid_label = self.centroids_label[idx]
@@ -1147,7 +1296,6 @@ class Vizualization:
                                     )
                         if current_frontier > -np.inf:
                             frontier[(label_down_neighbor, current_centroid_label)] = current_frontier
-
             except KeyError:
                 pass
             
@@ -1163,25 +1311,27 @@ class Vizualization:
                                     )
                         if current_frontier > -np.inf:
                             frontier[(label_left_neighbor, current_centroid_label)] = current_frontier
-
             except KeyError:
                 pass
 
         frontier = { key:frontier[key] for key in frontier if frontier[key] != -np.inf }
-
-        max_frontier = frontier[max(frontier, key=frontier.get)]
-        min_frontier = frontier[min(frontier, key=frontier.get)]
-
-        frontier_amplitude = max_frontier - min_frontier
         
-        if frontier_amplitude:
-            frontier = { key:frontier[key]-min_frontier / frontier_amplitude for key in frontier }
+        if normalize_frontier:
+            max_frontier = frontier[max(frontier, key=frontier.get)]
+            min_frontier = frontier[min(frontier, key=frontier.get)]
 
+            frontier_amplitude = max_frontier - min_frontier
+            
+            if frontier_amplitude:
+                frontier = { key:frontier[key]-min_frontier / frontier_amplitude for key in frontier }
+
+        logging.info('borders: cleaning')
         for axe in axes:
             for i in axe.get_children():
-                if type(i) == plt.Line2D:
+                if isinstance(i, plt.Line2D):
                     i.remove()
 
+        logging.info('borders: drawing')
         for idx,xy in enumerate(self.mesh_centroids):
 
             current_centroid_label = self.centroids_label[idx]
@@ -1225,6 +1375,7 @@ class Vizualization:
                             )
             except KeyError:
                 pass
+        logging.info('borders: ready')
 
     def heatmap_proportion(self):
         """
@@ -1241,6 +1392,7 @@ class Vizualization:
 
         all_patches = []
         centroid_label = {}
+        logging.info('heatmap: drawing proportion heatmap')
 
         for idx,xy in enumerate(self.mesh_centroids):
 
@@ -1272,6 +1424,7 @@ class Vizualization:
                                 color=color,
                                 ),
                         )
+        logging.info('heatmap: proportion done')
         return all_patches
 
 
@@ -1316,6 +1469,7 @@ class Vizualization:
 
         all_patches = []
         centroid_label = {}
+        logging.info('heatmap entropy: drawing')
         
         entropys = []
 
@@ -1362,7 +1516,139 @@ class Vizualization:
                 ),
             #logging.debug('entropy here is '+str(self.entropys[idx])+' and color coef '+str(coef))
             )
+        logging.info('heatmap entropy: done')
         return all_patches
+
+    def heatmap_proportion_v2(self):
+        """
+        Prepare the patches for a 'proportion' heatmap (good predictions / total effectif)
+
+        This method is a  heatmap_builder returning a list of patches to be plotted somewhere
+        Three colors are actually used : red for bad prediction, blue for correct, and green for
+            special_class prediction which is a special label defined at the Vizualization.__init__
+            (typically the label "0")
+        All colors are mixed linearly
+
+        ..seealso:: add_heatmap
+        """
+
+        all_colors = [[0 for _ in range(self.resolution)] for _ in range(self.resolution) ]
+        centroid_label = {}
+        logging.info('heatmap: drawing proportion heatmap')
+
+        for idx,xy in enumerate(self.mesh_centroids):
+
+            current_centroid_label = self.centroids_label[idx]
+            x, y = xy[0], xy[1]
+            count = (
+                    self.cluster_good_count.get(current_centroid_label, 0)
+                    +self.cluster_bad_count.get(current_centroid_label, 0)
+                    )
+
+            if count:
+                proportion_correct = self.cluster_good_count[current_centroid_label] / float(count)
+                proportion_null    = self.cluster_null_count[current_centroid_label] / float(count)
+                proportion_incorrect = 1 - proportion_correct
+            else:
+                proportion_correct = 1
+                proportion_null = 1
+                proportion_incorrect = 1
+
+            red   = proportion_incorrect
+            green = proportion_null
+            blue  = proportion_correct
+
+            all_colors[self.resolution - int(((idx-idx%self.resolution)/self.resolution))-1][idx%self.resolution] = [red, green, blue]
+        logging.info('heatmap: proportion done')
+        return all_colors
+
+
+        """
+        for x in self.grid_proportion:
+            for y in self.grid_proportion[x]:
+                if self.grid_proportion[x][y] != -1:
+
+                    red   = int(255 * self.grid_proportion[x][y])
+                    green = int(255 * self.grid_null_proportion[x][y])
+                    blue  = int(255 * (1 - self.grid_proportion[x][y]))
+
+                    color = rgb_to_hex(red, green, blue)
+
+                    x_rect = x * (self.amplitude / float(self.resolution))
+                    y_rect = y * (self.amplitude / float(self.resolution))
+
+                    all_patches.append(
+                        patches.Rectangle(
+                            (x_rect, y_rect),
+                            self.amplitude / self.resolution,
+                            self.amplitude / self.resolution,
+                            color=color,
+                        ),
+                    )
+
+        return all_patches
+        """
+
+    def heatmap_entropy_v2(self):
+        """
+        Prepares the patches for an entropy heatmap
+
+        This method is a heatmap_builder returning a list of patches to be
+        plotted somewhere
+        The maximum entropy for the Vizualization is calculated and used as
+        normalization parameter,
+        The plot is actually a logplot as it is more eye-friendly
+        ..seealso:: add_heatmap
+
+        """
+
+        all_colors = [[0 for _ in range(self.resolution)] for _ in range(self.resolution) ]
+        centroid_label = {}
+        logging.info('heatmap entropy: drawing')
+        
+        entropys = []
+
+        for idx,xy in enumerate(self.mesh_centroids):
+
+            current_centroid_label = self.centroids_label[idx]
+            x, y = xy[0], xy[1]
+            current_entropy = 0
+            
+            try:
+                if len(self.index_by_label[current_centroid_label]) == 0:
+                    current_entropy = 0
+                else:
+                    current_entropy = (
+                        cross_entropy(
+                            self.total_individual,
+                            self.class_by_cluster[current_centroid_label]
+                            )
+                        )
+            except KeyError:
+                current_entropy = 0 # cluster does not exist -> empty dummy cluster
+            entropys.append(current_entropy)
+
+        min_entropys = min(entropys)
+        max_entropys = max(entropys)
+        amplitude_entropys = max_entropys - min_entropys
+
+        for idx, xy in enumerate(self.mesh_centroids):
+            try:
+                current_entropy = entropys[idx]
+            except IndexError:
+                current_entropy = min_entropys
+
+            normalized_entropy = ((current_entropy - min_entropys) / amplitude_entropys)
+            x, y = xy[0], xy[1]
+            
+            # all_colors[idx%self.resolution].append(normalized_entropy)
+            all_colors[self.resolution - int(((idx-idx%self.resolution)/self.resolution))-1][idx%self.resolution] = normalized_entropy
+
+
+            #logging.debug('entropy here is '+str(self.entropys[idx])+' and color coef '+str(coef))
+            
+        logging.info('heatmap entropy: done')
+        return all_colors
 
     def heatmap_density(self):
         """
@@ -1416,14 +1702,21 @@ class Vizualization:
         if method == 'bhattacharyya':
             logging.debug('frontiers: set up to '+method)
             self.similarity_measure = bhattacharyya
+            self.normalize_frontier=True
         elif method =='all':
             self.similarity_measure = lambda x,y:0
+            self.normalize_frontier=False
             logging.debug('frontiers: set up to '+method)
         elif method == 'none':
             self.similarity_measure = lambda x,y:1
+            self.normalize_frontier=False
             logging.debug('frontiers: set up to '+method)
-
-        self.apply_borders(self.similarity_measure, self.axes_needing_borders)
+        
+        self.apply_borders(
+                self.normalize_frontier,
+                self.similarity_measure,
+                self.axes_needing_borders
+                )
         plt.draw()
         logging.info('frontiers : applied '+method)
 
@@ -1446,9 +1739,13 @@ class Vizualization:
         logging.info("cluster: done")
 
         self.label_mesh()
-        self.update_all_heatmaps()
+        self.update_all_heatmaps_v2()
 
-        self.apply_borders(self.similarity_measure, self.axes_needing_borders) 
+        self.apply_borders(
+                self.normalize_frontier,
+                self.similarity_measure,
+                self.axes_needing_borders) 
+        logging.info('borders: done')
 
     def update_all_heatmaps(self):
         """
@@ -1456,41 +1753,61 @@ class Vizualization:
         """
         for (heatmap_builder, axe) in self.heatmaps:
             axe.clear()
+            
             all_patches = heatmap_builder()
+            logging.info("heatmaps: adding patches to "+str(axe))
             for p in all_patches:
                 axe.add_patch(p)
+            
+            logging.info("heatmaps: "+str(axe)+" ready")
+
             axe.set_xlim(-self.amplitude / 2, self.amplitude / 2)
             axe.set_ylim(-self.amplitude / 2, self.amplitude / 2)
         
         plt.draw()
 
-    def update_summary(self, x_g, y_g):
+    def update_all_heatmaps_v2(self):
+        """
+        Get all heatmaps registered by add_heatmap and draw them from scratch
+        """
+        for (heatmap_builder, axe) in self.heatmaps_v2:
+            axe.clear()
+            
+            heatmap_color = heatmap_builder()
+            logging.info("heatmaps: adding patches to "+str(axe))
+            axe.imshow(heatmap_color, interpolation='nearest', vmin=0, vmax=1, extent=(-self.amplitude-self.size_centroid/2, self.amplitude-self.size_centroid/2, -self.amplitude-self.size_centroid/2, self.amplitude-self.size_centroid/2), aspect='auto')
+            
+            logging.info("heatmaps: "+str(axe)+" ready")
+
+            axe.set_xlim(-self.amplitude / 2, self.amplitude / 2)
+            axe.set_ylim(-self.amplitude / 2, self.amplitude / 2)
+        
+        plt.draw()
+
+    def update_summary(self, current_cluster):
         """
         Add the data of cluster (:param x_g:, :param y_g:) to the local-tobeplotted summary
 
         Three objects are important inside the object Vizualization and need to be updated :
-            - self.current_cluster is the collection of selected tiles
+            - self.currently_selected_cluster is the collection of selected tiles
             - self.local_classes contains labels inside current_cluster
             - self.local_effectif contains the effetif of each label inside current_cluster
             - self.local_sum the sum of local_effectif
             - self.local_proportion is the ratio of good/total predicted inside cluster, by label
 
-
-        :param x_g: x_coordinate of tile
-        :param y_g: y_coordinate of tile
-        :type x_g: int
-        :type y_g: int
+        :param current_cluster: cluster name selected by click
         """
 
         # print("grid_total keys:", self.grid_total.keys())
         # print("grid_total[0] keys:", self.grid_total[0].keys())
+        
+        to_include = self.class_by_cluster[current_cluster]
+        to_include = { k:to_include[k] for k in to_include if to_include[k]!=0 }
 
-        to_include = self.grid_total[x_g][y_g]
-
-        if (x_g, y_g) in self.current_cluster:
+        if current_cluster in self.currently_selected_cluster:
             return
         else:
-            self.current_cluster.append((x_g, y_g))
+            self.currently_selected_cluster.append(current_cluster)
 
         new_rows = set(to_include.keys()) - self.local_classes
 
@@ -1502,18 +1819,19 @@ class Vizualization:
         self.local_classes = self.local_classes.union(set(to_include.keys()))
         self.local_sum = sum(to_include.values()) + self.local_sum
 
+        #ipdb.set_trace()
         for c in new_rows:
             self.local_effectif[c] = to_include[c]
-            self.local_proportion[c] = self.grid_proportion_individual[x_g][y_g][c]
+            self.local_proportion[c] = self.cluster_good_count_by_class[current_cluster].get(c,0) / (self.cluster_bad_count_by_class[current_cluster].get(c,0) + self.cluster_good_count_by_class[current_cluster].get(c,0))
 
         for c in rows_to_update:
             self.local_proportion[c] = (
                 (
                     self.local_proportion[c] * self.local_effectif[c]
-                    + self.grid_proportion_individual[x_g][y_g][c] * to_include.get(c, 0)
+                    + self.cluster_good_count_by_class[current_cluster].get(c,0) / (self.cluster_bad_count_by_class[current_cluster].get(c,0)+self.cluster_good_count_by_class[current_cluster].get(c,0)) * to_include.get(c, 0)
                 ) / (self.local_effectif[c] + to_include.get(c, 0))
             )
-            self.local_effectif[c] += self.grid_total[x_g][y_g].get(c, 0)
+            self.local_effectif[c] += self.cluster_good_count_by_class[current_cluster].get(c,0)+self.cluster_bad_count_by_class[current_cluster].get(c,0)
 
     def print_summary(self, axe, max_row=15):
         """
@@ -1553,8 +1871,19 @@ class Vizualization:
             colLabels=self.cols,
             loc='center'
         )
+        #ipdb.set_trace()
 
         plt.draw()
+    
+    def add_heatmap_v2(self, heatmap_builder, axe):
+        """
+        Draw a heatmap based on a heatmap_builder on an axe
+
+        :param heatmap_builder: a Vizualization parameterless method which returns patches
+        :param axe: matplotlib axe object in which the heatmap will be plotted
+        """
+
+        self.heatmaps_v2.append((heatmap_builder, axe))
 
     def add_heatmap(self, heatmap_builder, axe):
         """
@@ -1565,7 +1894,17 @@ class Vizualization:
         """
 
         self.heatmaps.append((heatmap_builder, axe))
-
+    
+    def export(self, output_path):
+        logging.info('exporting:...')
+        pd.DataFrame(
+                [
+                    self.x_raw[idx]
+                    for idx,c in enumerate(self.cluster_by_idx)
+                    if c in self.currently_selected_cluster
+                    ]
+                ).to_csv(output_path)
+        logging.info('exporting: done')
 
 
     def plot(self):
@@ -1595,6 +1934,34 @@ class Vizualization:
         def wrapper_show_occurences_total(x, y):
             return show_occurences_total(x, y, self.grid_total, self.resolution, self.amplitude)
         
+        # draw heatmap
+        logging.info("heatmap=calculating")
+        '''
+        self.heatmaps = []
+        self.add_heatmap(self.heatmap_proportion, self.heat_proportion)
+        self.add_heatmap(self.heatmap_entropy, self.heat_entropy)
+        '''
+        self.heatmaps_v2 = []
+        self.add_heatmap_v2(self.heatmap_proportion_v2, self.heat_proportion)
+        self.add_heatmap_v2(self.heatmap_entropy_v2, self.heat_entropy)
+       
+        self.label_mesh()
+        
+        self.update_all_heatmaps_v2()
+        '''
+        self.update_all_heatmaps()
+        '''
+        logging.info("heatmap=ready")
+
+        # draw scatter plot
+        self.reset_viz()
+        
+        # draw clusters borders
+        self.apply_borders(
+                self.normalize_frontier,
+                self.similarity_measure,
+                self.axes_needing_borders)
+
         # add mouse event
         logging.info("mouseEvents=adding")
         self.f.canvas.mpl_connect('button_press_event', self.onclick)
@@ -1615,6 +1982,9 @@ class Vizualization:
         )
         logging.info("textboxs=ready")
 
+        # add button
+        self.add_button("Export x", lambda :self.export(self.output_path))
+
         # add menulist
         self.menulists = {}
         self.menulists['clustering_method'] = self.add_menulist(
@@ -1626,21 +1996,6 @@ class Vizualization:
                 'Delimits',
                 ['Bhattacharyya', 'All', 'None'],
                 self.request_new_frontiers)
-
-        # draw heatmap
-        logging.info("heatmap=calculating")
-        self.heatmaps = []
-        self.add_heatmap(self.heatmap_proportion, self.heat_proportion)
-        self.add_heatmap(self.heatmap_entropy, self.heat_entropy)
-        self.label_mesh()
-        self.update_all_heatmaps()
-        logging.info("heatmap=ready")
-
-        # draw scatter plot
-        self.reset_viz()
-        
-        # draw clusters borders
-        self.apply_borders(self.similarity_measure, self.axes_needing_borders)
 
         logging.info('Vizualization=ready')
 
@@ -1717,10 +2072,11 @@ if __name__ == '__main__':
     )['originals']
 
     f = Vizualization(
+        x_raw = transactions_raw,
         proj=x_transformed[(50, 1000, 'pca', 15000)],
         y_true=y_small,
         y_pred=x_predicted,
-        resolution=100,
+        resolution=200,
         class_decoder=class_decoder,
         class_encoder=class_encoder,
     )
