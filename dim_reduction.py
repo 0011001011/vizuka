@@ -62,17 +62,12 @@ def load_raw_data(
     Note that encoder/decoder are assumed trivial if no encoder are found in npz
 
     """
-
+    
     x_small = []
     y_small = []
-
-    xy = np.load(path + INPUT_FILE_BASE_NAME + '_x_y' + VERSION + '.npz')
-    x = xy['x']
-    y = xy['y_' + output_name]
-
-    x_small = x[:int(x.shape[0] / REDUCTION_SIZE_FACTOR)]; del x # noqa
-    y_small = y[:int(y.shape[0] / REDUCTION_SIZE_FACTOR)]; del y # noqa
     
+    xy = np.load(path + INPUT_FILE_BASE_NAME + '_x_y' + VERSION + '.npz')
+
     if output_name + '_encoder' in xy.keys():
         logging.info("found encoder")
         # I don't understant either but it is a 0-d array (...)
@@ -85,9 +80,19 @@ def load_raw_data(
         class_encoder = {y: y for y in set(y_small)}
         class_decoder = lambda x: x # noqa
 
+    x = xy['x']
+    if 'y_'+output_name in xy.keys():
+        y = xy['y_' + output_name]
+    elif 'y_'+output_name+'_decoded':
+        y_decoded = xy['y_'+output_name+'_decoded']
+        #y = np.array([class_encoder[obs] for obs in y_decoded])
+
+    x_small = x[:int(x.shape[0] / reduction_factor)]; del x # noqa
+    #y_small = y[:int(y.shape[0] / reduction_factor)]; del y # noqa
+    
     del xy
 
-    return (np.array(x_small), np.array(y_small), class_encoder, class_decoder)
+    return (np.array(x_small), np.array(y_decoded), class_encoder, class_decoder)
 
 
 def learn_tSNE(x, params=PARAMS, version=VERSION, path=TSNE_DATA_PATH,
@@ -130,7 +135,6 @@ def learn_tSNE(x, params=PARAMS, version=VERSION, path=TSNE_DATA_PATH,
     )
 
     for perplexity, learning_rate, init, n_iter in concatenated_iterator:
-        logging.info("learning model", params)
  
         param = (
             perplexity,
@@ -138,13 +142,22 @@ def learn_tSNE(x, params=PARAMS, version=VERSION, path=TSNE_DATA_PATH,
             init,
             n_iter
         )
+        '''
         models[param] = tsne(
             perplexity=perplexity,
             learning_rate=learning_rate,
             init=init,
             n_iter=n_iter
-        )
-        x_transformed[param] = models[param].fit_transform(x)
+        )''' # in a desperate move to save RAM
+        logging.info("learning model"+str(perplexity)+str(learning_rate)+str(init)+str(n_iter))
+        x_transformed[param] = tsne(
+            perplexity=perplexity,
+            learning_rate=learning_rate,
+            init=init,
+            n_iter=n_iter
+        ).fit_transform(x)
+        logging.info("done!")
+        
  
         name = ''.join('_' + str(p) for p in param)
         full_path = ''.join([
@@ -159,10 +172,8 @@ def learn_tSNE(x, params=PARAMS, version=VERSION, path=TSNE_DATA_PATH,
         np.savez(
             full_path,
             x_2D=x_transformed[param],
-            model=models[param]
-        )
+        )#model=models[param])
 
-        logging.info("done!")
  
     return x_transformed, models
 
@@ -202,7 +213,12 @@ def load_tSNE(params=PARAMS, version=VERSION, path=TSNE_DATA_PATH,
     for perplexity, learning_rate, init, n_iter in itertools.product(
             perplexities, learning_rates, inits, n_iters):
 
-        logging.info("RNmodel=loadin ", params)
+        logging.info(("RNmodel=loadin "
+            +str(perplexity)
+            +str(learning_rate)
+            +str(init)
+            +str(n_iter)
+            ))
         try:
             param = (perplexity, learning_rate, init, n_iter)
             name = ''.join('_' + str(p) for p in param)
@@ -224,6 +240,13 @@ def load_tSNE(params=PARAMS, version=VERSION, path=TSNE_DATA_PATH,
             logging.info("RNmodel=ready")
 
         except FileNotFoundError as e:
-            logging.info(" not found", e)
+            logging.info(" not found"+str(e))
 
     return x_transformed, models
+
+if __name__ == '__main__':
+
+    logging.basicConfig(level=logging.DEBUG)
+    x, y, encoder, decoder = load_raw_data()
+    x_transformed, models = learn_tSNE(x)
+
