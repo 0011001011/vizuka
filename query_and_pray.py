@@ -3,6 +3,7 @@ Query some datas directly from databases
 Then prepare it for the vizualization
 It should be launced only once in a while
 """
+import numpy as n
 
 uri = 'postgres://ds:ds@localhost/gold_standard_manakin'
 
