@@ -1915,8 +1915,8 @@ class Vizualization:
         self.f = plt.figure()
 
         # main subplot with the scatter plot
-        self.heat_proportion = plt.subplot(3, 1, (1, 2))
-        self.heat_proportion.set_title('Heatmap: correctVSincorrect predictions')
+        self.ax = plt.subplot(3, 1, (1, 2))
+        self.ax.set_title('Heatmap: correctVSincorrect predictions')
 
         # summary_subplot with table of local stats
         self.summary_axe = plt.subplot(3, 2, 5)
@@ -1924,8 +1924,8 @@ class Vizualization:
 
         # heatmap subplots
         # contain proportion of correct prediction and entropy
-        self.ax = plt.subplot(3, 4, 11)
-        self.ax.set_title('Observations')
+        self.heat_proportion = plt.subplot(3, 4, 11)
+        self.heat_proportion.set_title('Observations')
         self.heat_entropy = plt.subplot(3, 4, 12)
         self.heat_entropy.set_title('Heatmap: cross-entropy localVSglobal')
 
