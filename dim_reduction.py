@@ -17,7 +17,7 @@ import itertools
 import numpy as np
 import logging
 from sklearn.manifold import TSNE as tsne
-from MulticoreTNSE import MulticoreTSNE as multitsne
+from MulticoreTSNE import MulticoreTSNE as multitsne
 
 """
 from shared_helpers import config
