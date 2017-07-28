@@ -44,7 +44,7 @@ def separate(datas, output_engine_pk):
 
     return raws, inputs, predictions
 
-def preprocess_meta(raws, inputs, name_file="xy.npz", name_originals='originals.npz', save=False):
+def preprocess_meta(raws, inputs, predictions, name_file="xy.npz", name_originals='originals.npz', save=False):
     class_predicted = set()
     class_existing  = set()
     engines = set()
