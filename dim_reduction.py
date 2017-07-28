@@ -17,6 +17,7 @@ import itertools
 import numpy as np
 import logging
 from sklearn.manifold import TSNE as tsne
+from MulticoreTNSE import MulticoreTSNE as multitsne
 
 """
 from shared_helpers import config
@@ -81,18 +82,21 @@ def load_raw_data(
         class_decoder = lambda x: x # noqa
 
     x = xy['x']
+    x_small = x[:int(x.shape[0] / reduction_factor)]; del x # noqa
+
     if 'y_'+output_name in xy.keys():
         y = xy['y_' + output_name]
+        del xy
+        return (np.array(x_small), np.array(y), class_encoder, class_decoder)
     elif 'y_'+output_name+'_decoded':
         y_decoded = xy['y_'+output_name+'_decoded']
+        del xy
+        return (np.array(x_small), np.array(y_decoded), class_encoder, class_decoder)
         #y = np.array([class_encoder[obs] for obs in y_decoded])
 
-    x_small = x[:int(x.shape[0] / reduction_factor)]; del x # noqa
     #y_small = y[:int(y.shape[0] / reduction_factor)]; del y # noqa
     
-    del xy
 
-    return (np.array(x_small), np.array(y_decoded), class_encoder, class_decoder)
 
 
 def learn_tSNE(x, params=PARAMS, version=VERSION, path=TSNE_DATA_PATH,
@@ -150,7 +154,7 @@ def learn_tSNE(x, params=PARAMS, version=VERSION, path=TSNE_DATA_PATH,
             n_iter=n_iter
         )''' # in a desperate move to save RAM
         logging.info("learning model"+str(perplexity)+str(learning_rate)+str(init)+str(n_iter))
-        x_transformed[param] = tsne(
+        x_transformed[param] = multitsne(
             perplexity=perplexity,
             learning_rate=learning_rate,
             init=init,
