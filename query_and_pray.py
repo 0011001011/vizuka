@@ -44,7 +44,12 @@ def separate(datas, output_engine_pk):
 
     return raws, inputs, predictions
 
-def preprocess_meta(raws, inputs, predictions, name_file="xy.npz", name_originals='originals.npz', save=False):
+def preprocess_meta(raws, inputs, predictions,
+        name_file="xy.npz",
+        name_originals='originals.npz',
+        name_predictions='predictions.npz',
+        save=False):
+
     class_predicted = set()
     class_existing  = set()
     engines = set()
@@ -90,7 +95,11 @@ def preprocess_meta(raws, inputs, predictions, name_file="xy.npz", name_original
     if save:
         np.savez(name_file, x=xs, y_account_decoded=ys, account_decoded=encoder)
         np.savez(name_originals, originals=raws)
+        np.savez(name_predictions, pred=predictions)
     
     return xs, ys, encoder
 
-    
+if __name__=='__main__':
+    datas, meta_pk = query_meta_all(uri)
+    raws, inputs, predictions = separate(datas, meta_pk)
+    xs, ys, encoder = preprocess_meta(raws, inputs, predictions, save=True)
