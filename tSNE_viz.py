@@ -69,7 +69,12 @@ def cross_entropy(dict1, dict2):
     ce = 0
 
     for label in dict2:
-       ce -= dict2[label]/sum_dict2*math.log(dict1[label]/float(sum_dict1))
+        if dict1[label]==0 and dict2[label]==0:
+            print("fuck that shit", label)
+        elif dict1[label]==0:
+            print("fuck that big shit", label)
+        else:
+            ce -= dict2[label]/sum_dict2*math.log(dict1[label]/float(sum_dict1))
 
     return ce
 
@@ -1832,6 +1837,12 @@ class Vizualization:
                 ) / (self.local_effectif[c] + to_include.get(c, 0))
             )
             self.local_effectif[c] += self.cluster_good_count_by_class[current_cluster].get(c,0)+self.cluster_bad_count_by_class[current_cluster].get(c,0)
+        
+        logging.info("Details=loading indexes of selected")
+        selected_idxs = [ idx for idx in range(len(self.proj)) if self.clusterizer.predict([self.proj[idx]])[0] in self.currently_selected_cluster]
+        logging.info("Details=loaded")
+        self.view_details.update( selected_idxs )
+
 
     def print_summary(self, axe, max_row=15):
         """
@@ -1912,21 +1923,22 @@ class Vizualization:
         Plot the Vizualization, define axes, add scatterplot, buttons, etc..
         """
 
-        self.f = plt.figure()
+        self.f = plt.figure(1)
+        self.view_details = View_details(self.x_raw)
 
         # main subplot with the scatter plot
-        self.ax = plt.subplot(3, 1, (1, 2))
+        self.ax = self.f.add_subplot(3, 1, (1, 2))
         self.ax.set_title('Heatmap: correctVSincorrect predictions')
 
         # summary_subplot with table of local stats
-        self.summary_axe = plt.subplot(3, 2, 5)
+        self.summary_axe = self.f.add_subplot(3, 2, 5)
         self.summary_axe.axis('off')
 
         # heatmap subplots
         # contain proportion of correct prediction and entropy
-        self.heat_proportion = plt.subplot(3, 4, 11)
+        self.heat_proportion = self.f.add_subplot(3, 4, 11)
         self.heat_proportion.set_title('Observations')
-        self.heat_entropy = plt.subplot(3, 4, 12)
+        self.heat_entropy = self.f.add_subplot(3, 4, 12)
         self.heat_entropy.set_title('Heatmap: cross-entropy localVSglobal')
 
         self.axes_needing_borders = (self.ax, self.heat_proportion, self.heat_entropy)
@@ -1998,6 +2010,54 @@ class Vizualization:
                 self.request_new_frontiers)
 
         logging.info('Vizualization=ready')
+
+class View_details():
+
+    def __init__(self, raw_datas): #MODELE
+        class Montant_plot(): #VUE
+
+            def __init__(self, subplot):
+                self.subplot = subplot
+
+            def update(self, montants_dict):
+                labels = []
+                montants = []
+                for compte, montant in montants_dict.iteritems():
+                    montants.append(montant)
+                    labels.append(compte)
+                self.subplot.boxplot(montants, labels=labels)
+                self.sublot.draw()
+
+        class Random_plot(): #VUE
+
+            def __init__(self, subplot):
+                self.subplot = subplot
+
+            def update(self):
+                self.subplot.plot(np.random.rand(50))
+                self.sublot.draw()
+        
+        self.figure = plt.figure(2)
+        self.montant_plot = Montant_plot(self.figure.add_subplot(2,2,1))
+        self.details2_plot = Random_plot(self.figure.add_subplot(2,2,2))
+        self.details3_plot = Random_plot(self.figure.add_subplot(2,2,3))
+        self.details4_plot = Random_plot(self.figure.add_subplot(2,2,4))
+
+        self.raw_datas = raw_datas
+
+    def update(self, idxs): #CONTROLEUR
+        label_column = -4
+        montant_column = 1
+
+        labels = { self.raw_datas[idx][montant_column] for idx in idxs }
+        montant_dict = { label:[] for label in labels }
+        for i,idx in enumerate(idxs):
+            montant_dict[self.raw_datas[idx][label_column]].append(self.raw_datas[idx][montant_colum])
+
+        self.montant_plot.update(montant_dict)
+        self.details2_plot.update()
+
+
 
 
 if __name__ == '__main__':
