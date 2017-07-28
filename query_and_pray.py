@@ -26,7 +26,7 @@ def query_meta_all(uri):
     test = [ np.array(t) for t in test]
     test = np.array(test)
 
-    return test
+    return test, meta_pk
 
 def separate(datas, output_engine_pk):
     raws = datas[:,range(len(datas[0])-1)]
