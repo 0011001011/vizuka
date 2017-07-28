@@ -5,18 +5,31 @@ Functions needed to predict/loadpredictions/format labels
 from config.references import (
     MODEL_PATH,
     VERSION,
-    DEFAULT_RN,
+    DEFAULT_PREDICTOR,
 )
 
 import keras
 import numpy as np
+
+class Predictor():
+    def predict(x, **kwargs):
+        pass
+
+class MetaPredict():
+    def __init__(self, ordered_predictions):
+        self.predictions = ordered_predictions
+    def predict(self, xs):
+        return [self.predictions[self.predictions.indexof(x)] for x in xs]
+
+
+
 
 
 def predict_rnn(
     x, y,
     path=MODEL_PATH,
     version=VERSION,
-    nameRN=DEFAULT_RN,
+    nameRN=DEFAULT_PREDICTOR,
     format_from_one_hot=True,
     save=True,
 ):
@@ -51,7 +64,7 @@ def predict_rnn(
     return x_predicted
 
 
-def load_predict(path=MODEL_PATH, version=VERSION, nameRN=DEFAULT_RN):
+def load_predict(path=MODEL_PATH, version=VERSION, namePredictor=DEFAULT_PREDICTOR):
     """
     Simply load the predictions stored with predict_rnn function
     """
