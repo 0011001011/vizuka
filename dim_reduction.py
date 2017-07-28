@@ -158,7 +158,8 @@ def learn_tSNE(x, params=PARAMS, version=VERSION, path=TSNE_DATA_PATH,
             perplexity=perplexity,
             learning_rate=learning_rate,
             init=init,
-            n_iter=n_iter
+            n_iter=n_iter,
+            n_jobs=8,
         ).fit_transform(x)
         logging.info("done!")
         
