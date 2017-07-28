@@ -15,7 +15,7 @@ def query_meta(uri, set_name):
     transactions = MDI.get_training_inputs_auto(set_name)
     transactions = [*transactions]
     
-    return transactions
+    return transactions, meta_name
 
 def query_meta_all(uri):
     test = query_meta(uri, 'test')
