@@ -68,7 +68,7 @@ def load_predict(path=MODEL_PATH, version=VERSION, namePredictor=DEFAULT_PREDICT
     """
     Simply load the predictions stored with predict_rnn function
     """
-    return np.load(path + 'predictions' + version + '.npz')['pred']
+    return np.load(path + namePredictor + version + '.npz')['pred']
 
 
 def reformat_predict(predictions):
