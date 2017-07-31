@@ -415,27 +415,33 @@ class Vizualization:
 
         logging.info("Vizualization=generating")
 
-        self.manual_cluster_color = 'purple'
+        self.manual_cluster_color = 'cyan'
         self.output_path = output_path
 
-        self.y_pred = y_pred
-        self.y_true = y_true
-        self.y_true_decoded = [class_decoder(y) for y in self.y_true]
-        self.y_pred_decoded = [class_decoder(y) for y in self.y_pred]
+        self.y_true_decoded = y_true
+        self.y_pred_decoded = y_pred
+        self.y_true = [class_encoder[y] for y in self.y_true_decoded]
+        self.y_pred = [class_encoder[y] for y in self.y_pred_decoded]
         self.proj = proj
         self.x_raw = x_raw
+        self.class_decoder = class_decoder
+        
+        self.labels = set(self.class_decoder(y_encoded) for y_encoded in self.y_true)
 
-        self.proj_by_id = {y: [] for y in self.y_true_decoded}
+        self.proj_by_class = {y: [] for y in self.y_true_decoded}
+        self.total_individual = {}
+        self.index_by_class = {class_:[] for class_ in self.y_true_decoded}
 
         for idx, projection in enumerate(self.proj):
-            self.proj_by_id[self.y_true_decoded[idx]].append(projection)
+            self.proj_by_class[self.y_true_decoded[idx]].append(projection)
+            self.index_by_class[self.y_true_decoded[idx]].append(idx)
 
         # convert dict values to np.array
-        for class_ in self.proj_by_id:
-            self.proj_by_id[class_] = np.array(self.proj_by_id[class_])
+        for class_ in self.proj_by_class:
+            self.proj_by_class[class_] = np.array(self.proj_by_class[class_])
+            self.total_individual[class_] = len(self.proj_by_class[class_])
 
         self.resolution = resolution # counts of tiles per row/column
-        self.class_decoder = class_decoder
 
         self.shift_held = False
         self.ctrl_held = False
@@ -450,7 +456,6 @@ class Vizualization:
         self.cursor_ids = [0]
 
         # Get the real labels found in true y
-        self.labels = set(self.class_decoder(self.y_true[i]) for i in range(len(self.y_true)))
 
         self.amplitude = find_amplitude(self.proj) 
 
@@ -485,6 +490,8 @@ class Vizualization:
 
         
         logging.info("grid=griding")
+
+        """
         (
             self.grid_bad,
             self.grid_good,
@@ -506,17 +513,17 @@ class Vizualization:
 
 
         # TODO put this monstruosity in make_grids
-        self.total_individual = {}
+        #self.total_individual = {0:0}
         self.grid_proportion_individual_global = {a: 0 for a in self.labels}
         self.grid_proportion_individual = {
             k: {k2: {} for k2 in self.grid_total[k]} for k in self.grid_total
         }
 
         for account in self.labels:
-            self.total_individual[account] = 0
+            #self.total_individual[account] = 0
             for x in self.grid_total:
                 for y in self.grid_total[x]:
-                    self.total_individual[account] += self.grid_total[x][y].get(account, 0)
+                    #self.total_individual[account] += self.grid_total[x][y].get(account, 0)
                     try:
                         self.grid_proportion_individual[x][y][account] = (
                             self.grid_good[x][y].get(account, 0)
@@ -541,9 +548,12 @@ class Vizualization:
             except ZeroDivisionError:
                 self.grid_proportion_individual_global[account] = -1
 
+        """
+
         logging.info("grid=ready")
         # Sort good/bad/not predictions in t-SNE space
         logging.info("projections=sorting")
+        self.proportion_by_class = { class_:sum([(self.y_true_decoded[i]==self.y_pred_decoded[i]) for i in self.index_by_class[class_]]) for class_ in self.labels }
         self.x_proj_good = np.array([self.proj[i] for i in self.index_good_predicted])
         self.x_proj_bad  = np.array([self.proj[i] for i in self.index_bad_predicted])
         self.x_proj_null = np.array([self.proj[i] for i in self.index_not_predicted])
@@ -743,7 +753,7 @@ class Vizualization:
         logging.info("begin hiding...")
         self.ax.clear()
 
-        similars = self.proj_by_id[class_]
+        similars = self.proj_by_class[class_]
         self.ax.scatter(x=similars[:, 0],
                         y=similars[:, 1],
                         color='g',
@@ -761,7 +771,7 @@ class Vizualization:
         """
 
         logging.info("begin colorizing...")
-        similars = self.proj_by_id[class_]
+        similars = self.proj_by_class[class_]
 
         self.ax.scatter(
             similars[:, 0],
@@ -1046,7 +1056,7 @@ class Vizualization:
             dominant = self.get_dominant(x_g, y_g)
             if dominant is None: return
 
-            similars = self.proj_by_id[dominant]
+            similars = self.proj_by_class[dominant]
             self.ax.scatter(
                 similars[:, 0],
                 similars[:, 1],
@@ -1150,7 +1160,7 @@ class Vizualization:
 
         class_by_cluster = {
                 label:{
-                    class_:0 for class_ in self.proj_by_id }
+                    class_:0 for class_ in self.proj_by_class }
                 for label in all_cluster_labels
                 }
         
@@ -1163,6 +1173,7 @@ class Vizualization:
         for idx, label in enumerate(self.cluster_by_idx):
             index_by_label[label].append(idx)
             class_by_cluster[label][self.y_true_decoded[idx]]+=1
+           
 
         logging.info('clustering: analyze each one')
         for label in all_cluster_labels:
@@ -1564,6 +1575,8 @@ class Vizualization:
             blue  = proportion_correct
 
             all_colors[self.resolution - int(((idx-idx%self.resolution)/self.resolution))-1][idx%self.resolution] = [red, green, blue]
+
+
         logging.info('heatmap: proportion done')
         return all_colors
 
@@ -1636,6 +1649,7 @@ class Vizualization:
         min_entropys = min(entropys)
         max_entropys = max(entropys)
         amplitude_entropys = max_entropys - min_entropys
+        logging.info('heatmap entropy: max cross-entropy='+str(max_entropys)+' min='+str(min_entropys))
 
         for idx, xy in enumerate(self.mesh_centroids):
             try:
@@ -1839,7 +1853,8 @@ class Vizualization:
             self.local_effectif[c] += self.cluster_good_count_by_class[current_cluster].get(c,0)+self.cluster_bad_count_by_class[current_cluster].get(c,0)
         
         logging.info("Details=loading indexes of selected")
-        selected_idxs = [ idx for idx in range(len(self.proj)) if self.clusterizer.predict([self.proj[idx]])[0] in self.currently_selected_cluster]
+        selected_idxs = [self.index_by_label[label] for label in self.currently_selected_cluster ]
+        selected_idxs = [i for j in selected_idxs for i in j]
         logging.info("Details=loaded")
         self.view_details.update( selected_idxs )
 
@@ -1862,7 +1877,8 @@ class Vizualization:
                 self.local_effectif[c],
                 self.local_proportion[c],
                 self.total_individual[c],
-                self.grid_proportion_individual_global[c]
+                self.index_good_predicted,
+                self.proportion_by_class[c]
             ]
             for c in row_labels
         ]
@@ -2014,6 +2030,7 @@ class Vizualization:
 class View_details():
 
     def __init__(self, raw_datas): #MODELE
+
         class Montant_plot(): #VUE
 
             def __init__(self, subplot):
@@ -2021,12 +2038,17 @@ class View_details():
 
             def update(self, montants_dict):
                 labels = []
-                montants = []
-                for compte, montant in montants_dict.iteritems():
-                    montants.append(montant)
+                means = []
+                stds = []
+                for compte in montants_dict:
+                    montants_mean = np.mean(montants_dict[compte])
+                    means.append(montants_mean)
+                    stds.append(np.std(montants_dict[compte]))
                     labels.append(compte)
-                self.subplot.boxplot(montants, labels=labels)
-                self.sublot.draw()
+                ind = np.arange(len(means))
+                self.subplot.bar(ind, means, width=.7, yerr=stds)
+                self.subplot.set_xticks(ind)
+                self.subplot.set_xticklabels(labels)
 
         class Random_plot(): #VUE
 
@@ -2035,7 +2057,7 @@ class View_details():
 
             def update(self):
                 self.subplot.plot(np.random.rand(50))
-                self.sublot.draw()
+                self.subplot.draw()
         
         self.figure = plt.figure(2)
         self.montant_plot = Montant_plot(self.figure.add_subplot(2,2,1))
@@ -2049,13 +2071,13 @@ class View_details():
         label_column = -4
         montant_column = 1
 
-        labels = { self.raw_datas[idx][montant_column] for idx in idxs }
+        labels = { self.raw_datas[idx][label_column] for idx in idxs }
         montant_dict = { label:[] for label in labels }
         for i,idx in enumerate(idxs):
-            montant_dict[self.raw_datas[idx][label_column]].append(self.raw_datas[idx][montant_colum])
+            montant_dict[self.raw_datas[idx][label_column]].append(self.raw_datas[idx][montant_column])
 
         self.montant_plot.update(montant_dict)
-        self.details2_plot.update()
+        #self.details2_plot.update()
 
 
 
@@ -2066,10 +2088,11 @@ if __name__ == '__main__':
 
     logging.info("Starting script")
 
-    PARAMS['perplexities'] = [40, 50]
+    PARAMS['perplexities'] = [40, 50, 60, 70, 80]
     PARAMS['learning_rates'] = [800, 1000]
     PARAMS['inits'] = ['random', 'pca']
     PARAMS['n_iters'] = [15000]
+    PARAM_VIZ = (80, 1000, 'random', 15000)
 
     logging.info("raw_data=loading")
     (
@@ -2104,7 +2127,7 @@ if __name__ == '__main__':
         )
         logging.info('t-sne=ready')
 
-    x_2D = x_transformed[(50, 1000, 'pca', 15000)]
+    x_2D = x_transformed[PARAM_VIZ]
 
     ###############
     # PREDICT
@@ -2133,7 +2156,7 @@ if __name__ == '__main__':
 
     f = Vizualization(
         x_raw = transactions_raw,
-        proj=x_transformed[(50, 1000, 'pca', 15000)],
+        proj=x_2D,
         y_true=y_small,
         y_pred=x_predicted,
         resolution=200,
@@ -2142,4 +2165,5 @@ if __name__ == '__main__':
     )
 
     f.plot()
+    plt.ion()
     plt.show()
