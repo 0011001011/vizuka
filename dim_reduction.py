@@ -159,7 +159,7 @@ def learn_tSNE(x, params=PARAMS, version=VERSION, path=TSNE_DATA_PATH,
             learning_rate=learning_rate,
             init=init,
             n_iter=n_iter,
-            n_jobs=8,
+            n_jobs=12,
         ).fit_transform(x)
         logging.info("done!")
         
