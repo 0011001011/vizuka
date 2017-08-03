@@ -1,6 +1,7 @@
 import labelling
 import clustering
 import dim_reduction
+import metier
 from config.references import (
     DATA_PATH,
     VERSION,
@@ -10,6 +11,10 @@ from config.references import (
     MODEL_PATH,
     DO_CALCULUS,
 )
+from config.specific import (
+        COLUMNS_TO_SCATTER,
+        GRAPH_PATH,
+        )
 
 # from config.references import *
 """
@@ -26,7 +31,7 @@ import keras
 import matplotlib
 matplotlib.use('Qt4Agg')  # noqa
 from matplotlib import pyplot as plt
-from matplotlib import patches
+import seaborn as sns
 from PyQt4 import QtGui
 from PyQt4.QtCore import Qt
 import ipdb
@@ -152,122 +157,6 @@ def separate_prediction(y_pred_decoded, y_true_decoded, name_of_void):  # TODO
             index_bad_predicted.add(i)
 
     return index_bad_predicted, index_good_predicted, index_not_predicted
-
-
-def make_grids(proj,
-               y_true_decoded,
-               index_good_predicted,
-               index_bad_predicted,
-               index_not_predicted,
-               resolution,
-               ):
-    """
-    Build grids with proportions of bad/good/not predicted/proportion goodbad etc...
-    A grid is a matrix which contains agregated data, resolution is its number of row (or col)
-
-    :param proj: t-SNE projected data
-    :param y_true_decoded: true labels, decoded (human-readable)
-    :param index_good_predicted: ..seealso separate_predictions
-    :param index_bad_predicted:  ..seealso separate_predictions
-    :param index_not_predicted:  ..seealso separate_predictions
-    :param resolution: size of grid (max number of square by row/column)
-
-    :return:
-        grid_good       : data well classified
-        grid_bad        : data bad classified
-        grid_total      : all data
-        grid_proportion : score of prediction as a float (1:all good, 0:all bad)
-        grid_sum        : number of points in grid_total
-    """
-
-    p_amp = find_amplitude(proj)
-
-    grid_axis_iterator = range(
-        int(-resolution / 2) - 1,
-        int(resolution / 2) + 1
-    )
-
-    # grid_good contains
-    grid_good = {i: {j: {} for j in grid_axis_iterator} for i in grid_axis_iterator}
-    grid_bad = {i: {j: {} for j in grid_axis_iterator} for i in grid_axis_iterator}
-    grid_null = {i: {j: 0 for j in grid_axis_iterator} for i in grid_axis_iterator}
-    grid_total = {i: {j: {} for j in grid_axis_iterator} for i in grid_axis_iterator}
-
-    grid_proportion = {i: {j: {} for j in grid_axis_iterator} for i in grid_axis_iterator}
-    grid_null_proportion = {i: {j: {} for j in grid_axis_iterator} for i in grid_axis_iterator}
-
-    grid_sum = {i: {j: 0 for j in grid_axis_iterator} for i in grid_axis_iterator}
-
-    for idx in index_good_predicted:
-        x = proj[idx]
-        x1, x2 = x[0], x[1]
-        z1, z2 = find_grid_position(x1, x2, resolution, p_amp)
-
-        true_name = y_true_decoded[idx]
-
-        grid_good[z1][z2][true_name] = grid_good[z1][z2].get(true_name, 0) + 1
-        grid_total[z1][z2][true_name] = grid_total[z1][z2].get(true_name, 0) + 1
-
-        grid_sum[z1][z2] += 1
-    
-    logging.info("grid_good=ready")
-
-    for idx in index_bad_predicted:
-        x = proj[idx]
-        x1, x2 = x[0], x[1]
-        z1, z2 = find_grid_position(x1, x2, resolution, p_amp)
-
-        true_name = y_true_decoded[idx]
-
-        grid_bad[z1][z2][true_name] = grid_bad[z1][z2].get(true_name, 0) + 1
-        grid_total[z1][z2][true_name] = grid_total[z1][z2].get(true_name, 0) + 1
-
-        grid_sum[z1][z2] += 1
-    logging.info("grid_bad=ready")
-
-    for idx in index_not_predicted:
-        x = proj[idx]
-        x1, x2 = x[0], x[1]
-        z1, z2 = find_grid_position(x1, x2, resolution, p_amp)
-        grid_null[z1][z2] += 1
-    logging.info("grid_null=ready")
-
-    ###################
-    # Make the heatmap
-    #
-    # 0 is all false 1 is all true
-
-    for x in grid_proportion:
-        for y in grid_proportion[x]:
-            if grid_total[x][y] == {}:
-                grid_proportion[x][y] = -1
-                grid_null_proportion[x][y] = -1
-            else:
-                if grid_bad[x][y] == {}:
-                    grid_proportion[x][y] = 0
-                else:
-                    b = 0
-                    # cette boucle est moche mais sum(vide) => bug
-                    for a in grid_bad[x][y].values():
-                        b += a
-                    grid_proportion[x][y] = b / float(grid_sum[x][y])
-
-                if grid_null[x][y] == 0:
-                    grid_null_proportion[x][y] = 0
-                else:
-
-                    grid_null_proportion[x][y] = grid_null[x][y] / float(grid_sum[x][y])
-    logging.info("grid_proportion=ready")
-    logging.info("grid_null_proportion=ready")
-
-    return (
-        grid_bad,
-        grid_good,
-        grid_null,
-        grid_total,
-        grid_proportion, grid_null_proportion,
-        grid_sum,
-    )
 
 
 def show_occurences_total(x, y, grid, resolution, amplitude):
@@ -400,6 +289,7 @@ class Vizualization:
             y_true,
             resolution=100,
             special_class=0,
+            n_clusters=120,
             class_decoder=(lambda x: x), class_encoder=(lambda x: x),
             output_path='output.csv',
             ):
@@ -424,6 +314,7 @@ class Vizualization:
         self.y_pred = [class_encoder[y] for y in self.y_pred_decoded]
         self.proj = proj
         self.x_raw = x_raw
+        self.n_clusters = n_clusters 
         self.class_decoder = class_decoder
         
         self.labels = set(self.class_decoder(y_encoded) for y_encoded in self.y_true)
@@ -446,8 +337,8 @@ class Vizualization:
         self.shift_held = False
         self.ctrl_held = False
 
-        self.cols = ['effectif local', 'proportion local',
-                     'effectif global', 'proportion global']
+        self.cols = ['effectif local', 'accuracy local',
+                     'effectif global', 'accuracy global']
         self.local_effectif = {}
         self.local_proportion = {}
         self.local_classes = set()
@@ -488,72 +379,17 @@ class Vizualization:
             special_class,
         )
 
-        
-        logging.info("grid=griding")
-
-        """
-        (
-            self.grid_bad,
-            self.grid_good,
-            self.grid_null,
-            self.grid_total,
-            self.grid_proportion,
-            self.grid_null_proportion,
-            self.grid_sum,
-
-        ) = make_grids(
-
-            self.proj,
-            self.y_true_decoded,
-            self.index_good_predicted,
-            self.index_bad_predicted,
-            self.index_not_predicted,
-            self.resolution,
-        )
-
-
-        # TODO put this monstruosity in make_grids
-        #self.total_individual = {0:0}
-        self.grid_proportion_individual_global = {a: 0 for a in self.labels}
-        self.grid_proportion_individual = {
-            k: {k2: {} for k2 in self.grid_total[k]} for k in self.grid_total
-        }
-
-        for account in self.labels:
-            #self.total_individual[account] = 0
-            for x in self.grid_total:
-                for y in self.grid_total[x]:
-                    #self.total_individual[account] += self.grid_total[x][y].get(account, 0)
-                    try:
-                        self.grid_proportion_individual[x][y][account] = (
-                            self.grid_good[x][y].get(account, 0)
-                            / self.grid_total[x][y].get(account, 0)
-                        )
-                    except ZeroDivisionError:
-                        self.grid_proportion_individual[x][y][account] = -1
-
-            self.grid_proportion_individual_global[account] = 0
-            sum_account = 0
-            for x in self.grid_proportion_individual:
-                for y in self.grid_proportion_individual[x]:
-                    self.grid_proportion_individual_global[account] += (
-                        self.grid_proportion_individual[x][y].get(account, 1)
-                        * self.grid_total[x][y].get(account, 0)
-                    )
-
-                    sum_account += self.grid_total[x][y].get(account, 0)
-
-            try:
-                self.grid_proportion_individual_global[account] /= sum_account
-            except ZeroDivisionError:
-                self.grid_proportion_individual_global[account] = -1
-
-        """
-
-        logging.info("grid=ready")
         # Sort good/bad/not predictions in t-SNE space
         logging.info("projections=sorting")
-        self.proportion_by_class = { class_:sum([(self.y_true_decoded[i]==self.y_pred_decoded[i]) for i in self.index_by_class[class_]]) for class_ in self.labels }
+        self.proportion_by_class = { 
+                class_:
+                sum([
+                    (self.y_true_decoded[i]==self.y_pred_decoded[i])
+                    for i in self.index_by_class[class_]
+                    ])
+                /float(len(self.index_by_class[class_]))
+                for class_ in self.labels
+                }
         self.x_proj_good = np.array([self.proj[i] for i in self.index_good_predicted])
         self.x_proj_bad  = np.array([self.proj[i] for i in self.index_bad_predicted])
         self.x_proj_null = np.array([self.proj[i] for i in self.index_not_predicted])
@@ -561,11 +397,12 @@ class Vizualization:
         
         #self.clusterizer = clustering.DummyClusterizer(resolution=self.resolution)
         logging.info('clustering engine=fitting')
-        self.clusterizer = clustering.KmeansClusterizer()
+        self.clusterizer = clustering.DummyClusterizer(resolution=self.resolution)
         self.clusterizer.fit(self.proj)
         logging.info('clustering engine=ready')
         #self.similarity_measure = lambda x,y:0
-        self.similarity_measure = bhattacharyya
+        #self.similarity_measure = lambda x,y:1
+        #self.request_new_frontiers(method='none')
         self.normalize_frontier = True
         
 
@@ -786,8 +623,8 @@ class Vizualization:
         for x_g, y_g in similar_clusters:
             clicked_cluster = self.clusterizer.predict([(x,y)])[0] #TODO SOON
             logging.info("colorizing cluster", x_g, y_g)
+            #ipdb.set_trace()
             self.update_summary(clicked_cluster)
-            self.ax.add_patch(self.colorize_rect(x_g, y_g))
 
         self.print_summary(self.summary_axe)
         plt.draw()
@@ -900,6 +737,15 @@ class Vizualization:
         else:
             class_ = int(class_str)
             self.update_showall(class_)
+    
+    def textbox_function_n_clusters(self):
+        """
+        Wrapper for textbox, to change n_clusters
+        without specifying parameters
+        """
+        n_str = self.textboxs['n_clusters'].text()
+        n = int(n_str)
+        self.n_clusters = n
 
     def onmodifier_press(self, event):
         if event.key == 'shift':
@@ -916,42 +762,6 @@ class Vizualization:
         if event.key == 'ctrl':
             self.ctrl_held = False
             logging.info("ctrl unheld")
-
-    '''
-    def onmotion(self, event):
-        """
-        What we do when the cursor moves
-        (spoiler : nothing)
-        """
-        
-        x = event.xdata
-        y = event.ydata
-        
-        if x is not None and y is not None:
-
-            x_g, y_g = find_grid_position(x,y, self.resolution,self.amplitude)
-            graphs = [ self.ax ]
-            
-            
-            i = len(self.ax.patches)
-
-            for graph, (cursor_idx,cursor_id) in zip(graphs, enumerate(self.cursor_ids)):
-
-                rect = self.colorize_rect(x_g, y_g)
-
-                if self.cursor_ids != [0,0,0]:
-                    while i>0:
-                        if id(graph.patches[i-1]) == cursor_id:
-                            del graph.patches[i-1]
-                            i=0
-
-                graph.add_patch(rect)
-                self.cursor_ids[cursor_idx] = id(rect)
-
-            logging.info("cursor position:", (x_g,y_g))
-        
-        plt.draw()
-    '''
 
     def onclick(self, event):
         """
@@ -989,11 +799,11 @@ class Vizualization:
 
             if self.shift_held:
 
-                nearest, idx = find_nearest(x, y, self.proj)
-                class_nearest = self.y_true_decoded[idx]
-                logging.info("looking for class", class_nearest)
-                similars, _ = find_similar(
-                    class_nearest, self.y_true_decoded, self.proj)
+                #nearest, idx = find_nearest(x, y, self.proj)
+                #class_nearest = self.y_true_decoded[idx]
+                #logging.info("looking for class", class_nearest)
+                #similars, _ = find_similar(
+                #    class_nearest, self.y_true_decoded, self.proj)
 
                 self.ax.scatter(
                     self.x_proj_good[:, 0],
@@ -1029,13 +839,12 @@ class Vizualization:
                     str(self.labels[idx])
                 ]))
             
-
+            #ipdb.set_trace()
             clicked_cluster = self.clusterizer.predict([(x,y)])[0]
 
             self.delimit_cluster(clicked_cluster, color=self.manual_cluster_color)
             self.update_summary(clicked_cluster)
 
-            self.ax.add_patch(self.colorize_rect(x_g, y_g))
             self.print_summary(self.summary_axe)
 
             selected_x_idx = find_projected_in_cluster(
@@ -1073,7 +882,6 @@ class Vizualization:
 
             for x_g, y_g in similar_clusters:
                 self.update_summary(x_g, y_g)
-                self.ax.add_patch(self.colorize_rect(x_g, y_g))
             self.print_summary(self.summary_axe)
 
         elif button == 3:
@@ -1126,23 +934,6 @@ class Vizualization:
         self.local_classes = set()
         self.local_sum = 0
         self.currently_selected_cluster = []
-
-    def colorize_rect(self, x_g, y_g):
-        """
-        Prepare empty rectangle adapted to tile to be used as a cursor
-        """
-
-        size_rect = self.amplitude / self.resolution
-        zoom_rect = patches.Rectangle(
-            (
-                ((x_g / self.resolution)) * self.amplitude,
-                (y_g / self.resolution) * self.amplitude
-            ),
-            size_rect, size_rect,
-            fill=False, edgecolor='magenta'
-        )
-
-        return zoom_rect
 
     def label_mesh(self):
         """
@@ -1393,148 +1184,6 @@ class Vizualization:
                 pass
         logging.info('borders: ready')
 
-    def heatmap_proportion(self):
-        """
-        Prepare the patches for a 'proportion' heatmap (good predictions / total effectif)
-
-        This method is a  heatmap_builder returning a list of patches to be plotted somewhere
-        Three colors are actually used : red for bad prediction, blue for correct, and green for
-            special_class prediction which is a special label defined at the Vizualization.__init__
-            (typically the label "0")
-        All colors are mixed linearly
-
-        ..seealso:: add_heatmap
-        """
-
-        all_patches = []
-        centroid_label = {}
-        logging.info('heatmap: drawing proportion heatmap')
-
-        for idx,xy in enumerate(self.mesh_centroids):
-
-            current_centroid_label = self.centroids_label[idx]
-            x, y = xy[0], xy[1]
-            count = (
-                    self.cluster_good_count.get(current_centroid_label, 0)
-                    +self.cluster_bad_count.get(current_centroid_label, 0)
-                    )
-
-            if count:
-                proportion_correct = self.cluster_good_count[current_centroid_label] / float(count)
-                proportion_null    = self.cluster_null_count[current_centroid_label] / float(count)
-
-                red   = int(255 * (1-proportion_correct))
-                green = int(255 * proportion_null)
-                blue  = int(255 * proportion_correct)
-
-                color = rgb_to_hex(red, green, blue)
-                
-                x_rect = x - self.size_centroid/2 
-                y_rect = y - self.size_centroid/2
-                
-                all_patches.append(
-                        patches.Rectangle(
-                                (x_rect, y_rect),
-                                self.size_centroid,
-                                self.size_centroid,
-                                color=color,
-                                ),
-                        )
-        logging.info('heatmap: proportion done')
-        return all_patches
-
-
-        """
-        for x in self.grid_proportion:
-            for y in self.grid_proportion[x]:
-                if self.grid_proportion[x][y] != -1:
-
-                    red   = int(255 * self.grid_proportion[x][y])
-                    green = int(255 * self.grid_null_proportion[x][y])
-                    blue  = int(255 * (1 - self.grid_proportion[x][y]))
-
-                    color = rgb_to_hex(red, green, blue)
-
-                    x_rect = x * (self.amplitude / float(self.resolution))
-                    y_rect = y * (self.amplitude / float(self.resolution))
-
-                    all_patches.append(
-                        patches.Rectangle(
-                            (x_rect, y_rect),
-                            self.amplitude / self.resolution,
-                            self.amplitude / self.resolution,
-                            color=color,
-                        ),
-                    )
-
-        return all_patches
-        """
-
-    def heatmap_entropy(self):
-        """
-        Prepares the patches for an entropy heatmap
-
-        This method is a heatmap_builder returning a list of patches to be
-        plotted somewhere
-        The maximum entropy for the Vizualization is calculated and used as
-        normalization parameter,
-        The plot is actually a logplot as it is more eye-friendly
-        ..seealso:: add_heatmap
-
-        """
-
-        all_patches = []
-        centroid_label = {}
-        logging.info('heatmap entropy: drawing')
-        
-        entropys = []
-
-        for idx,xy in enumerate(self.mesh_centroids):
-
-            current_centroid_label = self.centroids_label[idx]
-            x, y = xy[0], xy[1]
-            current_entropy = 0
-            
-            try:
-                if len(self.index_by_label[current_centroid_label]) == 0:
-                    current_entropy = 0
-                else:
-                    current_entropy = (
-                        cross_entropy(
-                            self.total_individual,
-                            self.class_by_cluster[current_centroid_label]
-                            )
-                        )
-            except KeyError:
-                current_entropy = 0 # cluster does not exist -> empty dummy cluster
-            entropys.append(current_entropy)
-
-        min_entropys = min(entropys)
-        max_entropys = max(entropys)
-        amplitude_entropys = max_entropys - min_entropys
-
-        for idx, xy in enumerate(self.mesh_centroids):
-            try:
-                current_entropy = entropys[idx]
-            except IndexError:
-                current_entropy = min_entropys
-
-            coef = int((current_entropy - min_entropys) / amplitude_entropys * 255)
-            color = rgb_to_hex(coef, coef, coef)
-            x, y = xy[0], xy[1]
-
-            all_patches.append(
-                patches.Rectangle(
-                    (x-self.size_centroid/2, y-self.size_centroid/2),
-                    self.size_centroid,
-                    self.size_centroid,
-                    color=color,
-                ),
-            #logging.debug('entropy here is '+str(self.entropys[idx])+' and color coef '+str(coef))
-            )
-        logging.info('heatmap entropy: done')
-        return all_patches
-
     def heatmap_proportion_v2(self):
         """
         Prepare the patches for a 'proportion' heatmap (good predictions / total effectif)
@@ -1580,32 +1229,6 @@ class Vizualization:
         logging.info('heatmap: proportion done')
         return all_colors
 
-
-        """
-        for x in self.grid_proportion:
-            for y in self.grid_proportion[x]:
-                if self.grid_proportion[x][y] != -1:
-
-                    red   = int(255 * self.grid_proportion[x][y])
-                    green = int(255 * self.grid_null_proportion[x][y])
-                    blue  = int(255 * (1 - self.grid_proportion[x][y]))
-
-                    color = rgb_to_hex(red, green, blue)
-
-                    x_rect = x * (self.amplitude / float(self.resolution))
-                    y_rect = y * (self.amplitude / float(self.resolution))
-
-                    all_patches.append(
-                        patches.Rectangle(
-                            (x_rect, y_rect),
-                            self.amplitude / self.resolution,
-                            self.amplitude / self.resolution,
-                            color=color,
-                        ),
-                    )
-
-        return all_patches
-        """
 
     def heatmap_entropy_v2(self):
         """
@@ -1669,47 +1292,6 @@ class Vizualization:
         logging.info('heatmap entropy: done')
         return all_colors
 
-    def heatmap_density(self):
-        """
-        Prepare the patches for a density heatmap
-
-        This method is a  heatmap_builder returning a list of patches to be plotted somewhere
-        The effectif of fullest tile is calculated and used as normalization parameter,
-        The plot is actually a logplot as it is more eye-friendly
-
-
-        ..seealso:: add_heatmap
-        """
-
-        all_patches = []
-
-        max_sum = 0
-        for x in self.grid_sum:
-            for y in self.grid_sum[x]:
-                if max_sum < self.grid_sum[x][y]:
-                    max_sum = self.grid_sum[x][y]
-
-        for x in self.grid_sum:
-            for y in self.grid_sum[x]:
-                current = self.grid_sum[x][y]
-                coef = int(
-                    255 - 255 * math.log(1 + 4 * current / max_sum) / math.log(5)
-                )
-                color = rgb_to_hex(coef, coef, coef)
-
-                x_rect = x * (self.amplitude / float(self.resolution))
-                y_rect = y * (self.amplitude / float(self.resolution))
-
-                all_patches.append(
-                    patches.Rectangle(
-                        (x_rect, y_rect),
-                        self.amplitude / self.resolution,
-                        self.amplitude / self.resolution,
-                        color=color,
-                    ),
-                )
-
-        return all_patches
 
     def request_new_frontiers(self, method):
         """
@@ -1730,6 +1312,8 @@ class Vizualization:
             self.similarity_measure = lambda x,y:1
             self.normalize_frontier=False
             logging.debug('frontiers: set up to '+method)
+            logging.info('frontiers : applied '+method)
+            return
         
         self.apply_borders(
                 self.normalize_frontier,
@@ -1749,10 +1333,11 @@ class Vizualization:
         logging.info("cluster: requesting a new "+method+" engine")
         if method=='kmeans':
             self.clusterizer = clustering.KmeansClusterizer(
+                    n_clusters=self.n_clusters,
                     )
         else:
             self.clusterizer = clustering.DummyClusterizer(
-                    resolution=self.resolution
+                    resolution=self.resolution,
                     )
         self.clusterizer.fit(xs=self.proj)
         logging.info("cluster: done")
@@ -1793,7 +1378,7 @@ class Vizualization:
             axe.clear()
             
             heatmap_color = heatmap_builder()
-            logging.info("heatmaps: adding patches to "+str(axe))
+            logging.info("heatmaps: drawing in "+str(axe))
             axe.imshow(heatmap_color, interpolation='nearest', vmin=0, vmax=1, extent=(-self.amplitude-self.size_centroid/2, self.amplitude-self.size_centroid/2, -self.amplitude-self.size_centroid/2, self.amplitude-self.size_centroid/2), aspect='auto')
             
             logging.info("heatmaps: "+str(axe)+" ready")
@@ -1820,6 +1405,8 @@ class Vizualization:
         # print("grid_total keys:", self.grid_total.keys())
         # print("grid_total[0] keys:", self.grid_total[0].keys())
         
+        #ipdb.set_trace()
+
         to_include = self.class_by_cluster[current_cluster]
         to_include = { k:to_include[k] for k in to_include if to_include[k]!=0 }
 
@@ -1851,12 +1438,17 @@ class Vizualization:
                 ) / (self.local_effectif[c] + to_include.get(c, 0))
             )
             self.local_effectif[c] += self.cluster_good_count_by_class[current_cluster].get(c,0)+self.cluster_bad_count_by_class[current_cluster].get(c,0)
-        
-        logging.info("Details=loading indexes of selected")
-        selected_idxs = [self.index_by_label[label] for label in self.currently_selected_cluster ]
-        selected_idxs = [i for j in selected_idxs for i in j]
-        logging.info("Details=loaded")
-        self.view_details.update( selected_idxs )
+
+    def get_selected_indexes(self):
+        """
+        Find indexes of xs in selected clusters
+        """
+        indexes_selected = []
+        for label in self.currently_selected_cluster:
+            for idx in self.index_by_label[label]:
+                indexes_selected.append(idx) 
+
+        return indexes_selected
 
 
     def print_summary(self, axe, max_row=15):
@@ -1874,31 +1466,52 @@ class Vizualization:
 
         values = [
             [
-                self.local_effectif[c],
-                self.local_proportion[c],
-                self.total_individual[c],
-                self.index_good_predicted,
-                self.proportion_by_class[c]
+                (
+                    '{0:.0f}'.format(self.local_effectif[c])+ "("
+                    + '{0:.2f}'.format(self.local_effectif[c]/self.total_individual[c]*100)+"%)"),
+                (
+                    '{0:.2f}'.format(self.local_proportion[c]*100)+"% ("+
+                    '{0:.2f}'.format((self.local_proportion[c]-self.proportion_by_class[c])*100)+"%)"),
+                '{0:.0f}'.format(self.total_individual[c]),
+                #self.index_good_predicted,
+                '{0:.2f}'.format(self.proportion_by_class[c])
             ]
             for c in row_labels
         ]
 
-        arg_sort = np.argsort(np.array(values)[:, 0])
+        arg_sort = np.argsort([self.local_effectif[c] for c in row_labels])
 
         values = [values[i] for i in arg_sort[::-1]]
         row_labels = [row_labels[i] for i in arg_sort[::-1]]
 
         # add row "all" for recap :
+
+        max_row    = min(max_row, min(len(values), len(row_labels)))-1
+        values     = values[:max_row]
+        row_labels = row_labels[:max_row]
+        
         values.append([self.local_sum, .856789, len(self.proj), .856789])
         row_labels.append('all')
 
+        self.rows = row_labels
+
         axe.table(
-            cellText=values[:max_row],
-            rowLabels=row_labels[:max_row],
+            cellText=values,
+            rowLabels=row_labels,
             colLabels=self.cols,
-            loc='center'
+            loc='center',
         )
         #ipdb.set_trace()
+
+        
+        logging.info("Details=loading indexes of selected")
+        #selected_idxs = [self.index_by_label[label] for label in self.currently_selected_cluster ]
+        #selected_idxs = [i for j in selected_idxs for i in j]
+
+        indexes_shown = self.get_selected_indexes()
+
+        self.view_details.update( indexes_shown )
+        logging.info("Details=loaded")
 
         plt.draw()
     
@@ -1931,6 +1544,12 @@ class Vizualization:
                     if c in self.currently_selected_cluster
                     ]
                 ).to_csv(output_path)
+        logging.info('exporting: done')
+    
+    def view_details_figure(self):
+        logging.info('exporting:...')
+        indexes = self.get_selected_indexes()
+        self.view_details.update(indexes)
         logging.info('exporting: done')
 
 
@@ -1985,10 +1604,11 @@ class Vizualization:
         self.reset_viz()
         
         # draw clusters borders
-        self.apply_borders(
-                self.normalize_frontier,
-                self.similarity_measure,
-                self.axes_needing_borders)
+        #self.apply_borders(
+        #        self.normalize_frontier,
+        #        self.similarity_measure,
+        #        self.axes_needing_borders)
+        self.request_new_frontiers('none')
 
         # add mouse event
         logging.info("mouseEvents=adding")
@@ -2008,10 +1628,15 @@ class Vizualization:
             'Select all with label',
             self.textbox_function_showall
         )
+        self.textboxs['n_clusters'] = self.add_text_panel(
+                'Number of clusters (default:120)',
+            self.textbox_function_n_clusters
+        )
         logging.info("textboxs=ready")
 
         # add button
         self.add_button("Export x", lambda :self.export(self.output_path))
+        self.add_button("View_details", lambda :self.view_details_figure())
 
         # add menulist
         self.menulists = {}
@@ -2027,9 +1652,13 @@ class Vizualization:
 
         logging.info('Vizualization=ready')
 
+    def show(self):
+        self.f.show()
+        self.view_details.show()
+
 class View_details():
 
-    def __init__(self, raw_datas): #MODELE
+    def __init__(self, raw_datas, columns_to_scatter=COLUMNS_TO_SCATTER, graph_path=GRAPH_PATH): #MODELE
 
         class Montant_plot(): #VUE
 
@@ -2040,44 +1669,119 @@ class View_details():
                 labels = []
                 means = []
                 stds = []
+                logging.info('details_view: loading montants')
                 for compte in montants_dict:
                     montants_mean = np.mean(montants_dict[compte])
-                    means.append(montants_mean)
-                    stds.append(np.std(montants_dict[compte]))
+                    means.append(float(montants_mean))
+                    stds.append(float(np.std(montants_dict[compte])))
                     labels.append(compte)
+                #ipdb.set_trace()
                 ind = np.arange(len(means))
+                logging.info('ind:'+str(ind)+' means:'+str(means)+' yerr:'+str(stds))
+                self.subplot.clear()
                 self.subplot.bar(ind, means, width=.7, yerr=stds)
                 self.subplot.set_xticks(ind)
                 self.subplot.set_xticklabels(labels)
+                logging.info('details_view: montants ready')
+
+        class Words_plot():
+            def __init__(self, subplot):
+                self.subplot = subplot
+            def update(self):
+                pass
+
+        class Scatter_plot(): #VUE
+            def __init__(self, subplot, graph_path):
+                self.subplot = subplot
+                self.graph_path = graph_path
+
+            def update(self, df):
+                #self.subplot.pairplot(df)
+                self.df = df
+                g = sns.PairGrid(df, hue='account')
+                g = g.map_diag(plt.hist)
+                g = g.map_offdiag(plt.scatter)
+                xlabels,ylabels = [],[]
+
+                for ax in g.axes[-1,:]:
+                    xlabel = ax.xaxis.get_label_text()
+                    xlabels.append(xlabel)
+                for ax in g.axes[:,0]:
+                    ylabel = ax.yaxis.get_label_text()
+                    ylabels.append(ylabel)
+
+                for i in range(len(xlabels)):
+                    for j in range(len(ylabels)):
+                        g.axes[j,i].xaxis.set_label_text(xlabels[i])
+                        g.axes[j,i].yaxis.set_label_text(ylabels[j])
+
+                g.add_legend()
+                g.savefig(self.graph_path + 'details.svg', format='svg', dpi=1200)
+                g.savefig(self.graph_path + 'details.pdf', format='pdf', dpi=1200)
+                logging.debug('transactions in cluster(s):\n'+str(df))
 
         class Random_plot(): #VUE
-
             def __init__(self, subplot):
                 self.subplot = subplot
 
             def update(self):
                 self.subplot.plot(np.random.rand(50))
-                self.subplot.draw()
         
-        self.figure = plt.figure(2)
+        self.figure = sns.plt.figure(2)
+        self.graph_path = graph_path
         self.montant_plot = Montant_plot(self.figure.add_subplot(2,2,1))
-        self.details2_plot = Random_plot(self.figure.add_subplot(2,2,2))
-        self.details3_plot = Random_plot(self.figure.add_subplot(2,2,3))
+        self.scatter_plot = Scatter_plot(self.figure.add_subplot(2,2,2), graph_path=self.graph_path)
+        self.details3_plot = Words_plot(self.figure.add_subplot(2,2,3))
         self.details4_plot = Random_plot(self.figure.add_subplot(2,2,4))
 
         self.raw_datas = raw_datas
+        self.columns_to_scatter = columns_to_scatter
 
     def update(self, idxs): #CONTROLEUR
         label_column = -4
         montant_column = 1
+        max_to_display = 10
 
-        labels = { self.raw_datas[idx][label_column] for idx in idxs }
+        logging.info("View_details: updating with "+str(len(idxs))+" accounts")
+
+        labels = [ self.raw_datas[idx][label_column] for idx in idxs ]
+        print(labels)
+        labels_count = Counter(labels)
+
+        commons = np.array(labels_count.most_common())[:,0]
+        logging.info("view_details: only display class "+str(commons))
+
         montant_dict = { label:[] for label in labels }
+        transaction_list = []
+
         for i,idx in enumerate(idxs):
-            montant_dict[self.raw_datas[idx][label_column]].append(self.raw_datas[idx][montant_column])
+            current_x = self.raw_datas[idx]
+            current_label = current_x[label_column] 
+            transaction_list.append(current_x)
+
+            if current_label in commons[:max_to_display]:
+                montant_dict[current_label].append(current_x[montant_column])
 
         self.montant_plot.update(montant_dict)
-        #self.details2_plot.update()
+
+        df = metier.Annotations(transaction_list)
+        for col in df.columns:
+            if col not in self.columns_to_scatter:
+                df = df.drop(col, axis=1)
+            elif 'date' not in col:
+                df[col] = df[col].convert_objects(convert_numeric=True)
+        self.scatter_plot.update(df)
+        
+        self.scatter_df   = df
+        self.montant_dict = montant_dict
+
+        logging.info("View_details: ready")
+        self.show()
+
+    def show(self):
+        self.figure.show()
+        #ipdb.set_trace()
+
 
 
 
@@ -2153,7 +1857,7 @@ if __name__ == '__main__':
     transactions_raw = np.load(
         DATA_PATH + 'originals' + VERSION + '.npz'
     )['originals']
-
+    
     f = Vizualization(
         x_raw = transactions_raw,
         proj=x_2D,
@@ -2166,4 +1870,5 @@ if __name__ == '__main__':
 
     f.plot()
     plt.ion()
-    plt.show()
+    f.show()
+
