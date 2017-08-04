@@ -12,7 +12,7 @@ def query_meta(uri, set_name):
     import db_interface
     MDI = db_interface.MetaDatabaseInterface(uri)
     meta_name = MDI._register_algorithm_name("meta")
-    transactions = MDI.get_training_inputs_auto(set_name)
+    transactions = MDI.get_training_inputs_auto_readable(set_name)
     transactions = [*transactions]
     
     return transactions, meta_name
@@ -93,7 +93,7 @@ def preprocess_meta(raws, inputs, predictions,
         ys.append(raws[idx][15])
 
     if save:
-        np.savez(name_file, x=xs, y_account_decoded=ys, account_decoded=encoder)
+        np.savez(name_file, x=xs, y_account_decoded=ys, account_encoder=encoder)
         np.savez(name_originals, originals=raws)
         np.savez(name_predictions, pred=predictions)
     
