@@ -1,8 +1,9 @@
 from sqlalchemy import and_, or_, select, distinct, func
 
 from database_interface import model, query
-from common_algorithm_queries import base_training_readable
+import common_algorithm_queries
 
+"""
 class TransactionQuery(BaseTransactionQuery):
     @classmethod
     def transaction_base_training(cls, condition_pk=True):
@@ -13,6 +14,7 @@ class TransactionQuery(BaseTransactionQuery):
         bgf.add_columns(cls.all_results_columns())
         bgf.add_where_clause(condition_pk)
         return bgf.get_query()
+"""
 
 class GreatBigTransactionFactory:
     """
@@ -73,12 +75,13 @@ class TransactionResultQuery(query.TransactionResultQuery):
     pass
 
 
-class TransactionQuery(query.TransactionQuery):
+class TransactionQuery(common_algorithm_queries.TransactionQuery):
 
     @classmethod
     def select_all_transactions(cls, condition_id=True):
         return cls.transaction_base_training(condition_id)
-
+    
+    @classmethod
     def select_all_transactions_readable(cls, condition_id=True):
         return cls.base_training_readable(condition_id)
 

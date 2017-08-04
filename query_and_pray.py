@@ -5,26 +5,37 @@ It should be launced only once in a while
 """
 import numpy as np
 import ipdb
+import logging
 
 uri = 'postgres://ds:ds@localhost/gold_standard_manakin'
+logging.basicConfig(level=logging.DEBUG)
 
 def query_meta(uri, set_name):
     import db_interface
     MDI = db_interface.MetaDatabaseInterface(uri)
     meta_name = MDI._register_algorithm_name("meta")
+    logging.info('\nget_inputs_auto=starting')
     transactions = MDI.get_training_inputs_auto_readable(set_name)
+    logging.info('get_inputs_auto=ready\n')
+    logging.info('converting query to list')
+    #ipdb.set_trace()
     transactions = [*transactions]
+    logging.info('converting=ready')
     
     return transactions, meta_name
 
 def query_meta_all(uri):
     test = query_meta(uri, 'test')
+    logging.info('query_test=ready\n')
     meta_pk = test[1]
     test=test[0]
     validation = query_meta(uri, 'validation')[0]
+    logging.info('query_validation=ready\n')
     test+= validation
     test = [ np.array(t) for t in test]
     test = np.array(test)
+    logging.info('queries merged')
+
 
     return test, meta_pk
 
@@ -81,6 +92,7 @@ def preprocess_meta(raws, inputs, predictions,
     blank_x = np.array([0]*len(blank_y)*len(engines), dtype=float)
     xs=[]
     ys=[]
+
     for idx,transaction in enumerate(inputs):
         x = blank_x.copy()
         for prediction in transaction:
@@ -90,7 +102,7 @@ def preprocess_meta(raws, inputs, predictions,
                      + encoding_compress.index(class_))
             x[idx_vector] = prediction[3]
         xs.append(x)
-        ys.append(raws[idx][15])
+        ys.append(raws[idx][-3])
 
     if save:
         np.savez(name_file, x=xs, y_account_decoded=ys, account_encoder=encoder)
@@ -100,6 +112,9 @@ def preprocess_meta(raws, inputs, predictions,
     return xs, ys, encoder
 
 if __name__=='__main__':
+    logging.info('query db')
     datas, meta_pk = query_meta_all(uri)
+    logging.info('sort results')
     raws, inputs, predictions = separate(datas, meta_pk)
+    logging.info('preprocess data')
     xs, ys, encoder = preprocess_meta(raws, inputs, predictions, save=True)

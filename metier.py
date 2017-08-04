@@ -10,17 +10,14 @@ class Annotations(pd.DataFrame):
                 'bank_wording',
                 'creditor_id',
                 'bank_code',
-                'activity_start_date',
                 'ape_code',
                 'vat_regime',
                 'fiscal_regime',
                 'imposition_regime',
                 'bnc_option',
                 'legal_obligation',
-                'libellé',
                 'account',
-                'vat_type',
-                'vat_intra_flag',
-                'vat_class'
+                'activity_start_date',
+                'libellé',
                 ]
         super(Annotations, self).__init__(array, columns=columns)

@@ -146,6 +146,11 @@ class TransactionQuery(BaseTransactionQuery):
         # ).where(
         #     model.TransactionMonitoring.pk == None,
         # )
+        """
+        model.TransactionResult.vat_type_pk,
+        model.TransactionResult.vat_intra_flag_pk,
+        model.TransactionResult.vat_class_pk,
+        """
         return select([
             model.Transaction.pk,
             model.Transaction.amount,
@@ -154,25 +159,20 @@ class TransactionQuery(BaseTransactionQuery):
             model.Transaction.bank_wording,
             model.Transaction.creditor_id,
             model.BankAccount.bank_code,
-            model.ApeCode.code,
-            model.VatRegime.regime,
-            model.FiscalRegime.regime,
-            model.ImpositionRegime.regime,
-            model.BncOption.option,
-            model.LegalObligation.obligation,
+            model.ApeCode.attribute,
+            model.VatRegime.attribute,
+            model.FiscalRegime.attribute,
+            model.ImpositionRegime.attribute,
+            model.BncOption.attribute,
+            model.LegalObligation.attribute,
             model.TransactionResult.account_number,
             model.Company.activity_start_date,
-            """
-            model.TransactionResult.vat_type_pk,
-            model.TransactionResult.vat_intra_flag_pk,
-            model.TransactionResult.vat_class_pk,
-            """
             cls.complement_wording_construct(),
             ]).where(and_(
                 condition_pk,
                 cls.transaction_monitoring_join(),
                 model.TransactionMonitoring.active_flag == 1,
-                model.TransactionMonitoring.status_id == model.TransactionMonitoring.SELECTED
+                model.TransactionMonitoring.status_id == model.TransactionMonitoring.SELECTED,
                 cls.transaction_company_join(),
                 model.Company.bnc_option_pk == model.BncOption.pk,
                 model.Company.ape_code_pk == model.ApeCode.pk,
