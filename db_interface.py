@@ -50,51 +50,6 @@ class MetaDatabaseInterface(AlgorithmDatabaseInterface):
         vat_codes = set(res[0] for res in self._get_query_results(queries.DistinctQuery.vat_codes_query()))
         return sorted(vat_codes.union({5}))
     
-    def get_training_inputs_auto_readable(self, set_name):
-        """
-        :return: an iterable with the inputs corresponding to the id_list
-        """
-        list_ids = self.engine.execute(
-            queries.TrainSplittingQuery.get_values_split(set_name, split_id=None)).fetchone()[0]
-        transaction_query = queries.select_transactions_info_from_id_list_readable(list_ids)
-        
-        engines_query = queries.TransactionResultQuery.select_all_results_from_algorithm_list(
-            algorithm_pk_list=self.input_algorithm_pk_list)
-    
-        _transactions_info = dict()
-        # meh, I have to find an other way to do that
-        for result_line in self._get_query_results(transaction_query):
-            transaction_id = result_line[0]
-            _transactions_info[transaction_id] = result_line[1:]
-        engines_results = self._get_query_results(engines_query)
-    
-        current_engines_results = None
-        current_transaction_id = OFFSET_FROM_TIIME
-        for engine_result_line in engines_results:
-            transaction_id = engine_result_line[0]
-            # Manage the case where we have a new transaction
-            if current_transaction_id != transaction_id:
-                # we want to get transactions without any engine results
-                for no_engine_result_id in range(current_transaction_id + 1, transaction_id):
-                    if no_engine_result_id in _transactions_info:
-                        yield (no_engine_result_id, *_transactions_info[no_engine_result_id], [])
-            
-                if current_transaction_id in _transactions_info:
-                    yield (
-                        current_transaction_id, *_transactions_info[current_transaction_id],
-                        current_engines_results)
-            
-                current_transaction_id = transaction_id
-                current_engines_results = list()
-        
-            engine_str = engine_result_line[1]
-            engine_result = tuple((engine_str, *engine_result_line[2:]))
-            current_engines_results.append(engine_result)
-    
-        if current_transaction_id in _transactions_info:
-            yield tuple(
-                (current_transaction_id, *_transactions_info[current_transaction_id], current_engines_results))
-    
     def get_training_inputs(self):
         """
         :return: an iterable with the inputs corresponding to the id_list
