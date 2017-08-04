@@ -10,10 +10,10 @@ from config.references import (
     PARAMS,
     MODEL_PATH,
     DO_CALCULUS,
+    GRAPH_PATH,
 )
-from config.specific import (
+from config.manakin import (
         COLUMNS_TO_SCATTER,
-        GRAPH_PATH,
         )
 
 # from config.references import *

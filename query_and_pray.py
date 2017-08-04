@@ -3,7 +3,7 @@ Query some datas directly from databases
 Then prepare it for the vizualization
 It should be launced only once in a while
 """
-from config.specific import URI
+from config.manakin import URI
 
 import numpy as np
 import ipdb
