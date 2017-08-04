@@ -6,6 +6,7 @@ from config.references import (
     TSNE_DATA_PATH,
     PARAMS,
     OUTPUT_NAME,
+    PCA_DIMS,
 )
 
 """
@@ -17,6 +18,7 @@ import itertools
 import numpy as np
 import logging
 from sklearn.manifold import TSNE as tsne
+from sklearn.decomposition import PCA
 from MulticoreTSNE import MulticoreTSNE as multitsne
 
 """
@@ -100,7 +102,7 @@ def load_raw_data(
 
 
 def learn_tSNE(x, params=PARAMS, version=VERSION, path=TSNE_DATA_PATH,
-               reduction_size_factor=REDUCTION_SIZE_FACTOR):
+               reduction_size_factor=REDUCTION_SIZE_FACTOR, pca_components=None):
     """
     Learn tSNE representation.
 
@@ -137,6 +139,10 @@ def learn_tSNE(x, params=PARAMS, version=VERSION, path=TSNE_DATA_PATH,
         inits,
         n_iters
     )
+    
+    if pca_components is not None:
+        pca = PCA(svd_solver='randomized', n_components=PCA_DIMS)
+        x = pca.fit_transform(x)
 
     for perplexity, learning_rate, init, n_iter in concatenated_iterator:
  
@@ -157,7 +163,6 @@ def learn_tSNE(x, params=PARAMS, version=VERSION, path=TSNE_DATA_PATH,
         x_transformed[param] = multitsne(
             perplexity=perplexity,
             learning_rate=learning_rate,
-            init=init,
             n_iter=n_iter,
             n_jobs=12,
         ).fit_transform(x)
