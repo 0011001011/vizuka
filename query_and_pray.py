@@ -6,21 +6,16 @@ It should be launced only once in a while
 import numpy as np
 import ipdb
 import logging
+from database_query import db_interface
 
 uri = 'postgres://ds:ds@localhost/gold_standard_manakin'
 logging.basicConfig(level=logging.DEBUG)
 
 def query_meta(uri, set_name):
-    import db_interface
     MDI = db_interface.MetaDatabaseInterface(uri)
     meta_name = MDI._register_algorithm_name("meta")
-    logging.info('\nget_inputs_auto=starting')
     transactions = MDI.get_training_inputs_auto_readable(set_name)
-    logging.info('get_inputs_auto=ready\n')
-    logging.info('converting query to list')
-    #ipdb.set_trace()
     transactions = [*transactions]
-    logging.info('converting=ready')
     
     return transactions, meta_name
 
