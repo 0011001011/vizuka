@@ -6,7 +6,7 @@ It should be launced only once in a while
 import numpy as np
 import ipdb
 import logging
-from database_query import db_interface
+from database_queries import db_interface
 
 uri = 'postgres://ds:ds@localhost/gold_standard_manakin'
 logging.basicConfig(level=logging.DEBUG)
