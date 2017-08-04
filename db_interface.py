@@ -2,7 +2,8 @@ import logging
 
 from database_interface.database_interface import AlgorithmDatabaseInterface
 import meta
-import meta.algorithm_query as queries
+#import meta.algorithm_query as queries
+import queries
 
 
 OFFSET_FROM_TIIME = 0  # 10**11  # see database_interface.nine_gates_of_tiime.tiime_query OFFSET_FOR_TIIME
