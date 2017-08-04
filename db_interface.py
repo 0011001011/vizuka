@@ -19,8 +19,10 @@ class MetaDatabaseInterface(AlgorithmDatabaseInterface):
         # Creating the list of algorithms to use as input suggestion
         input_algorithm_name_set = set(meta.get_meta_config(META_INPUT_ALGORITHM_CONFIG_KEY))
         input_algorithm_name_set.add('meta')
+        input_algorithm_name_set.add('final')
         required_algorithm_name_set = set(meta.get_meta_config(META_REQUIRED_ALGORITHM_CONFIG_KEY))
         required_algorithm_name_set.add('meta')
+        required_algorithm_name_set.add('final')
         
         self.input_algorithm_pk_list = [self._register_algorithm_name(name) for name in input_algorithm_name_set]
         self.required_algorithms_pk_list = [self._register_algorithm_name(name) for name in required_algorithm_name_set]

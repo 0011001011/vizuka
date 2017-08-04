@@ -24,7 +24,7 @@ def query_meta(uri, set_name):
     
     return transactions, meta_name
 
-def query_meta_all(uri):
+def query_meta_all_sets(uri):
     test = query_meta(uri, 'test')
     logging.info('query_test=ready\n')
     meta_pk = test[1]
@@ -44,16 +44,21 @@ def separate(datas, output_engine_pk):
     engines_results = datas[:,-1]
 
     inputs = [[] for _ in range(len(engines_results))]
-    predictions=[]
+    predictions=[None for _ in range(len(engines_results))]
+    reality = [None for _ in range(len(engines_results))]
+    oracle_pk = 3
 
     for idx,r in enumerate(engines_results):
         for e in r:
-            if e[0] != output_engine_pk:
-                inputs[idx].append(e)
+            if e[0] == output_engine_pk:
+                predictions[idx]= e
+            elif e[0] == oracle_pk:
+                reality[idx] = e[2]
             else:
-                predictions.append(e)
+                inputs[idx].append(e)
 
-    return raws, inputs, predictions
+
+    return raws, inputs, predictions, reality
 
 def preprocess_meta(raws, inputs, predictions,
         name_file="xy.npz",
@@ -113,8 +118,8 @@ def preprocess_meta(raws, inputs, predictions,
 
 if __name__=='__main__':
     logging.info('query db')
-    datas, meta_pk = query_meta_all(uri)
+    datas, meta_pk = query_meta_all_sets(uri)
     logging.info('sort results')
-    raws, inputs, predictions = separate(datas, meta_pk)
+    raws, inputs, predictions, reality = separate(datas, meta_pk)
     logging.info('preprocess data')
     xs, ys, encoder = preprocess_meta(raws, inputs, predictions, save=True)

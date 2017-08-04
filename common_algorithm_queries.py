@@ -180,6 +180,7 @@ class TransactionQuery(BaseTransactionQuery):
                 model.Company.fiscal_regime_pk == model.FiscalRegime.pk,
                 model.Company.imposition_regime_pk == model.ImpositionRegime.pk,
                 model.Company.legal_obligation_pk == model.LegalObligation.pk,
+                model.TransactionResult.algorithm_pk == 3,
                 cls.transaction_result_join(),
                 cls.bank_transaction_join(),
                 )
