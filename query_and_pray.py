@@ -3,12 +3,13 @@ Query some datas directly from databases
 Then prepare it for the vizualization
 It should be launced only once in a while
 """
+from config.specific import URI
+
 import numpy as np
 import ipdb
 import logging
 from database_queries import db_interface
 
-uri = 'postgres://ds:ds@localhost/gold_standard_manakin'
 logging.basicConfig(level=logging.DEBUG)
 
 def query_meta(uri, set_name):
@@ -19,7 +20,7 @@ def query_meta(uri, set_name):
     
     return transactions, meta_name
 
-def query_meta_all_sets(uri):
+def query_meta_all_sets(uri=URI):
     test = query_meta(uri, 'test')
     logging.info('query_test=ready\n')
     meta_pk = test[1]
@@ -113,7 +114,7 @@ def preprocess_meta(raws, inputs, predictions,
 
 if __name__=='__main__':
     logging.info('query db')
-    datas, meta_pk = query_meta_all_sets(uri)
+    datas, meta_pk = query_meta_all_sets(URI)
     logging.info('sort results')
     raws, inputs, predictions, reality = separate(datas, meta_pk)
     logging.info('preprocess data')

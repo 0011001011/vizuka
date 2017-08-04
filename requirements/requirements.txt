@@ -4,6 +4,10 @@ sklearn
 matplotlib
 keras
 PyQt4
+ipdb
+
+manakin-ml-database-interface
+manakin-ml-algorithm-meta
 
 # manakin-ml-shared when used
 # problem with qt4

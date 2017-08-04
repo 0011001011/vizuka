@@ -15,4 +15,6 @@ COLUMNS_TO_SCATTER = [
                 'vat_intra_flag',
                 'vat_class'
                 ]
+
 GRAPH_PATH = '/home/sofian/data/graph/'
+URI = 'postgres://ds:ds@localhost/gold_standard_manakin'
