@@ -8,6 +8,7 @@ from config.references import (
         INPUT_FILE_BASE_NAME,
         RAW_NAME,
         MODEL_PATH,
+        DEFAULT_PREDICTOR,
         VERSION,
         )
 from config.manakin import (
@@ -70,9 +71,10 @@ def preprocess_meta(raws, inputs, predictions,
         base_path=DATA_PATH,
         preprocessed_filename=INPUT_FILE_BASE_NAME,
         raw_filename=RAW_NAME,
-        predictions_filename=MODEL_PATH,
+        predictions_filename=DEFAULT_PREDICTOR,
+        predictions_path=MODEL_PATH,
         version=VERSION,
-        save=False):
+        )
 
     class_predicted = set()
     class_existing  = set()
@@ -130,7 +132,7 @@ def preprocess_meta(raws, inputs, predictions,
                 originals=raws)
     if predictions_filename!='':
         np.savez(
-                os.path.join(base_path, predictions_filename+version+'.npz'),
+                os.path.join(base_path, predictions_path, predictions_filename+version+'.npz'),
                 pred=predictions
                 )
     
@@ -146,4 +148,4 @@ if __name__=='__main__':
             raws,
             inputs,
             predictions,
-            save=True)
+            )
