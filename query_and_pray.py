@@ -3,19 +3,21 @@ Query some datas directly from databases
 Then prepare it for the vizualization
 It should be launced only once in a while
 """
-from config.manakin import (
-        URI,
+from config.references import (
         DATA_PATH,
         INPUT_FILE_BASE_NAME,
         RAW_NAME,
         MODEL_PATH,
         VERSION,
         )
-
+from config.manakin import (
+        URI,
+        )
 
 import numpy as np
 import ipdb
 import logging
+import os
 from database_queries import db_interface
 
 logging.basicConfig(level=logging.DEBUG)
