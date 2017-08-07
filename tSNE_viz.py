@@ -1,7 +1,14 @@
+import matplotlib
+matplotlib.use('Qt4Agg')  # noqa
+import sys
+
+from qt_handler import Viz_handler
 import labelling
 import clustering
 import dim_reduction
 import metier
+from analyze_transactions import View_details
+
 from config.references import (
     DATA_PATH,
     VERSION,
@@ -28,12 +35,9 @@ from collections import Counter
 
 import numpy as np
 import keras
-import matplotlib
-matplotlib.use('Qt4Agg')  # noqa
+
+
 from matplotlib import pyplot as plt
-import seaborn as sns
-from PyQt4 import QtGui
-from PyQt4.QtCore import Qt
 import ipdb
 import pandas as pd
 
@@ -630,122 +634,6 @@ class Vizualization:
         plt.draw()
         logging.info("done")
 
-    def add_menulist(self, menu_name, button_name, categories, onlaunch):
-        """
-        Add a menu list with action button
-
-        :param menu_name: the name of the list (displayed)
-        :param button_name: the name of the button
-        :param categories: categories available for selection
-        :param onlaunch: action to trigger on click to button
-        """
-
-        root = self.f.canvas.manager.window
-        panel = QtGui.QWidget()
-        hbox = QtGui.QHBoxLayout(panel)
-        
-        class MenuList(QtGui.QListWidget):
-
-            def __init__(self, categories):
-                QtGui.QListWidget.__init__(self)
-                self.add_items(categories)
-                self.itemClicked.connect(self.item_click)
-                self.selected = categories
-
-            def add_items(self, categories):
-                for category in categories:
-                    item = QtGui.QListWidgetItem(category)
-                    self.addItem(item)
-
-            def item_click(self, item):
-                self.selected = str(item.text())
-        
-        menulist = MenuList(categories)
-
-        hbox.addWidget(menulist)
-        launchButton = QtGui.QPushButton(button_name)
-        launchButton.clicked.connect(lambda: onlaunch(menulist.selected))
-        hbox.addWidget(launchButton)
-        panel.setLayout(hbox)
-        
-        dock = QtGui.QDockWidget(menu_name, root)
-        root.addDockWidget(Qt.RightDockWidgetArea, dock)
-        dock.setWidget(panel)
-
-        return menulist
-
-    def add_button(self, name, action):
-        """
-        Adds a simple button
-        """
-        root = self.f.canvas.manager.window
-        panel = QtGui.QWidget()
-        hbox = QtGui.QHBoxLayout(panel)
-
-        button = QtGui.QPushButton(name)
-        button.clicked.connect(action)
-        hbox.addWidget(button)
-        panel.setLayout(hbox)
-
-        dock = QtGui.QDockWidget(name, root)
-        root.addDockWidget(Qt.RightDockWidgetArea, dock)
-        dock.setWidget(panel)
-
-    def add_text_panel(self, name, update):
-        """
-        Adds a text panel (how surprising) and binds it to a function
-
-        :param name: name of Widget
-        :param update: function to bind returnPressed event of textpanel
-        """
-
-        root = self.f.canvas.manager.window
-        panel = QtGui.QWidget()
-        hbox = QtGui.QHBoxLayout(panel)
-        textbox = QtGui.QLineEdit(parent=panel)
-
-        textbox.returnPressed.connect(update)
-        hbox.addWidget(textbox)
-        panel.setLayout(hbox)
-
-        dock = QtGui.QDockWidget(name, root)
-        root.addDockWidget(Qt.RightDockWidgetArea, dock)
-        dock.setWidget(panel)
-
-        return textbox
-
-    def textbox_function_showonly(self):
-        """
-        Wrapper for textbox, to use self.update_showonly
-        without specifying parameters
-        """
-        class_str = self.textboxs['show_only'].text()
-        if class_str == '':
-            self.reset_viz()
-        else:
-            class_ = int(class_str)
-            self.update_showonly(class_)
-
-    def textbox_function_showall(self):
-        """
-        Wrapper for textbox, to use self.update_showall
-        without specifying parameters
-        """
-        class_str = self.textboxs['show_all'].text()
-        if class_str == '':
-            self.reset_viz()
-        else:
-            class_ = int(class_str)
-            self.update_showall(class_)
-    
-    def textbox_function_n_clusters(self):
-        """
-        Wrapper for textbox, to change n_clusters
-        without specifying parameters
-        """
-        n_str = self.textboxs['n_clusters'].text()
-        n = int(n_str)
-        self.n_clusters = n
 
     def onmodifier_press(self, event):
         if event.key == 'shift':
@@ -1558,8 +1446,9 @@ class Vizualization:
         Plot the Vizualization, define axes, add scatterplot, buttons, etc..
         """
 
-        self.f = plt.figure(1)
         self.view_details = View_details(self.x_raw)
+        
+        self.f = matplotlib.figure.Figure()
 
         # main subplot with the scatter plot
         self.ax = self.f.add_subplot(3, 1, (1, 2))
@@ -1609,180 +1498,15 @@ class Vizualization:
         #        self.similarity_measure,
         #        self.axes_needing_borders)
         self.request_new_frontiers('none')
-
-        # add mouse event
-        logging.info("mouseEvents=adding")
-        self.f.canvas.mpl_connect('button_press_event', self.onclick)
-        self.f.canvas.mpl_connect('key_press_event', self.onmodifier_press)
-        self.f.canvas.mpl_connect('key_release_event', self.onmodifier_release)
-        logging.info("mouseEvents=ready")
-
-        # add textbox
-        self.textboxs = {}
-        logging.info("textboxs=adding")
-        self.textboxs['show_only'] = self.add_text_panel(
-            'Show one label',
-            self.textbox_function_showonly
-        )
-        self.textboxs['show_all'] = self.add_text_panel(
-            'Select all with label',
-            self.textbox_function_showall
-        )
-        self.textboxs['n_clusters'] = self.add_text_panel(
-                'Number of clusters (default:120)',
-            self.textbox_function_n_clusters
-        )
-        logging.info("textboxs=ready")
-
-        # add button
-        self.add_button("Export x", lambda :self.export(self.output_path))
-        self.add_button("View_details", lambda :self.view_details_figure())
-
-        # add menulist
-        self.menulists = {}
-        self.menulists['clustering_method'] = self.add_menulist(
-                'Clustering method',
-                'Clusterize', ['KMeans', 'Dummy'],
-                self.request_new_clustering)
-        self.menulists['clustering_method'] = self.add_menulist(
-                'Borders',
-                'Delimits',
-                ['Bhattacharyya', 'All', 'None'],
-                self.request_new_frontiers)
+        
+        self.viz_handler = Viz_handler(self, self.f, self.onclick)
 
         logging.info('Vizualization=ready')
 
     def show(self):
-        self.f.show()
+        logging.info("showing")
         self.view_details.show()
-
-class View_details():
-
-    def __init__(self, raw_datas, columns_to_scatter=COLUMNS_TO_SCATTER, graph_path=GRAPH_PATH): #MODELE
-
-        class Montant_plot(): #VUE
-
-            def __init__(self, subplot):
-                self.subplot = subplot
-
-            def update(self, montants_dict):
-                labels = []
-                means = []
-                stds = []
-                logging.info('details_view: loading montants')
-                for compte in montants_dict:
-                    montants_mean = np.mean(montants_dict[compte])
-                    means.append(float(montants_mean))
-                    stds.append(float(np.std(montants_dict[compte])))
-                    labels.append(compte)
-                #ipdb.set_trace()
-                ind = np.arange(len(means))
-                logging.info('ind:'+str(ind)+' means:'+str(means)+' yerr:'+str(stds))
-                self.subplot.clear()
-                self.subplot.bar(ind, means, width=.7, yerr=stds)
-                self.subplot.set_xticks(ind)
-                self.subplot.set_xticklabels(labels)
-                logging.info('details_view: montants ready')
-
-        class Words_plot():
-            def __init__(self, subplot):
-                self.subplot = subplot
-            def update(self):
-                pass
-
-        class Scatter_plot(): #VUE
-            def __init__(self, subplot, graph_path):
-                self.subplot = subplot
-                self.graph_path = graph_path
-
-            def update(self, df):
-                #self.subplot.pairplot(df)
-                self.df = df
-                g = sns.PairGrid(df, hue='account')
-                g = g.map_diag(plt.hist)
-                g = g.map_offdiag(plt.scatter)
-                xlabels,ylabels = [],[]
-
-                for ax in g.axes[-1,:]:
-                    xlabel = ax.xaxis.get_label_text()
-                    xlabels.append(xlabel)
-                for ax in g.axes[:,0]:
-                    ylabel = ax.yaxis.get_label_text()
-                    ylabels.append(ylabel)
-
-                for i in range(len(xlabels)):
-                    for j in range(len(ylabels)):
-                        g.axes[j,i].xaxis.set_label_text(xlabels[i])
-                        g.axes[j,i].yaxis.set_label_text(ylabels[j])
-
-                g.add_legend()
-                g.savefig(self.graph_path + 'details.svg', format='svg', dpi=1200)
-                g.savefig(self.graph_path + 'details.pdf', format='pdf', dpi=1200)
-                logging.debug('transactions in cluster(s):\n'+str(df))
-
-        class Random_plot(): #VUE
-            def __init__(self, subplot):
-                self.subplot = subplot
-
-            def update(self):
-                self.subplot.plot(np.random.rand(50))
-        
-        self.figure = sns.plt.figure(2)
-        self.graph_path = graph_path
-        self.montant_plot = Montant_plot(self.figure.add_subplot(2,2,1))
-        self.scatter_plot = Scatter_plot(self.figure.add_subplot(2,2,2), graph_path=self.graph_path)
-        self.details3_plot = Words_plot(self.figure.add_subplot(2,2,3))
-        self.details4_plot = Random_plot(self.figure.add_subplot(2,2,4))
-
-        self.raw_datas = raw_datas
-        self.columns_to_scatter = columns_to_scatter
-
-    def update(self, idxs): #CONTROLEUR
-        label_column = -4
-        montant_column = 1
-        max_to_display = 10
-
-        logging.info("View_details: updating with "+str(len(idxs))+" accounts")
-
-        labels = [ self.raw_datas[idx][label_column] for idx in idxs ]
-        print(labels)
-        labels_count = Counter(labels)
-
-        commons = np.array(labels_count.most_common())[:,0]
-        logging.info("view_details: only display class "+str(commons))
-
-        montant_dict = { label:[] for label in labels }
-        transaction_list = []
-
-        for i,idx in enumerate(idxs):
-            current_x = self.raw_datas[idx]
-            current_label = current_x[label_column] 
-            transaction_list.append(current_x)
-
-            if current_label in commons[:max_to_display]:
-                montant_dict[current_label].append(current_x[montant_column])
-
-        self.montant_plot.update(montant_dict)
-
-        df = metier.Annotations(transaction_list)
-        for col in df.columns:
-            if col not in self.columns_to_scatter:
-                df = df.drop(col, axis=1)
-            elif 'date' not in col:
-                df[col] = df[col].convert_objects(convert_numeric=True)
-        self.scatter_plot.update(df)
-        
-        self.scatter_df   = df
-        self.montant_dict = montant_dict
-
-        logging.info("View_details: ready")
-        self.show()
-
-    def show(self):
-        self.figure.show()
-        #ipdb.set_trace()
-
-
+        self.viz_handler.show()
 
 
 
@@ -1867,7 +1591,7 @@ if __name__ == '__main__':
         class_decoder=class_decoder,
         class_encoder=class_encoder,
     )
-
+    
     f.plot()
     plt.ion()
     f.show()

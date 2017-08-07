@@ -35,6 +35,7 @@ PARAMS = { 'perplexities'  : [40, 50, 60, 70, 80],
            'inits'         : ['random'],
            'n_iters'       : [15000]
          }
+PCA_DIMS=100
 
 # 30 for OVH, 50 for local, 15 for epinal
 REDUCTION_SIZE_FACTOR = 1
