@@ -32,7 +32,7 @@ PARAMS = { 'perplexities'  : [30,40,50],
          }
 """
 
-PARAMS = { 'perplexities'  : [40, 50, 60, 70, 80],
+PARAMS = { 'perplexities'  : [80],
            'learning_rates': [1000],
            'inits'         : ['random'],
            'n_iters'       : [15000]
