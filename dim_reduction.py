@@ -69,7 +69,7 @@ def load_raw_data(
     x_small = []
     y_small = []
     
-    xy = np.load(path + INPUT_FILE_BASE_NAME + '_x_y' + VERSION + '.npz')
+    xy = np.load(path + INPUT_FILE_BASE_NAME + VERSION + '.npz')
 
     if output_name + '_encoder' in xy.keys():
         logging.info("found encoder")

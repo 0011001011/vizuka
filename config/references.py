@@ -9,7 +9,7 @@ GRAPH_PATH      = os.path.join(BASE_PATH, 'graph/')
 
 
 # File containing data to be t-SNEed
-INPUT_FILE_BASE_NAME = 'onehot'
+INPUT_FILE_BASE_NAME = 'preprocessed_inputs'
 RAW_NAME = 'originals'
 
 # default RN for predictions
