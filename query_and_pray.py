@@ -74,7 +74,7 @@ def preprocess_meta(raws, inputs, predictions,
         predictions_filename=DEFAULT_PREDICTOR,
         predictions_path=MODEL_PATH,
         version=VERSION,
-        )
+        ):
 
     class_predicted = set()
     class_existing  = set()
