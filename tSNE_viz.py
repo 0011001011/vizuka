@@ -591,9 +591,16 @@ class Vizualization:
         self.ax.clear()
 
         similars = self.proj_by_class[class_]
-        self.ax.scatter(x=similars[:, 0],
-                        y=similars[:, 1],
-                        color='g',
+        similars_idx = self.index_by_class[class_]
+        similars_good = [idx for idx in similars_idx if idx in self.index_good_predicted ]
+        similars_bad  = [idx for idx in similars_idx if idx in self.index_bad_predicted ]
+        self.ax.scatter(x=np.array([self.proj[i] for i in similars_bad])[:, 0],
+                        y=np.array([self.proj[i] for i in similars_bad])[:, 1],
+                        color='r',
+                        marker='+')
+        self.ax.scatter(x=similars_bad[:, 0],
+                        y=similars_bad[:, 1],
+                        color='b',
                         marker='+')
         logging.info("done")
 
