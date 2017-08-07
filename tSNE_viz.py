@@ -254,22 +254,6 @@ def find_projected_in_cluster(cluster, cluster_by_idx):
 
     return selected_idx
 
-def find_projected_in_rect(x, y, proj, resolution, amplitude, transactions_raw):
-    """
-    Returns raw transactions in tile containing (param:x,param:y)
-    """
-
-    x_g, y_g = find_grid_position(x, y, resolution, amplitude)
-    transactions_index = []
-
-    for idx, (x_p, y_p) in enumerate(proj):
-        if (x_g, y_g) == find_grid_position(x_p, y_p, resolution, amplitude):
-            transactions_index.append(idx)
-
-    transactions = [transactions_raw[idx] for idx in transactions_index]
-
-    return transactions
-
 
 class Vizualization:
 
