@@ -20,8 +20,10 @@ class Viz_handler():
         print ('a\n'*5)
         self.window.show()
         print ('b\n'*5)
-        sys.exit(self.app.exec_())
+        self.plotting.canvas.draw()
         print ('c\n'*5)
+        sys.exit(self.app.exec_())
+        print ('e\n'*5)
 
     def __init__(self, viz_engine, figure, onclick):
 
@@ -115,7 +117,7 @@ class Viz_handler():
         plot_wrapper_box.addWidget(self.plotting)
 
         panel.setLayout(plot_wrapper_box)
-        dock = QtGui.QDockWidget('main_figure', root)
+        dock = QtGui.QDockWidget('', root)
         root.addDockWidget(QtCore.Qt.LeftDockWidgetArea, dock)
         dock.setWidget(panel)
         

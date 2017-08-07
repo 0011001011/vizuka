@@ -600,8 +600,8 @@ class Vizualization:
                         color='g',
                         marker='+')
         logging.info("done")
-
-        plt.draw()
+        
+        self.refresh_graph()
 
     def update_showall(self, class_, color="green"):
         """
@@ -631,7 +631,7 @@ class Vizualization:
             self.update_summary(clicked_cluster)
 
         self.print_summary(self.summary_axe)
-        plt.draw()
+        self.refresh_graph()
         logging.info("done")
 
 
@@ -778,7 +778,7 @@ class Vizualization:
             self.reset_summary()
             self.reset_viz()
 
-        plt.draw()
+        self.refresh_graph()
 
     def reset_viz(self):
         """
@@ -957,7 +957,7 @@ class Vizualization:
                                   **kwargs,
                                   )
                               )
-        plt.draw()
+        self.refresh_graph()
     
     def apply_borders(self, normalize_frontier, frontier_builder, *args):
         """
@@ -1208,7 +1208,7 @@ class Vizualization:
                 self.similarity_measure,
                 self.axes_needing_borders
                 )
-        plt.draw()
+        self.refresh_graph()
         logging.info('frontiers : applied '+method)
 
     def request_new_clustering(self, method):
@@ -1256,7 +1256,7 @@ class Vizualization:
             axe.set_xlim(-self.amplitude / 2, self.amplitude / 2)
             axe.set_ylim(-self.amplitude / 2, self.amplitude / 2)
         
-        plt.draw()
+        self.refresh_graph()
 
     def update_all_heatmaps_v2(self):
         """
@@ -1274,7 +1274,7 @@ class Vizualization:
             axe.set_xlim(-self.amplitude / 2, self.amplitude / 2)
             axe.set_ylim(-self.amplitude / 2, self.amplitude / 2)
         
-        plt.draw()
+        self.refresh_graph()
 
     def update_summary(self, current_cluster):
         """
@@ -1401,7 +1401,7 @@ class Vizualization:
         self.view_details.update( indexes_shown )
         logging.info("Details=loaded")
 
-        plt.draw()
+        self.refresh_graph()
     
     def add_heatmap_v2(self, heatmap_builder, axe):
         """
@@ -1449,6 +1449,7 @@ class Vizualization:
         self.view_details = View_details(self.x_raw)
         
         self.f = matplotlib.figure.Figure()
+        self.viz_handler = Viz_handler(self, self.f, self.onclick)
 
         # main subplot with the scatter plot
         self.ax = self.f.add_subplot(3, 1, (1, 2))
@@ -1499,14 +1500,16 @@ class Vizualization:
         #        self.axes_needing_borders)
         self.request_new_frontiers('none')
         
-        self.viz_handler = Viz_handler(self, self.f, self.onclick)
 
         logging.info('Vizualization=ready')
 
     def show(self):
         logging.info("showing")
-        self.view_details.show()
+        #self.view_details.show()
         self.viz_handler.show()
+
+    def refresh_graph(self):
+        self.viz_handler.plotting.canvas.draw()
 
 
 
@@ -1593,6 +1596,6 @@ if __name__ == '__main__':
     )
     
     f.plot()
-    plt.ion()
+    #plt.ion()
     f.show()
 
