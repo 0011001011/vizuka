@@ -130,7 +130,7 @@ def preprocess_meta(raws, inputs, predictions,
                 originals=raws)
     if predictions_filename!='':
         np.savez(
-                os.path.filejoin(base_path, predictions_filename+version+'.npz'),
+                os.path.join(base_path, predictions_filename+version+'.npz'),
                 pred=predictions
                 )
     
