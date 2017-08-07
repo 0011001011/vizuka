@@ -7,14 +7,16 @@ TSNE_DATA_PATH  = os.path.join(BASE_PATH, 'data/set/tSNE/')
 MODEL_PATH      = os.path.join(BASE_PATH, 'data/models/')
 GRAPH_PATH      = os.path.join(BASE_PATH, 'graph/')
 
+
 # File containing data to be t-SNEed
 INPUT_FILE_BASE_NAME = 'onehot'
-
-# A version is a string added to the end of each filename
-VERSION = '_20170728'
+RAW_NAME = 'originals'
 
 # default RN for predictions
 DEFAULT_PREDICTOR = 'metapredict'
+
+# A version is a string added to the end of each filename
+VERSION = '_20170807'
 
 # data output name (labels)
 OUTPUT_NAME = 'account'

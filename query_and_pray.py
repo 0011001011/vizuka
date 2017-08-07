@@ -3,7 +3,15 @@ Query some datas directly from databases
 Then prepare it for the vizualization
 It should be launced only once in a while
 """
-from config.manakin import URI
+from config.manakin import (
+        URI,
+        DATA_PATH,
+        INPUT_FILE_BASE_NAME,
+        RAW_NAME,
+        MODEL_PATH,
+        VERSION,
+        )
+
 
 import numpy as np
 import ipdb
@@ -57,9 +65,11 @@ def separate(datas, output_engine_pk):
     return raws, inputs, predictions, reality
 
 def preprocess_meta(raws, inputs, predictions,
-        name_file="xy.npz",
-        name_originals='originals.npz',
-        name_predictions='predictions.npz',
+        base_path=DATA_PATH,
+        preprocessed_filename=INPUT_FILE_BASE_NAME,
+        raw_filename=RAW_NAME,
+        predictions_filename=MODEL_PATH,
+        version=VERSION,
         save=False):
 
     class_predicted = set()
@@ -105,10 +115,22 @@ def preprocess_meta(raws, inputs, predictions,
         xs.append(x)
         ys.append(raws[idx][-3])
 
-    if save:
-        np.savez(name_file, x=xs, y_account_decoded=ys, account_encoder=encoder)
-        np.savez(name_originals, originals=raws)
-        np.savez(name_predictions, pred=predictions)
+    if preprocessed_filename!='':
+        np.savez(
+                os.path.join(base_path,preprocessed_filename+version+'.npz'),
+                x=xs,
+                y_account_decoded=ys,
+                account_encoder=encoder
+                )
+    if raw_filename!='':
+        np.savez(
+                os.path.join(base_path,raw_filename+version+'.npz'),
+                originals=raws)
+    if predictions_filename!='':
+        np.savez(
+                os.path.filejoin(base_path, predictions_filename+version+'.npz'),
+                pred=predictions
+                )
     
     return xs, ys, encoder
 
@@ -118,4 +140,8 @@ if __name__=='__main__':
     logging.info('sort results')
     raws, inputs, predictions, reality = separate(datas, meta_pk)
     logging.info('preprocess data')
-    xs, ys, encoder = preprocess_meta(raws, inputs, predictions, save=True)
+    xs, ys, encoder = preprocess_meta(
+            raws,
+            inputs,
+            predictions,
+            save=True)
