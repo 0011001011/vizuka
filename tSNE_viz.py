@@ -1513,7 +1513,7 @@ if __name__ == '__main__':
     PARAMS['perplexities'] = [40, 50, 60, 70, 80]
     PARAMS['learning_rates'] = [800, 1000]
     PARAMS['inits'] = ['random', 'pca']
-    PARAMS['n_iters'] = [15000]
+    PARAMS['n_iters'] = [10000, 15000]
     PARAM_VIZ = (80, 1000, 'random', 15000)
 
     logging.info("raw_data=loading")
