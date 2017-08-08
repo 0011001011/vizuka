@@ -25,17 +25,16 @@ logging.basicConfig(level=logging.DEBUG)
 
 def query_meta(uri, set_name):
     MDI = db_interface.MetaDatabaseInterface(uri)
-    meta_name = MDI._register_algorithm_name("meta")
+    meta_pk = MDI._register_algorithm_name("meta")
+    oracle_pk = MDI._register_algorithm_name("final")
     transactions = MDI.get_training_inputs_auto_readable(set_name)
     transactions = [*transactions]
     
-    return transactions, meta_name
+    return transactions, meta_pk, oracle_pk
 
 def query_meta_all_sets(uri=URI):
-    test = query_meta(uri, 'test')
+    test, meta_pk, oracle_pk = query_meta(uri, 'test')
     logging.info('query_test=ready\n')
-    meta_pk = test[1]
-    test=test[0]
     validation = query_meta(uri, 'validation')[0]
     logging.info('query_validation=ready\n')
     test+= validation
@@ -44,16 +43,15 @@ def query_meta_all_sets(uri=URI):
     logging.info('queries merged')
 
 
-    return test, meta_pk
+    return test, meta_pk, oracle_pk
 
-def separate(datas, output_engine_pk):
+def separate(datas, output_engine_pk, oracle_pk):
     raws = datas[:,range(len(datas[0])-1)]
     engines_results = datas[:,-1]
 
     inputs = [[] for _ in range(len(engines_results))]
     predictions=[None for _ in range(len(engines_results))]
     reality = [None for _ in range(len(engines_results))]
-    oracle_pk = 3
 
     for idx,r in enumerate(engines_results):
         for e in r:
@@ -87,9 +85,9 @@ def preprocess_meta(raws, inputs, predictions,
     engines = list(engines)
 
     for transaction in raws:
-        class_existing.add(transaction[-4])
-    for transaction in predictions:
-        class_existing.add(transaction[-4])
+        class_existing.add(transaction[-3])
+    for prediction in predictions:
+        class_existing.add(prediction[2])
 
     all_class = class_predicted.union(class_existing)
 
@@ -133,16 +131,16 @@ def preprocess_meta(raws, inputs, predictions,
     if predictions_filename!='':
         np.savez(
                 os.path.join(base_path, predictions_path, predictions_filename+version+'.npz'),
-                pred=predictions
+                pred=np.array(predictions)[:,2],
                 )
     
     return xs, ys, encoder
 
 if __name__=='__main__':
     logging.info('query db')
-    datas, meta_pk = query_meta_all_sets(URI)
+    datas, meta_pk, oracle_pk = query_meta_all_sets(URI)
     logging.info('sort results')
-    raws, inputs, predictions, reality = separate(datas, meta_pk)
+    raws, inputs, predictions, reality = separate(datas, meta_pk, oracle_pk)
     logging.info('preprocess data')
     xs, ys, encoder = preprocess_meta(
             raws,
