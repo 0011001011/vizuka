@@ -582,14 +582,16 @@ class Vizualization:
         similars_idx = self.index_by_class[class_]
         similars_good = [idx for idx in similars_idx if idx in self.index_good_predicted ]
         similars_bad  = [idx for idx in similars_idx if idx in self.index_bad_predicted ]
-        self.ax.scatter(x=np.array([self.proj[i] for i in similars_bad])[:, 0],
-                        y=np.array([self.proj[i] for i in similars_bad])[:, 1],
-                        color='r',
-                        marker='+')
-        self.ax.scatter(x=similars_bad[:, 0],
-                        y=similars_bad[:, 1],
-                        color='b',
-                        marker='+')
+        if len(similars_bad):
+            self.ax.scatter(x=np.array([self.proj[i] for i in similars_bad])[:, 0],
+                            y=np.array([self.proj[i] for i in similars_bad])[:, 1],
+                            color='r',
+                            marker='+')
+        if len(similars_good):
+            self.ax.scatter(x=np.array([self.proj[i] for i in similars_good])[:, 0],
+                            y=np.array([self.proj[i] for i in similars_good])[:, 1],
+                            color='b',
+                            marker='+')
         logging.info("done")
         
         self.refresh_graph()
@@ -1389,7 +1391,7 @@ class Vizualization:
 
         indexes_shown = self.get_selected_indexes()
 
-        self.view_details.update( indexes_shown )
+        #self.view_details.update( indexes_shown )
         logging.info("Details=loaded")
 
         self.refresh_graph()
@@ -1437,10 +1439,11 @@ class Vizualization:
         Plot the Vizualization, define axes, add scatterplot, buttons, etc..
         """
 
-        self.view_details = View_details(self.x_raw)
+        #self.view_details = View_details(self.x_raw)
         
         self.f = matplotlib.figure.Figure()
         self.viz_handler = Viz_handler(self, self.f, self.onclick)
+        
 
         # main subplot with the scatter plot
         self.ax = self.f.add_subplot(3, 1, (1, 2))
@@ -1496,11 +1499,12 @@ class Vizualization:
 
     def show(self):
         logging.info("showing")
-        #self.view_details.show()
         self.viz_handler.show()
+        #self.view_details.show()
+        print('\n'*10+'AAA')
 
     def refresh_graph(self):
-        self.viz_handler.plotting.canvas.draw()
+        self.viz_handler.refresh()
 
 
 

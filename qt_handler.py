@@ -17,13 +17,12 @@ import ipdb
 class Viz_handler():
 
     def show(self):
-        print ('a\n'*5)
         self.window.show()
-        print ('b\n'*5)
         self.plotting.canvas.draw()
-        print ('c\n'*5)
         sys.exit(self.app.exec_())
-        print ('e\n'*5)
+
+    def refresh(self):
+        self.plotting.canvas.draw()
 
     def __init__(self, viz_engine, figure, onclick):
 
