@@ -1,9 +1,12 @@
+import metier
+
 import numpy as np
 import pandas as pd
 import ipdb
 from matplotlib import pyplot as plt
 import seaborn as sns
 import logging
+from collections import Counter
 
 from config.references import GRAPH_PATH
 from config.manakin import (
@@ -52,8 +55,7 @@ class View_details():
                 pass
 
         class Scatter_plot(): #VUE
-            def __init__(self, subplot, graph_path):
-                self.subplot = subplot
+            def __init__(self, graph_path):
                 self.graph_path = graph_path
 
             def update(self, df):
@@ -81,19 +83,20 @@ class View_details():
                 g.savefig(self.graph_path + 'details.pdf', format='pdf', dpi=1200)
                 logging.debug('transactions in cluster(s):\n'+str(df))
 
+                return g.fig
+
         class Random_plot(): #VUE
             def __init__(self, subplot):
                 self.subplot = subplot
-
             def update(self):
                 self.subplot.plot(np.random.rand(50))
         
-        self.figure = sns.plt.figure(2)
+        #self.figure = figure
         self.graph_path = graph_path
-        self.montant_plot = Montant_plot(self.figure.add_subplot(2,2,1))
-        self.scatter_plot = Scatter_plot(self.figure.add_subplot(2,2,2), graph_path=self.graph_path)
-        self.details3_plot = Words_plot(self.figure.add_subplot(2,2,3))
-        self.details4_plot = Random_plot(self.figure.add_subplot(2,2,4))
+        #self.montant_plot = Montant_plot(self.figure.add_subplot(2,2,1))
+        self.scatter_plot = Scatter_plot(graph_path=self.graph_path)
+        #self.details3_plot = Words_plot(self.figure.add_subplot(2,2,3))
+        #self.details4_plot = Random_plot(self.figure.add_subplot(2,2,4))
 
         self.raw_datas = raw_datas
         self.columns_to_scatter = columns_to_scatter
@@ -122,7 +125,7 @@ class View_details():
             if current_label in commons[:max_to_display]:
                 montant_dict[current_label].append(current_x[montant_column])
 
-        self.montant_plot.update(montant_dict)
+        #self.montant_plot.update(montant_dict)
 
         df = metier.Annotations(transaction_list)
         for col in df.columns:
@@ -130,13 +133,16 @@ class View_details():
                 df = df.drop(col, axis=1)
             elif 'date' not in col:
                 df[col] = df[col].convert_objects(convert_numeric=True)
-        self.scatter_plot.update(df)
         
-        self.scatter_df   = df
-        self.montant_dict = montant_dict
 
+        self.scatter_df   = df
+        ipdb.set_trace()
+        self.montant_dict = montant_dict
+        
+        fig = self.scatter_plot.update(df.dropna())
         logging.info("View_details: ready")
-        self.show()
+        return fig
+
 
     def show(self):
         self.figure.show()

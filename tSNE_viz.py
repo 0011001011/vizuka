@@ -1,6 +1,9 @@
 import matplotlib
 matplotlib.use('Qt4Agg')  # noqa
 import sys
+from threading import Thread
+from multiprocessing import Process
+import seaborn as sns
 
 from qt_handler import Viz_handler
 import labelling
@@ -304,8 +307,10 @@ class Vizualization:
         self.x_raw = x_raw
         self.n_clusters = n_clusters 
         self.class_decoder = class_decoder
+        self.special_class = special_class
         
-        self.labels = set(self.class_decoder(y_encoded) for y_encoded in self.y_true)
+        self.labels = list({self.class_decoder(y_encoded) for y_encoded in self.y_true})
+        self.labels.sort()
 
         self.proj_by_class = {y: [] for y in self.y_true_decoded}
         self.total_individual = {}
@@ -368,7 +373,7 @@ class Vizualization:
         )
 
         # Sort good/bad/not predictions in t-SNE space
-        logging.info("projections=sorting")
+        logging.info("projections=listing")
         self.proportion_by_class = { 
                 class_:
                 sum([
@@ -378,6 +383,7 @@ class Vizualization:
                 /float(len(self.index_by_class[class_]))
                 for class_ in self.labels
                 }
+        logging.info("projections=sorting")
         self.x_proj_good = np.array([self.proj[i] for i in self.index_good_predicted])
         self.x_proj_bad  = np.array([self.proj[i] for i in self.index_bad_predicted])
         self.x_proj_null = np.array([self.proj[i] for i in self.index_not_predicted])
@@ -568,65 +574,60 @@ class Vizualization:
                                                                   similarity_check)
         return already_checked, similars
 
-    def update_showonly(self, class_):
+    def filter_class(self, states_by_class):
+        all_unchecked = ( 0 == sum(states_by_class.values()) )
+
+        to_scatter = set()
+        for class_, state in states_by_class.items():
+            if state or all_unchecked:
+                to_scatter.add(class_)
+        
+        self.update_showonly(to_scatter, all_unchecked=all_unchecked)
+
+
+    def update_showonly(self, classes, all_unchecked):
         """
         Hide all other label but class_
 
-        :param class_: label (decoded) to search and plot
+        :param classes: labels (decoded) to search and plot
         """
 
         logging.info("begin hiding...")
-        self.ax.clear()
 
-        similars = self.proj_by_class[class_]
-        similars_idx = self.index_by_class[class_]
-        similars_good = [idx for idx in similars_idx if idx in self.index_good_predicted ]
-        similars_bad  = [idx for idx in similars_idx if idx in self.index_bad_predicted ]
-        if len(similars_bad):
-            self.ax.scatter(x=np.array([self.proj[i] for i in similars_bad])[:, 0],
-                            y=np.array([self.proj[i] for i in similars_bad])[:, 1],
-                            color='r',
-                            marker='+')
-        if len(similars_good):
-            self.ax.scatter(x=np.array([self.proj[i] for i in similars_good])[:, 0],
-                            y=np.array([self.proj[i] for i in similars_good])[:, 1],
-                            color='b',
-                            marker='+')
-        logging.info("done")
-        
+        for i in self.ax.get_children():
+            if isinstance(i, matplotlib.collections.PathCollection):
+                i.remove()
+
+        for class_ in classes:
+            similars = self.proj_by_class[class_]
+            similars_idx = self.index_by_class[class_]
+            similars_good = [idx for idx in similars_idx if idx in self.index_good_predicted ]
+            similars_bad  = [idx for idx in similars_idx if idx in self.index_bad_predicted ]
+            if len(similars_bad):
+                if all_unchecked and str(class_) == str(self.special_class):
+                    continue
+                self.ax.scatter(x=np.array([self.proj[i] for i in similars_bad])[:, 0],
+                                y=np.array([self.proj[i] for i in similars_bad])[:, 1],
+                                color='r',
+                                marker='+')
+            if len(similars_good):
+                if all_unchecked and class_ == self.special_class:
+                    continue
+                self.ax.scatter(x=np.array([self.proj[i] for i in similars_good])[:, 0],
+                                y=np.array([self.proj[i] for i in similars_good])[:, 1],
+                                color='b',
+                                marker='+')
+        if all_unchecked:
+            self.ax.scatter(
+                    x=np.array([self.proj[i] for i in self.index_by_class[self.special_class]])[:,0],
+                    y=np.array([self.proj[i] for i in self.index_by_class[self.special_class]])[:,1],
+                    color='g',
+                    marker='x')
+            self.ax.set_title(self.ax_base_title)
+        else:
+            self.ax.set_title(''.join([str(class_)+' ' for class_ in classes]))
+
         self.refresh_graph()
-
-    def update_showall(self, class_, color="green"):
-        """
-        Colorizes on label with specific color
-
-        :param class_: label (decoded) to colorize
-        :param color: color to use for :param class_:
-        """
-
-        logging.info("begin colorizing...")
-        similars = self.proj_by_class[class_]
-
-        self.ax.scatter(
-            similars[:, 0],
-            similars[:, 1],
-            color=color,
-            marker='+'
-        )
-
-        # similarity_check = contains_dominant if not self.ctrl_held else lambda x:x
-        similar_clusters = self.find_specific_clusters(class_=class_)
-
-        for x_g, y_g in similar_clusters:
-            clicked_cluster = self.clusterizer.predict([(x,y)])[0] #TODO SOON
-            logging.info("colorizing cluster", x_g, y_g)
-            #ipdb.set_trace()
-            self.update_summary(clicked_cluster)
-
-        self.print_summary(self.summary_axe)
-        self.refresh_graph()
-        logging.info("done")
-
 
     def onmodifier_press(self, event):
         if event.key == 'shift':
@@ -1352,10 +1353,15 @@ class Vizualization:
                     + '{0:.2f}'.format(self.local_effectif[c]/self.total_individual[c]*100)+"%)"),
                 (
                     '{0:.2f}'.format(self.local_proportion[c]*100)+"% ("+
-                    '{0:.2f}'.format((self.local_proportion[c]-self.proportion_by_class[c])*100)+"%)"),
-                '{0:.0f}'.format(self.total_individual[c]),
-                #self.index_good_predicted,
-                '{0:.2f}'.format(self.proportion_by_class[c])
+                    '{0:.2f}'.format((self.local_proportion[c]-self.proportion_by_class[c])*100)+"%)"
+                    ),
+                (
+                    '{0:.0f}'.format(self.total_individual[c])+' ('+
+                    '{0:.2f}'.format(self.total_individual[c]/float(len(self.proj))*100)+'%)'
+                    ),
+                
+                '{0:.2f}'.format(self.proportion_by_class[c]*100)
+                    
             ]
             for c in row_labels
         ]
@@ -1430,7 +1436,22 @@ class Vizualization:
     def view_details_figure(self):
         logging.info('exporting:...')
         indexes = self.get_selected_indexes()
-        self.view_details.update(indexes)
+        """
+        class Scatterplot_plot(Thread):
+            def __init__(self, view_details, indexes):
+                Thread.__init__(self)
+                self.view_details = view_details
+                self.indexes = indexes
+            def run(self):
+                self.view_details.update(self.indexes)
+        Scatterplot_plot(self.view_details, indexes).start()
+        """
+
+        """
+        Process(target=self.view_details.update, args=(indexes,)).start()
+        """
+
+        self.viz_handler.set_additional_graph(self.view_details.update(indexes))
         logging.info('exporting: done')
 
 
@@ -1439,15 +1460,19 @@ class Vizualization:
         Plot the Vizualization, define axes, add scatterplot, buttons, etc..
         """
 
-        #self.view_details = View_details(self.x_raw)
         
         self.f = matplotlib.figure.Figure()
-        self.viz_handler = Viz_handler(self, self.f, self.onclick)
+        self.f2 = matplotlib.figure.Figure()
+        #self.f2 = sns.plt.figure()
+        
+        self.view_details = View_details(self.x_raw)
+        self.viz_handler = Viz_handler(self, self.f, self.f2, self.onclick)
         
 
         # main subplot with the scatter plot
         self.ax = self.f.add_subplot(3, 1, (1, 2))
-        self.ax.set_title('Heatmap: correctVSincorrect predictions')
+        self.ax_base_title = 'Correct VS incorrect predictions'
+        self.ax.set_title(self.ax_base_title)
 
         # summary_subplot with table of local stats
         self.summary_axe = self.f.add_subplot(3, 2, 5)
@@ -1455,9 +1480,9 @@ class Vizualization:
 
         # heatmap subplots
         # contain proportion of correct prediction and entropy
-        self.heat_proportion = self.f.add_subplot(3, 4, 11)
+        self.heat_proportion = self.f.add_subplot(3, 4, 11, sharex=self.ax, sharey=self.ax)
         self.heat_proportion.set_title('Observations')
-        self.heat_entropy = self.f.add_subplot(3, 4, 12)
+        self.heat_entropy = self.f.add_subplot(3, 4, 12, sharex=self.ax, sharey=self.ax)
         self.heat_entropy.set_title('Heatmap: cross-entropy localVSglobal')
 
         self.axes_needing_borders = (self.ax, self.heat_proportion, self.heat_entropy)

@@ -18,17 +18,21 @@ class Viz_handler():
 
     def show(self):
         self.window.show()
-        self.plotting.canvas.draw()
+        self.additional_window.show()
+        self.refresh()
         sys.exit(self.app.exec_())
 
     def refresh(self):
-        self.plotting.canvas.draw()
+        for p in self.plottings:
+            p.canvas.draw()
 
-    def __init__(self, viz_engine, figure, onclick):
+    def __init__(self, viz_engine, figure, additional_figure, onclick):
 
         self.viz_engine = viz_engine
         self.figure = figure
+        self.additional_figure = additional_figure
         self.onclick = onclick
+        self.plottings = []
         
         # configure the app + main window
         self.app = QtGui.QApplication(sys.argv)
@@ -36,23 +40,23 @@ class Viz_handler():
         self.window.setWindowTitle('Data vizualization')
 
         # add the main figure
-        self.add_figure(self.figure, self.onclick)
+        self.add_figure(self.figure, self.onclick, window=self.window)
+
+        # add additional window
+        class Additional_Window(QtGui.QMainWindow):
+            def __init__(self, parent=None):
+                super(Additional_Window, self).__init__(parent)
+        self.additional_window = Additional_Window(self.window)
+        #self.add_figure(self.additional_figure, onclick=None, window=self.additional_window)
 
         # add textbox
         self.textboxs = {}
         #logging.info("textboxs=adding")
-        self.textboxs['show_only'] = self.add_text_panel(
-            'Show one label',
-            self.textbox_function_showonly
-        )
-        self.textboxs['show_all'] = self.add_text_panel(
-            'Select all with label',
-            self.textbox_function_showall
-        )
         self.textboxs['n_clusters'] = self.add_text_panel(
                 'Number of clusters (default:120)',
             self.textbox_function_n_clusters
         )
+        self.add_checkboxes(self.viz_engine.labels, self.viz_engine.filter_class)
         #logging.info("textboxs=ready")
 
         # add button
@@ -75,7 +79,11 @@ class Viz_handler():
 
         #logging.info('Vizualization=ready')
 
-    def add_figure(self, figure, onclick):
+    def set_additional_graph(self, fig):
+        self.add_figure(fig, onclick=lambda x:x, window=self.additional_window)
+        self.refresh()
+
+    def add_figure(self, figure, onclick, window):
 
         class MatplotlibWidget(QtGui.QWidget):
             def __init__(self, figure, onclick, parent=None, *args, **kwargs):
@@ -108,12 +116,12 @@ class Viz_handler():
                 layout.addWidget(self.canvas)
                 self.setLayout(layout)
 
-        root = self.window
+        root = window
         panel = QtGui.QWidget()
         plot_wrapper_box = QtGui.QHBoxLayout(panel)
 
-        self.plotting = MatplotlibWidget(figure=figure, onclick=onclick)
-        plot_wrapper_box.addWidget(self.plotting)
+        self.plottings.append(MatplotlibWidget(figure=figure, onclick=onclick))
+        plot_wrapper_box.addWidget(self.plottings[-1])
 
         panel.setLayout(plot_wrapper_box)
         dock = QtGui.QDockWidget('', root)
@@ -207,31 +215,31 @@ class Viz_handler():
 
         return textbox
 
-    def textbox_function_showonly(self):
-        """
-        Wrapper for textbox, to use self.update_showonly
-        without specifying parameters
-        """
-        class_str = self.textboxs['show_only'].text()
-        if class_str == '':
-            self.viz_engine.reset_viz()
-        else:
-            class_ = int(class_str)
-            self.viz_engine.update_showonly(class_)
+    def add_checkboxes(self, items_name, action):
+        root = self.window
+        panel = QtGui.QWidget()
+        hbox = QtGui.QHBoxLayout(panel)
+        my_qlist = QtGui.QListWidget()
+        my_item_list={}
 
+        for i in items_name:
+            item = QtGui.QListWidgetItem()
+            item.setText(str(i))
+            item.setFlags(item.flags() | QtCore.Qt.ItemIsUserCheckable)
+            item.setCheckState(QtCore.Qt.Unchecked)
+            my_qlist.addItem(item)
+            my_item_list[i]=item
 
-    def textbox_function_showall(self):
-        """
-        Wrapper for textbox, to use self.update_showall
-        without specifying parameters
-        """
-        class_str = self.textboxs['show_all'].text()
-        if class_str == '':
-            self.viz_engine.reset_viz()
-        else:
-            class_ = int(class_str)
-            self.viz_engine.update_showall(class_)
-    
+        my_qlist.itemChanged.connect(
+                lambda:action( {item_name:my_item_list[item_name].checkState() for item_name in items_name} )
+                )
+        hbox.addWidget(my_qlist)
+        panel.setLayout(hbox)
+
+        dock = QtGui.QDockWidget('Filter class', root)
+        root.addDockWidget(QtCore.Qt.RightDockWidgetArea, dock)
+        dock.setWidget(panel)
+
     def textbox_function_n_clusters(self):
         """
         Wrapper for textbox, to change n_clusters
