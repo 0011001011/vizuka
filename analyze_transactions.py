@@ -136,7 +136,7 @@ class View_details():
         
 
         self.scatter_df   = df
-        ipdb.set_trace()
+        #ipdb.set_trace()
         self.montant_dict = montant_dict
         
         fig = self.scatter_plot.update(df.dropna())
