@@ -50,7 +50,7 @@ def separate(datas, output_engine_pk, oracle_pk):
     engines_results = datas[:,-1]
 
     inputs = [[] for _ in range(len(engines_results))]
-    predictions=[None for _ in range(len(engines_results))]
+    predictions=[0 for _ in range(len(engines_results))] # nothing predicted is class 0 predicted
     reality = [None for _ in range(len(engines_results))]
 
     for idx,r in enumerate(engines_results):
