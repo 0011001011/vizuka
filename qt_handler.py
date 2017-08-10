@@ -50,6 +50,7 @@ class Viz_handler():
         self.app = QtGui.QApplication(sys.argv)
         self.window = QtGui.QMainWindow()
         self.window.setWindowTitle('Data vizualization')
+        self.window.showMaximized()
 
         # add the main figure
         self.add_figure(self.figure, self.onclick, window=self.window)
@@ -58,37 +59,60 @@ class Viz_handler():
         class Additional_Window(QtGui.QMainWindow):
             def __init__(self, parent=None):
                 super(Additional_Window, self).__init__(parent)
+                self.setWindowTitle('Scatter Plot')
         self.additional_window = Additional_Window(self.window)
         #self.add_figure(self.additional_figure, onclick=None, window=self.additional_window)
+
+        right_dock = QtCore.Qt.RightDockWidgetArea
 
         # add textbox
         self.textboxs = {}
         #logging.info("textboxs=adding")
         self.textboxs['n_clusters'] = self.add_text_panel(
-                'Number of clusters (default:120)',
-            self.textbox_function_n_clusters
+            'Number of clusters (default:120)',
+            self.textbox_function_n_clusters,
+            right_dock,
         )
-        self.add_checkboxes(self.viz_engine.labels, self.viz_engine.filter_class)
-        self.add_checkboxes(['detect mouse event'], self.toogle_detect_mouse_event)
+        self.add_checkboxes(
+                self.viz_engine.labels,
+                self.viz_engine.filter_class,
+                right_dock,
+                )
+        self.add_checkboxes(
+                ['detect mouse event'],
+                self.toogle_detect_mouse_event,
+                right_dock,
+                )
         #logging.info("textboxs=ready")
 
         # add button
         #logging.info("action buttons=adding")
-        self.add_button("Export x", lambda :self.viz_engine.export(self.viz_engine.output_path))
-        self.add_button("View_details", lambda :self.viz_engine.view_details_figure())
+        self.add_button(
+                "Export x",
+                lambda :self.viz_engine.export(self.viz_engine.output_path),
+                right_dock,
+                )
+        self.add_button(
+                "View_details",
+                lambda :self.viz_engine.view_details_figure(),
+                right_dock,
+                )
         #logging.info("action buttons=ready")
 
         # add menulist
         self.menulists = {}
         self.menulists['clustering_method'] = self.add_menulist(
                 'Clustering method',
-                'Clusterize', ['KMeans', 'Dummy'],
-                self.viz_engine.request_new_clustering)
+                'Clusterize', ['KMeans', 'DBSCAN', 'Dummy'],
+                self.viz_engine.request_new_clustering,
+                dockarea=right_dock)
         self.menulists['clustering_method'] = self.add_menulist(
-                'Borders',
+                'Clusters borders',
                 'Delimits',
                 ['Bhattacharyya', 'All', 'None'],
-                self.viz_engine.request_new_frontiers)
+                self.viz_engine.request_new_frontiers,
+                right_dock,
+                )
 
         #logging.info('Vizualization=ready')
 
@@ -147,7 +171,7 @@ class Viz_handler():
         dock.setWidget(panel)
         
 
-    def add_menulist(self, menu_name, button_name, categories, onlaunch):
+    def add_menulist(self, menu_name, button_name, categories, onlaunch, dockarea):
         """
         Add a menu list with action button
 
@@ -186,12 +210,13 @@ class Viz_handler():
         panel.setLayout(hbox)
         
         dock = QtGui.QDockWidget(menu_name, root)
-        root.addDockWidget(QtCore.Qt.RightDockWidgetArea, dock)
+        root.addDockWidget(dockarea, dock)
         dock.setWidget(panel)
+        dock.resize(QtCore.QSize(dock.width(), dock.minimumHeight()))
 
         return menulist
 
-    def add_button(self, name, action):
+    def add_button(self, name, action, dockarea):
         """
         Adds a simple button
         """
@@ -205,10 +230,10 @@ class Viz_handler():
         panel.setLayout(hbox)
 
         dock = QtGui.QDockWidget(name, root)
-        root.addDockWidget(QtCore.Qt.RightDockWidgetArea, dock)
+        root.addDockWidget(dockarea, dock)
         dock.setWidget(panel)
 
-    def add_text_panel(self, name, update):
+    def add_text_panel(self, name, update, dockarea):
         """
         Adds a text panel (how surprising) and binds it to a function
 
@@ -228,7 +253,7 @@ class Viz_handler():
         panel.setLayout(hbox)
 
         dock = QtGui.QDockWidget(name, root)
-        root.addDockWidget(QtCore.Qt.RightDockWidgetArea, dock)
+        root.addDockWidget(dockarea, dock)
         dock.setWidget(panel)
 
         return textbox
@@ -236,7 +261,7 @@ class Viz_handler():
     def toogle_detect_mouse_event(self, *args, **kwargs):
         self.detect_mouse_event = not self.detect_mouse_event
 
-    def add_checkboxes(self, items_name, action):
+    def add_checkboxes(self, items_name, action, dockarea):
         root = self.window
         panel = QtGui.QWidget()
         hbox = QtGui.QHBoxLayout(panel)
@@ -258,7 +283,7 @@ class Viz_handler():
         panel.setLayout(hbox)
 
         dock = QtGui.QDockWidget('Filter class', root)
-        root.addDockWidget(QtCore.Qt.RightDockWidgetArea, dock)
+        root.addDockWidget(dockarea, dock)
         dock.setWidget(panel)
 
     def textbox_function_n_clusters(self):
