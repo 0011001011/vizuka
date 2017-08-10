@@ -192,39 +192,6 @@ def show_occurences_total(x, y, grid, resolution, amplitude):
         return max(grid[z1][z2], key=grid[z1][z2].get)
 
 
-def dist(a, b):
-    """
-    Euclidian distance
-    """
-    return ((a[0] - b[0])**2 + (a[1] - b[1])**2)**.5
-
-
-def find_nearest(x, y, all_data):
-    """
-    Finds the nearest point in all_data (not optimized!)
-
-    :type all_data: array( (float,float) )
-    :return: (x_nearest,y_nearest), index_nearest
-    :rtype: (float, float), int
-    """
-
-    best_distance = float('inf')
-    best_point = None
-    idx = 0
-
-    logging.info("searching nearest point to", x, ":", y)
-
-    for i, point in enumerate(all_data):
-        new_dist = dist([x, y], point)
-        if best_distance > new_dist:
-            best_point = point
-            best_distance = new_dist
-            idx = i
-    logging.info("nearest seems to be ", best_point,
-                 " at distance ", best_distance)
-
-    return point, idx
-
 
 def find_similar(account_encoded, y_true_decoded, embedded):
     """
@@ -292,7 +259,7 @@ class Vizualization:
         :param y_pred: vector of predicted labels
         :param y_true: vector of true labels
         :param proj: vector of t-SNE projected data
-        :param class_decoder: function to decode labels machinetohuman
+        :param class_dn_jobs=4, ecoder: function to decode labels machinetohuman
         :param class_encoder: dict to encode labels humantomachine
         """
 
@@ -811,6 +778,9 @@ class Vizualization:
             color='g'
         )
         logging.info("scatterplot: ready")
+        
+        self.global_summary_axe.__clear()
+        self.print_global_summary(self.global_summary_axe)
 
     def reset_summary(self):
         """
@@ -1709,6 +1679,8 @@ class Vizualization:
             self.clusterizer = clustering.KmeansClusterizer(
                     n_clusters=self.n_clusters,
                     )
+        elif method=='dbscan':
+            self.clusterizer = clustering.DBSCANClusterizer()
         else:
             self.clusterizer = clustering.DummyClusterizer(
                     resolution=self.resolution,
@@ -1896,14 +1868,12 @@ class Vizualization:
 
         self.rows = row_labels
 
-        axe.table(
+        summary = axe.table(
             cellText=values,
             rowLabels=row_labels,
             colLabels=self.cols,
             loc='center',
         )
-        #ipdb.set_trace()
-
         
         logging.info("Details=loading indexes of selected")
         #selected_idxs = [self.index_by_label[label] for label in self.currently_selected_cluster ]
@@ -1915,6 +1885,36 @@ class Vizualization:
         logging.info("Details=loaded")
 
         self.refresh_graph()
+
+    def print_global_summary(self, ax, max_row=9):
+        
+        cols = ['accuracy', 'effectif']
+        most_common_classes = Counter(
+                {
+                    c:len(self.index_by_class[c]) for c in self.labels
+                    }
+                ).most_common(max_row)
+
+        row_labels = np.array(most_common_classes)[:,0]
+        values = [
+            [
+                '{0:.2f}'.format(self.proportion_by_class[c]*100)+"%",
+                (
+                    '{0:.0f}'.format(self.total_individual[c])+' ('+
+                    '{0:.2f}'.format(self.total_individual[c]/float(len(self.proj))*100)+'%)'
+                    ),
+            ]
+            for c in row_labels
+        ]
+
+        summary = ax.table(
+            cellText=values,
+            rowLabels=row_labels,
+            colLabels=cols,
+            loc='center',
+        )
+        summary.auto_set_font_size(False)
+        summary.set_fontsize(8)
     
     def add_heatmap_v2(self, heatmap_builder, axe):
         """
@@ -1980,12 +1980,19 @@ class Vizualization:
         self.summary_axe = self.main_fig.add_subplot(gs[2,:3])
         self.summary_axe.axis('off')
 
+        self.global_summary_axe = self.main_fig.add_subplot(gs[2,3])
+        self.global_summary_axe.axis('off')
+        self.print_global_summary(self.global_summary_axe)
+
         # heatmap subplots
         # contain proportion of correct prediction and entropy
-        self.heat_proportion = self.main_fig.add_subplot(gs[2,3], sharex=self.ax, sharey=self.ax)
+        self.heat_proportion = self.main_fig.add_subplot(gs[1,3], sharex=self.ax, sharey=self.ax)
         self.heat_proportion.set_title('\nHeatmap: accuracy')
+        self.heat_proportion.axis('off')
+
         self.heat_entropy = self.main_fig.add_subplot(gs[0,3], sharex=self.ax, sharey=self.ax)
         self.heat_entropy.set_title('\nHeatmap: cross-entropy cluster/all')
+        self.heat_entropy.axis('off')
 
         self.axes_needing_borders = (self.ax, self.heat_proportion, self.heat_entropy)
 
