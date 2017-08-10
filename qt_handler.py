@@ -12,6 +12,13 @@ import logging
 import ipdb
 
 #logging.basicConfig(level=logging.DEBUG)
+def onclick_wrapper(onclick):
+    def wrapper(*args, **kwargs):
+        if args[0].detect_mouse_event: # args[0] is self
+            return onclick(*args, **kwargs)
+        else:
+            return lambda x:None
+    return wrapper
 
 
 class Viz_handler():
@@ -25,15 +32,20 @@ class Viz_handler():
     def refresh(self):
         for p in self.plottings:
             p.canvas.draw()
+    
+    @onclick_wrapper
+    def onclick(self, *args, **kwargs):
+        self.base_onclick(*args, **kwargs)
 
-    def __init__(self, viz_engine, figure, additional_figure, onclick):
+    def __init__(self, viz_engine, figure, onclick):
 
         self.viz_engine = viz_engine
         self.figure = figure
-        self.additional_figure = additional_figure
-        self.onclick = onclick
-        self.plottings = []
+        self.detect_mouse_event = False
         
+        self.base_onclick = onclick
+        self.plottings = []
+
         # configure the app + main window
         self.app = QtGui.QApplication(sys.argv)
         self.window = QtGui.QMainWindow()
@@ -57,6 +69,7 @@ class Viz_handler():
             self.textbox_function_n_clusters
         )
         self.add_checkboxes(self.viz_engine.labels, self.viz_engine.filter_class)
+        self.add_checkboxes(['detect mouse event'], self.toogle_detect_mouse_event)
         #logging.info("textboxs=ready")
 
         # add button
@@ -120,7 +133,12 @@ class Viz_handler():
         panel = QtGui.QWidget()
         plot_wrapper_box = QtGui.QHBoxLayout(panel)
 
-        self.plottings.append(MatplotlibWidget(figure=figure, onclick=onclick))
+        self.plottings.append(
+                MatplotlibWidget(
+                    figure=figure,
+                    onclick=onclick
+                    )
+                )
         plot_wrapper_box.addWidget(self.plottings[-1])
 
         panel.setLayout(plot_wrapper_box)
@@ -214,6 +232,9 @@ class Viz_handler():
         dock.setWidget(panel)
 
         return textbox
+
+    def toogle_detect_mouse_event(self, *args, **kwargs):
+        self.detect_mouse_event = not self.detect_mouse_event
 
     def add_checkboxes(self, items_name, action):
         root = self.window
