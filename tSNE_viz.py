@@ -1,5 +1,7 @@
 import matplotlib
 matplotlib.use('Qt4Agg')  # noqa
+from matplotlib.gridspec import GridSpec
+
 import sys
 from threading import Thread
 from multiprocessing import Process
@@ -1264,7 +1266,11 @@ class Vizualization:
         ..note:: does not touch the summary array, for this use self.reset_summary()
         """
         logging.info("scatterplot: removing specific objects")
-        for i in self.ax.get_children():
+        for i in [
+                *self.ax.get_children(),
+                *self.heat_entropy.get_children(),
+                *self.heat_proportion.get_children(),
+                ]:
             if isinstance(i, matplotlib.collections.PathCollection):
                 i.remove()
             elif isinstance(i, matplotlib.lines.Line2D):
@@ -1957,25 +1963,28 @@ class Vizualization:
 
         
         self.main_fig = matplotlib.figure.Figure()
+
+        gs=GridSpec(3,4)
         
         self.view_details = View_details(self.x_raw)
         self.viz_handler = Viz_handler(self, self.main_fig, self.onclick)
         
 
         # main subplot with the scatter plot
-        self.ax = self.main_fig.add_subplot(3, 1, (1, 2))
+        #self.ax = self.main_fig.add_subplot(3, 1, (1, 2))
+        self.ax = self.main_fig.add_subplot(gs[:2,:3])
         self.ax_base_title = 'Correct VS incorrect predictions'
         self.ax.set_title(self.ax_base_title)
 
         # summary_subplot with table of local stats
-        self.summary_axe = self.main_fig.add_subplot(3, 2, 5)
+        self.summary_axe = self.main_fig.add_subplot(gs[2,:3])
         self.summary_axe.axis('off')
 
         # heatmap subplots
         # contain proportion of correct prediction and entropy
-        self.heat_proportion = self.main_fig.add_subplot(3, 4, 11, sharex=self.ax, sharey=self.ax)
+        self.heat_proportion = self.main_fig.add_subplot(gs[2,3], sharex=self.ax, sharey=self.ax)
         self.heat_proportion.set_title('\nHeatmap: accuracy')
-        self.heat_entropy = self.main_fig.add_subplot(3, 4, 12, sharex=self.ax, sharey=self.ax)
+        self.heat_entropy = self.main_fig.add_subplot(gs[0,3], sharex=self.ax, sharey=self.ax)
         self.heat_entropy.set_title('\nHeatmap: cross-entropy cluster/all')
 
         self.axes_needing_borders = (self.ax, self.heat_proportion, self.heat_entropy)
