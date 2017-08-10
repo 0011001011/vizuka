@@ -1,4 +1,5 @@
 from tSNE_viz import find_amplitude, find_grid_positions
+from utils import find_nearest
 '''
 Clustering engine to use with Vizualization
 
@@ -10,7 +11,8 @@ Clustering engine to use with Vizualization
 
 import numpy as np
 from matplotlib import pyplot as plt
-from sklearn.cluster import KMeans
+from sklearn.cluster import KMeans, DBSCAN
+from scipy.spatial import KDTree
 import ipdb
 
 
@@ -44,6 +46,33 @@ class KmeansClusterizer(Clusterizer):
     def predict(self, xs):
         return self.engine.predict(xs)
 
+class DBSCANClusterizer(Clusterizer):
+
+    def __init__(self, *args, **kwargs):
+        self.engine = DBSCAN(n_jobs=4, *args, **kwargs)
+
+    def fit(self, xs):
+        """
+        There is no dbscan.predict so...
+        """
+        xs_tuple = [ tuple(x) for x in xs ]
+        tmp = self.engine.fit_predict(xs_tuple)
+        self.predictions = {xs_tuple[idx]:predict for idx, predict in enumerate(tmp)}
+        self.kdtree = KDTree(xs)
+        self.xs = xs
+
+    def predict(self, xs):
+        current_predicts = []
+        for x in xs:
+            x_tuple = tuple(x)
+            if x_tuple in self.predictions:
+                current_predicts.append(self.predictions[x_tuple])
+            else:
+                current_predicts.append(
+                            self.predictions[tuple(self.xs[self.kdtree.query(x)[1]])]
+                            )
+        return current_predicts
+
 class DummyClusterizer(Clusterizer):
     def __init__(self, resolution):
         self.resolution = resolution
@@ -76,6 +105,8 @@ def make_clusterizer(xs, method='kmeans', **kwargs):
     clusterizer = None
     if method == 'kmeans':
         clusterizer = KmeansClusterizer(kwargs['n_clusters'])
+    elif method == 'dbscan':
+        clusterizer = DBSCANClusterizer()
     else:
         clusterizer = DummyClusterizer(kwargs['resolution'])
     clusterizer.fit(xs)
