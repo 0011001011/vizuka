@@ -4,9 +4,6 @@ from matplotlib.gridspec import GridSpec
 
 import sys
 import os
-from threading import Thread
-from multiprocessing import Process
-import seaborn as sns
 
 from qt_handler import Viz_handler
 import labelling
@@ -40,8 +37,6 @@ import itertools
 from collections import Counter
 
 import numpy as np
-import keras
-
 
 from matplotlib import pyplot as plt
 import ipdb
