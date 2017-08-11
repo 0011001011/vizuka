@@ -34,7 +34,7 @@ def query_meta(DBI, set_name):
 def query_meta_all_sets(DBI):
     test, meta_pk, oracle_pk = query_meta(DBI, 'test')
     logging.info('query_test=ready\n')
-    validation = query_meta(uri, 'validation')[0]
+    validation = query_meta(DBI, 'validation')[0]
     logging.info('query_validation=ready\n')
     test+= validation
     test = [ np.array(t) for t in test]
