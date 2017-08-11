@@ -1,10 +1,11 @@
 import os
+import pickle
 
-BASE_PATH       = '/home/sofian/'
+BASE_PATH       = 'data/'
 
-DATA_PATH       = os.path.join(BASE_PATH, 'data/set/')  
-TSNE_DATA_PATH  = os.path.join(BASE_PATH, 'data/set/tSNE/')
-MODEL_PATH      = os.path.join(BASE_PATH, 'data/models/')
+DATA_PATH       = os.path.join(BASE_PATH, 'set/')  
+TSNE_DATA_PATH  = os.path.join(BASE_PATH, 'tSNE/')
+MODEL_PATH      = os.path.join(BASE_PATH, 'models/')
 GRAPH_PATH      = os.path.join(BASE_PATH, 'graph/')
 
 
@@ -47,3 +48,5 @@ REDUCTION_SIZE_FACTOR = 1
 # False -> load representation
 # True  -> find new projection for t-SNE
 DO_CALCULUS = False
+
+
