@@ -1,5 +1,5 @@
 import matplotlib
-matplotlib.use('Qt4Agg')  # noqa
+matplotlib.use('Qt5Agg')  # noqa
 from matplotlib.gridspec import GridSpec
 
 import sys

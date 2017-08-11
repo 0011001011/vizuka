@@ -1,11 +1,21 @@
 import matplotlib
-matplotlib.use('Qt4Agg')  # noqa
+matplotlib.use('Qt5Agg')  # noqa
 from matplotlib.animation import TimedAnimation
-from matplotlib.backends.backend_qt4agg import FigureCanvasQTAgg as FigureCanvas
-from matplotlib.backends.backend_qt4agg import NavigationToolbar2QT as NavigationToolbar
+from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
+from matplotlib.backends.backend_qt5agg import NavigationToolbar2QT as NavigationToolbar
 
 from matplotlib import pyplot as plt
-from PyQt4 import QtGui, QtCore
+from PyQt5 import QtGui, QtCore, QtWidgets
+from PyQt5.QtWidgets import (
+        QApplication,
+        QMainWindow,
+        QWidget,
+        QHBoxLayout,
+        QVBoxLayout,
+        QSizePolicy,
+        QDockWidget,
+        QLineEdit,
+        )
 
 import sys
 import logging
@@ -47,8 +57,8 @@ class Viz_handler():
         self.plottings = []
 
         # configure the app + main window
-        self.app = QtGui.QApplication(sys.argv)
-        self.window = QtGui.QMainWindow()
+        self.app = QApplication(sys.argv)
+        self.window = QMainWindow()
         self.window.setWindowTitle('Data vizualization')
         self.window.showMaximized()
 
@@ -56,7 +66,7 @@ class Viz_handler():
         self.add_figure(self.figure, self.onclick, window=self.window)
 
         # add additional window
-        class Additional_Window(QtGui.QMainWindow):
+        class Additional_Window(QMainWindow):
             def __init__(self, parent=None):
                 super(Additional_Window, self).__init__(parent)
                 self.setWindowTitle('Scatter Plot')
@@ -130,7 +140,7 @@ class Viz_handler():
 
     def add_figure(self, figure, onclick, window):
 
-        class MatplotlibWidget(QtGui.QWidget):
+        class MatplotlibWidget(QWidget):
             def __init__(self, figure, onclick, parent=None, *args, **kwargs):
                 super(MatplotlibWidget, self).__init__(parent)
                 self.figure = figure
@@ -142,7 +152,7 @@ class Viz_handler():
                         self.figure = figure
                         self.onclick = onclick
                         FigureCanvas.__init__(self, self.figure)
-                        FigureCanvas.setSizePolicy(self, QtGui.QSizePolicy.Expanding, QtGui.QSizePolicy.Expanding)
+                        FigureCanvas.setSizePolicy(self, QSizePolicy.Expanding, QSizePolicy.Expanding)
                         FigureCanvas.updateGeometry(self)
 
                         # add mouse event
@@ -156,14 +166,14 @@ class Viz_handler():
                 self.canvas.setFocus()
 
                 self.toolbar = NavigationToolbar(self.canvas, self)
-                layout = QtGui.QVBoxLayout()
+                layout = QVBoxLayout()
                 layout.addWidget(self.toolbar)
                 layout.addWidget(self.canvas)
                 self.setLayout(layout)
 
         root = window
-        panel = QtGui.QWidget()
-        plot_wrapper_box = QtGui.QHBoxLayout(panel)
+        panel = QWidget()
+        plot_wrapper_box = QHBoxLayout(panel)
 
         self.plottings.append(
                 MatplotlibWidget(
@@ -174,7 +184,7 @@ class Viz_handler():
         plot_wrapper_box.addWidget(self.plottings[-1])
 
         panel.setLayout(plot_wrapper_box)
-        dock = QtGui.QDockWidget('', root)
+        dock = QDockWidget('', root)
         root.addDockWidget(QtCore.Qt.LeftDockWidgetArea, dock)
         dock.setWidget(panel)
         
@@ -190,20 +200,20 @@ class Viz_handler():
         """
 
         root = self.window
-        panel = QtGui.QWidget()
-        hbox = QtGui.QHBoxLayout(panel)
+        panel = QWidget()
+        hbox = QHBoxLayout(panel)
         
-        class MenuList(QtGui.QListWidget):
+        class MenuList(QtWidgets.QListWidget):
 
             def __init__(self, categories):
-                QtGui.QListWidget.__init__(self)
+                QtWidgets.QListWidget.__init__(self)
                 self.add_items(categories)
                 self.itemClicked.connect(self.item_click)
                 self.selected = categories
 
             def add_items(self, categories):
                 for category in categories:
-                    item = QtGui.QListWidgetItem(category)
+                    item = QtWidgets.QListWidgetItem(category)
                     self.addItem(item)
 
             def item_click(self, item):
@@ -212,12 +222,12 @@ class Viz_handler():
         menulist = MenuList(categories)
 
         hbox.addWidget(menulist)
-        launchButton = QtGui.QPushButton(button_name)
+        launchButton = QtWidgets.QPushButton(button_name)
         launchButton.clicked.connect(lambda: onlaunch(menulist.selected))
         hbox.addWidget(launchButton)
         panel.setLayout(hbox)
         
-        dock = QtGui.QDockWidget(menu_name, root)
+        dock = QDockWidget(menu_name, root)
         root.addDockWidget(dockarea, dock)
         dock.setWidget(panel)
         dock.resize(QtCore.QSize(dock.width(), dock.minimumHeight()))
@@ -229,15 +239,15 @@ class Viz_handler():
         Adds a simple button
         """
         root = self.window
-        panel = QtGui.QWidget()
-        hbox = QtGui.QHBoxLayout(panel)
+        panel = QWidget()
+        hbox = QHBoxLayout(panel)
 
-        button = QtGui.QPushButton(name)
+        button = QtWidgets.QPushButton(name)
         button.clicked.connect(action)
         hbox.addWidget(button)
         panel.setLayout(hbox)
 
-        dock = QtGui.QDockWidget(name, root)
+        dock = QDockWidget(name, root)
         root.addDockWidget(dockarea, dock)
         dock.setWidget(panel)
 
@@ -252,15 +262,15 @@ class Viz_handler():
         #ipdb.set_trace()
 
         root = self.window
-        panel = QtGui.QWidget()
-        hbox = QtGui.QHBoxLayout(panel)
-        textbox = QtGui.QLineEdit(parent=panel)
+        panel = QWidget()
+        hbox = QHBoxLayout(panel)
+        textbox = QLineEdit(parent=panel)
 
         textbox.returnPressed.connect(update)
         hbox.addWidget(textbox)
         panel.setLayout(hbox)
 
-        dock = QtGui.QDockWidget(name, root)
+        dock = QDockWidget(name, root)
         root.addDockWidget(dockarea, dock)
         dock.setWidget(panel)
 
@@ -271,13 +281,13 @@ class Viz_handler():
 
     def add_checkboxes(self, items_name, action, dockarea):
         root = self.window
-        panel = QtGui.QWidget()
-        hbox = QtGui.QHBoxLayout(panel)
-        my_qlist = QtGui.QListWidget()
+        panel = QWidget()
+        hbox = QHBoxLayout(panel)
+        my_qlist = QtWidgets.QListWidget()
         my_item_list={}
 
         for i in items_name:
-            item = QtGui.QListWidgetItem()
+            item = QtWidgets.QListWidgetItem()
             item.setText(str(i))
             item.setFlags(item.flags() | QtCore.Qt.ItemIsUserCheckable)
             item.setCheckState(QtCore.Qt.Unchecked)
@@ -290,7 +300,7 @@ class Viz_handler():
         hbox.addWidget(my_qlist)
         panel.setLayout(hbox)
 
-        dock = QtGui.QDockWidget('Filter class', root)
+        dock = QDockWidget('Filter class', root)
         root.addDockWidget(dockarea, dock)
         dock.setWidget(panel)
 
