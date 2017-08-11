@@ -585,7 +585,7 @@ class Vizualization:
                                                                   similarity_check)
         return already_checked, similars
 
-    def filter_class(self, states_by_class):
+    def filter_true_class(self, states_by_class):
         all_unchecked = ( 0 == sum(states_by_class.values()) )
 
         to_scatter = set()
@@ -593,10 +593,20 @@ class Vizualization:
             if state or all_unchecked:
                 to_scatter.add(class_)
         
-        self.update_showonly(to_scatter, all_unchecked=all_unchecked)
+        self.update_showonly_true(to_scatter, all_unchecked=all_unchecked)
+    
+    def filter_pred_class(self, states_by_class):
+        all_unchecked = ( 0 == sum(states_by_class.values()) )
+
+        to_scatter = set()
+        for class_, state in states_by_class.items():
+            if state or all_unchecked:
+                to_scatter.add(class_)
+        
+        self.update_showonly_pred(to_scatter, all_unchecked=all_unchecked)
 
 
-    def update_showonly(self, classes, all_unchecked):
+    def update_showonly_true(self, classes, all_unchecked):
         """
         Hide all other label but class_
 
@@ -691,67 +701,14 @@ class Vizualization:
             # find nearest point to click
 
             if self.shift_held:
+                pass
 
-                #nearest, idx = find_nearest(x, y, self.proj)
-                #class_nearest = self.y_true_decoded[idx]
-                #logging.info("looking for class", class_nearest)
-                #similars, _ = find_similar(
-                #    class_nearest, self.y_true_decoded, self.proj)
-
-                self.ax.scatter(
-                    self.x_proj_good[:, 0],
-                    self.x_proj_good[:, 1],
-                    color='b',
-                    marker="+"
-                )
-                self.ax.scatter(
-                    self.x_proj_bad[:, 0],
-                    self.x_proj_bad[:, 1],
-                    color='r',
-                    marker='+'
-                )
-                self.ax.scatter(
-                    similars[:, 0],
-                    similars[:, 1],
-                    color='green',
-                    marker='+'
-                )
-                dominant = str(
-                    show_occurences_total(
-                        x,
-                        y,
-                        self.grid_total,
-                        self.resolution,
-                        self.amplitude
-                    )
-                )
-                self.ax.set_title(''.join([
-                    'dominant class: ',
-                    dominant,
-                    ', colorizing ',
-                    str(self.labels[idx])
-                ]))
-            
-            #ipdb.set_trace()
             clicked_cluster = self.clusterizer.predict([(x,y)])[0]
 
             self.delimit_cluster(clicked_cluster, color=self.manual_cluster_color)
+
             self.update_summary(clicked_cluster)
-
             self.print_summary(self.summary_axe)
-
-            selected_x_idx = find_projected_in_cluster(
-                clicked_cluster,
-                self.cluster_by_idx,
-            )
-
-            """
-            logging.info('\n\n' + ('-' * 12) + '\nSelected transactions:')
-            for idx in selected_x_idx:
-                logging.info(self.x_raw[idx])
-            """
-
-            logging.debug('x=%s y=%s x_grid=%s y_grid=%s\n', x, y, x_g, y_g)
 
         elif button == 2:
             
@@ -884,14 +841,11 @@ class Vizualization:
         self.x_proj_null = np.array([self.proj[i] for i in self.index_not_predicted])
         logging.info("projections=ready")
         
-        #self.clusterizer = clustering.DummyClusterizer(resolution=self.resolution)
         logging.info('clustering engine=fitting')
         self.clusterizer = clustering.DummyClusterizer(resolution=self.resolution)
         self.clusterizer.fit(self.proj)
+        
         logging.info('clustering engine=ready')
-        #self.similarity_measure = lambda x,y:0
-        #self.similarity_measure = lambda x,y:1
-        #self.request_new_frontiers(method='none')
         self.normalize_frontier = True
         
 
@@ -1080,7 +1034,7 @@ class Vizualization:
         self.update_showonly(to_scatter, all_unchecked=all_unchecked)
 
 
-    def update_showonly(self, classes, all_unchecked):
+    def update_showonly_pred(self, classes, all_unchecked):
         """
         Hide all other label but class_
 
@@ -1095,7 +1049,7 @@ class Vizualization:
 
         for class_ in classes:
             similars = self.proj_by_class[class_]
-            similars_idx = self.index_by_class[class_]
+            similars_idx = [idx for idx, this_class in enumerate(self.y_pred_decoded) if this_class==class_]
             similars_good = [idx for idx in similars_idx if idx in self.index_good_predicted ]
             similars_bad  = [idx for idx in similars_idx if idx in self.index_bad_predicted ]
             if len(similars_bad):
