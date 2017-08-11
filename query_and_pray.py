@@ -24,7 +24,7 @@ from database_queries import db_interface
 logging.basicConfig(level=logging.DEBUG)
 
 def query_meta(DBI, set_name):
-    meta_pk = DBII._register_algorithm_name("meta")
+    meta_pk = DBI._register_algorithm_name("meta")
     oracle_pk = DBI._register_algorithm_name("final")
     transactions = DBI.get_training_inputs_auto_readable(set_name)
     transactions = [*transactions]
