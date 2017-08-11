@@ -105,12 +105,20 @@ class Viz_handler():
                 'Clustering method',
                 'Clusterize', ['KMeans', 'DBSCAN', 'Dummy'],
                 self.viz_engine.request_new_clustering,
-                dockarea=right_dock)
+                dockarea=right_dock,
+                )
         self.menulists['clustering_method'] = self.add_menulist(
                 'Clusters borders',
                 'Delimits',
                 ['Bhattacharyya', 'All', 'None'],
                 self.viz_engine.request_new_frontiers,
+                right_dock,
+                )
+        self.menulists['predict_set'] = self.add_menulist(
+                'Predictor set',
+                'Load',
+                self.viz_engine.predictors,
+                self.viz_engine.reload_predict,
                 right_dock,
                 )
 

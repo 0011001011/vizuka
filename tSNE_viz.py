@@ -3,6 +3,7 @@ matplotlib.use('Qt4Agg')  # noqa
 from matplotlib.gridspec import GridSpec
 
 import sys
+import os
 from threading import Thread
 from multiprocessing import Process
 import seaborn as sns
@@ -252,6 +253,7 @@ class Vizualization:
             n_clusters=120,
             class_decoder=(lambda x: x), class_encoder=(lambda x: x),
             output_path='output.csv',
+            model_path=MODEL_PATH
             ):
         """
         Central function, draw heatmap + scatter plot + zoom + annotations on tSNE data
@@ -267,6 +269,7 @@ class Vizualization:
 
         self.manual_cluster_color = 'cyan'
         self.output_path = output_path
+        self.predictors = os.listdir(model_path)
 
         self.y_true_decoded = y_true
         self.y_pred_decoded = y_pred
@@ -371,6 +374,47 @@ class Vizualization:
         #self.request_new_frontiers(method='none')
         self.normalize_frontier = True
         
+    def reload_predict(self, filename, model_path=MODEL_PATH):
+        
+        y_pred = np.load(
+                os.path.join(model_path, filename)
+                )['pred']
+
+
+        self.y_pred_decoded = y_pred
+        self.y_pred = [class_encoder[y] for y in self.y_pred_decoded]
+
+        (
+            self.index_bad_predicted,
+            self.index_good_predicted,
+            self.index_not_predicted,
+
+            ) = separate_prediction(
+
+            self.y_pred_decoded,
+            self.y_true_decoded,
+            self.special_class,
+        )
+
+        self.proportion_by_class = { 
+                class_:
+                sum([
+                    (self.y_true_decoded[i]==self.y_pred_decoded[i])
+                    for i in self.index_by_class[class_]
+                    ])
+                /float(len(self.index_by_class[class_]))
+                for class_ in self.labels
+                }
+        
+        logging.info("projections=sorting")
+        self.x_proj_good = np.array([self.proj[i] for i in self.index_good_predicted])
+        self.x_proj_bad  = np.array([self.proj[i] for i in self.index_bad_predicted])
+        self.x_proj_null = np.array([self.proj[i] for i in self.index_not_predicted])
+        logging.info("projections=ready")
+
+        self.reset_viz()
+        self.refresh_graph()
+
 
     #######################################
     # Similarity functions to draw clusters
