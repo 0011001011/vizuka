@@ -138,7 +138,7 @@ def preprocess_meta(raws, inputs, predictions,
     return xs, ys, encoder
 
 def get_proposal_by_engine_pk(datas):
-    pks = [13,19,20,14,16,3]
+    pks = [13,19,20,14,16,3] # bad bad bad bad bad
     predictions_by_pk = {pk:[] for pk in pks}
 
     pk_has_proposed={pk:[] for pk in pks}
@@ -150,12 +150,12 @@ def get_proposal_by_engine_pk(datas):
             pk_has_proposed[pk].append(
                     (prediction[2],prediction[3])
                     )
-        for pk, proposals in predictions_by_pk.items():
+        for pk, proposals in pk_has_proposed.items():
             if not proposals:
-                predictions_by_pk.append(0) # which means None
+                predictions_by_pk[pk].append(0) # which means None
             else:
                 predictions_by_pk[pk].append(
-                        proposals[np.array(proposals)[:,1].argmax()]
+                        proposals[np.array(proposals)[:,1].argmax()[0]]
                         )
     return predictions_by_pk
 
