@@ -23,17 +23,16 @@ from database_queries import db_interface
 
 logging.basicConfig(level=logging.DEBUG)
 
-def query_meta(uri, set_name):
-    MDI = db_interface.MetaDatabaseInterface(uri)
-    meta_pk = MDI._register_algorithm_name("meta")
-    oracle_pk = MDI._register_algorithm_name("final")
-    transactions = MDI.get_training_inputs_auto_readable(set_name)
+def query_meta(DBI, set_name):
+    meta_pk = DBII._register_algorithm_name("meta")
+    oracle_pk = DBI._register_algorithm_name("final")
+    transactions = DBI.get_training_inputs_auto_readable(set_name)
     transactions = [*transactions]
     
     return transactions, meta_pk, oracle_pk
 
-def query_meta_all_sets(uri=URI):
-    test, meta_pk, oracle_pk = query_meta(uri, 'test')
+def query_meta_all_sets(DBI):
+    test, meta_pk, oracle_pk = query_meta(DBI, 'test')
     logging.info('query_test=ready\n')
     validation = query_meta(uri, 'validation')[0]
     logging.info('query_validation=ready\n')
@@ -131,16 +130,27 @@ def preprocess_meta(raws, inputs, predictions,
                 originals=raws)
     if predictions_filename!='':
         np.savez(
-                os.path.join(base_path, predictions_path, predictions_filename+version+'.npz'),
+                os.path.join(predictions_path, predictions_filename+version+'.npz'),
                 pred=np.array(predictions)[:,2],
                 )
     
     return xs, ys, encoder
 
-def get_proposal_by_engine_pk(datas):
-    pks = [13,19,20,14,16,3] # bad bad bad bad bad
-    predictions_by_pk = {pk:[] for pk in pks}
+def get_predictions_by_engine(
+        datas,
+        algo_names,
+        get_algo_pk,
+        model_path = MODEL_PATH,
+        save=True,
+        ):
+    
+    pks=[]
+    for algo_name in algo_names:
+        pks.append(
+                get_algo_pk(algo_name)
+                )
 
+    predictions_by_pk = {pk:[] for pk in pks}
     pk_has_proposed={pk:[] for pk in pks}
 
     for d in datas:
@@ -155,13 +165,26 @@ def get_proposal_by_engine_pk(datas):
                 predictions_by_pk[pk].append(0) # which means None
             else:
                 predictions_by_pk[pk].append(
-                        proposals[np.array(proposals)[:,1].argmax()[0]]
+                        proposals[np.array(proposals)[:,1].argmax()][0]
                         )
+
+    if save:
+        for algo_name in algo_names:
+            np.savez(
+                    os.path.join(
+                        predictions_path,
+                        algo_name+'predict'+version+'.npz'),
+                    pred=np.array(predictions)[:,2],
+                    )
     return predictions_by_pk
 
 if __name__=='__main__':
+
+    MDI = db_interface.MetaDatabaseInterface(URI)
+    get_algo_pk = MDI._register_algorithm_name
+
     logging.info('query db')
-    datas, meta_pk, oracle_pk = query_meta_all_sets(URI)
+    datas, meta_pk, oracle_pk = query_meta_all_sets(MDI)
     logging.info('sort results')
     raws, inputs, predictions, reality = separate(datas, meta_pk, oracle_pk)
     logging.info('preprocess data')
@@ -170,3 +193,6 @@ if __name__=='__main__':
             inputs,
             predictions,
             )
+
+    algo_names=['final', 'majika', 'tsuri', 'chiitoi', 'tango', 'meta']
+    get_predictions_by_engine(datas, algo_names, get_algo_pk)
