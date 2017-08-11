@@ -77,7 +77,8 @@ def preprocess_meta(raws, inputs, predictions,
     class_predicted = set()
     class_existing  = set()
     engines = set()
-
+    
+    # One-hot encoding for engines predictions feeding meta
     for input_ in inputs:
         for suggestion in input_:
             class_predicted.add(suggestion[2])
@@ -135,6 +136,28 @@ def preprocess_meta(raws, inputs, predictions,
                 )
     
     return xs, ys, encoder
+
+def get_proposal_by_engine_pk(datas):
+    pks = [13,19,20,14,16,3]
+    predictions_by_pk = {pk:[] for pk in pks}
+
+    pk_has_proposed={pk:[] for pk in pks}
+
+    for d in datas:
+        pk_has_proposed={pk:[] for pk in pks}
+        for prediction in d[-1]:
+            pk = prediction[0]
+            pk_has_proposed[pk].append(
+                    (prediction[2],prediction[3])
+                    )
+        for pk, proposals in predictions_by_pk.items():
+            if not proposals:
+                predictions_by_pk.append(0) # which means None
+            else:
+                predictions_by_pk[pk].append(
+                        proposals[np.array(proposals)[:,1].argmax()]
+                        )
+    return predictions_by_pk
 
 if __name__=='__main__':
     logging.info('query db')
