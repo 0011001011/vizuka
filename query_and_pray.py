@@ -172,7 +172,7 @@ def get_predictions_by_engine(
         for algo_name in algo_names:
             np.savez(
                     os.path.join(
-                        predictions_path,
+                        model_path,
                         algo_name+'predict'+version+'.npz'),
                     pred=np.array(predictions)[:,2],
                     )
