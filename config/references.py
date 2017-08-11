@@ -25,7 +25,9 @@ OUTPUT_NAME = 'account'
 # best tuple so far is (50,1000,pca,15000)
 """
 
-PARAMS = { 'perplexities'  : [30,40,50],
+PARAMS = { 'perplexities'  : [30,40,50], # roughly the number of neighbors in cluster
+                                         # https://lvdmaaten.github.io/publications/papers/JMLR_2008.pdf
+                                         # p4
            'learning_rates': [500, 800, 1000],
            'inits'         : ['random', 'pca'],
            'n_iters'       : [5000, 15000]
