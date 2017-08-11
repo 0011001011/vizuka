@@ -141,6 +141,7 @@ def get_predictions_by_engine(
         algo_names,
         get_algo_pk,
         model_path = MODEL_PATH,
+        version=VERSION,
         save=True,
         ):
     
