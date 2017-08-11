@@ -1,11 +1,11 @@
 import os
 
-BASE_PATH       = '/home/sofian/'
+BASE_PATH       = '/home/nicolas/Manakin/manakin-ml-analytics/data_viz/local_nicolas'
 
-DATA_PATH       = os.path.join(BASE_PATH, 'data/set/')  
-TSNE_DATA_PATH  = os.path.join(BASE_PATH, 'data/set/tSNE/')
-MODEL_PATH      = os.path.join(BASE_PATH, 'data/models/')
-GRAPH_PATH      = os.path.join(BASE_PATH, 'graph/')
+DATA_PATH       = os.path.join(BASE_PATH, '')
+TSNE_DATA_PATH  = os.path.join(BASE_PATH, '')
+MODEL_PATH      = os.path.join(BASE_PATH, '')
+GRAPH_PATH      = os.path.join(BASE_PATH, '')
 
 
 # File containing data to be t-SNEed
@@ -13,7 +13,7 @@ INPUT_FILE_BASE_NAME = 'preprocessed_inputs'
 RAW_NAME = 'originals'
 
 # default RN for predictions
-DEFAULT_PREDICTOR = 'metapredict'
+DEFAULT_PREDICTOR = '3predict'
 
 # A version is a string added to the end of each filename
 VERSION = '_20170807'

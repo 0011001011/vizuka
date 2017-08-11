@@ -8,8 +8,8 @@ import seaborn as sns
 import logging
 from collections import Counter
 
-from config.references import GRAPH_PATH
-from config.manakin import (
+from data_viz.config.references import GRAPH_PATH
+from data_viz.config.manakin import (
         COLUMNS_TO_SCATTER,
         )
 

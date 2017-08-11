@@ -168,7 +168,7 @@ class TransactionQuery(BaseTransactionQuery):
             model.TransactionResult.account_number,
             model.Company.activity_start_date,
             cls.complement_wording_construct(),
-            ]).where(and_(
+        ]).where(and_(
                 condition_pk,
                 cls.transaction_monitoring_join(),
                 model.TransactionMonitoring.active_flag == 1,
