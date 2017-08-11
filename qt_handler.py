@@ -84,11 +84,19 @@ class Viz_handler():
             right_dock,
         )
         self.add_checkboxes(
+                "Filter by true class",
                 self.viz_engine.labels,
-                self.viz_engine.filter_class,
+                self.viz_engine.filter_true_class,
                 right_dock,
                 )
         self.add_checkboxes(
+                "Filter by predicted class",
+                self.viz_engine.labels,
+                self.viz_engine.filter_pred_class,
+                right_dock,
+                )
+        self.add_checkboxes(
+                "Navigation options",
                 ['detect mouse event'],
                 self.toogle_detect_mouse_event,
                 right_dock,
@@ -279,7 +287,7 @@ class Viz_handler():
     def toogle_detect_mouse_event(self, *args, **kwargs):
         self.detect_mouse_event = not self.detect_mouse_event
 
-    def add_checkboxes(self, items_name, action, dockarea):
+    def add_checkboxes(self, name, items_name, action, dockarea):
         root = self.window
         panel = QWidget()
         hbox = QHBoxLayout(panel)
@@ -300,7 +308,7 @@ class Viz_handler():
         hbox.addWidget(my_qlist)
         panel.setLayout(hbox)
 
-        dock = QDockWidget('Filter class', root)
+        dock = QDockWidget(name, root)
         root.addDockWidget(dockarea, dock)
         dock.setWidget(panel)
 
