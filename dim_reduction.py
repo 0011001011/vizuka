@@ -1,3 +1,10 @@
+import itertools
+
+import numpy as np
+import logging
+from sklearn.decomposition import PCA
+from MulticoreTSNE import MulticoreTSNE as multitsne
+
 from config.references import (
     INPUT_FILE_BASE_NAME,
     DATA_PATH,
@@ -8,18 +15,6 @@ from config.references import (
     OUTPUT_NAME,
     PCA_DIMS,
 )
-
-"""
-
-
-"""
-import itertools
-
-import numpy as np
-import logging
-from sklearn.manifold import TSNE as tsne
-from sklearn.decomposition import PCA
-from MulticoreTSNE import MulticoreTSNE as multitsne
 
 """
 from shared_helpers import config
@@ -86,19 +81,17 @@ def load_raw_data(
     x = xy['x']
     x_small = x[:int(x.shape[0] / reduction_factor)]; del x # noqa
 
-    if 'y_'+output_name in xy.keys():
+    if 'y_' + output_name in xy.keys():
         y = xy['y_' + output_name]
         del xy
         return (np.array(x_small), np.array(y), class_encoder, class_decoder)
-    elif 'y_'+output_name+'_decoded':
-        y_decoded = xy['y_'+output_name+'_decoded']
+    elif 'y_' + output_name + '_decoded':
+        y_decoded = xy['y_' + output_name + '_decoded']
         del xy
         return (np.array(x_small), np.array(y_decoded), class_encoder, class_decoder)
-        #y = np.array([class_encoder[obs] for obs in y_decoded])
+        # y = np.array([class_encoder[obs] for obs in y_decoded])
 
     #y_small = y[:int(y.shape[0] / reduction_factor)]; del y # noqa
-    
-
 
 
 def learn_tSNE(x, params=PARAMS, version=VERSION, path=TSNE_DATA_PATH,
@@ -158,8 +151,8 @@ def learn_tSNE(x, params=PARAMS, version=VERSION, path=TSNE_DATA_PATH,
             learning_rate=learning_rate,
             init=init,
             n_iter=n_iter
-        )''' # in a desperate move to save RAM
-        logging.info("learning model"+str(perplexity)+str(learning_rate)+str(init)+str(n_iter))
+        )'''  # in a desperate move to save RAM
+        logging.info("learning model %s %s %s %s", str(perplexity), str(learning_rate), str(init), str(n_iter))
         x_transformed[param] = multitsne(
             perplexity=perplexity,
             learning_rate=learning_rate,
@@ -167,7 +160,6 @@ def learn_tSNE(x, params=PARAMS, version=VERSION, path=TSNE_DATA_PATH,
             n_jobs=12,
         ).fit_transform(x)
         logging.info("done!")
-        
  
         name = ''.join('_' + str(p) for p in param)
         full_path = ''.join([
@@ -182,8 +174,7 @@ def learn_tSNE(x, params=PARAMS, version=VERSION, path=TSNE_DATA_PATH,
         np.savez(
             full_path,
             x_2D=x_transformed[param],
-        )#model=models[param])
-
+        )  # model=models[param])
  
     return x_transformed, models
 
@@ -223,12 +214,12 @@ def load_tSNE(params=PARAMS, version=VERSION, path=TSNE_DATA_PATH,
     for perplexity, learning_rate, init, n_iter in itertools.product(
             perplexities, learning_rates, inits, n_iters):
 
-        logging.info(("RNmodel=loadin "
-            +str(perplexity)
-            +str(learning_rate)
-            +str(init)
-            +str(n_iter)
-            ))
+        logging.info("RNmodel=loadin %s %s %s %s",
+                     str(perplexity),
+                     str(learning_rate),
+                     str(init),
+                     str(n_iter),
+                     )
         try:
             param = (perplexity, learning_rate, init, n_iter)
             name = ''.join('_' + str(p) for p in param)
@@ -250,9 +241,10 @@ def load_tSNE(params=PARAMS, version=VERSION, path=TSNE_DATA_PATH,
             logging.info("RNmodel=ready")
 
         except FileNotFoundError as e:
-            logging.info(" not found"+str(e))
+            logging.info("not found %s", str(e))
 
     return x_transformed, models
+
 
 if __name__ == '__main__':
 
