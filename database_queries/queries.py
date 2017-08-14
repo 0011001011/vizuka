@@ -1,7 +1,7 @@
 from sqlalchemy import and_, or_, select, distinct, func
 
 from database_interface import model, query
-from database_queries import common_algorithm_queries
+from data_viz.database_queries import common_algorithm_queries
 
 """
 class TransactionQuery(BaseTransactionQuery):
@@ -15,6 +15,7 @@ class TransactionQuery(BaseTransactionQuery):
         bgf.add_where_clause(condition_pk)
         return bgf.get_query()
 """
+
 
 class GreatBigTransactionFactory:
     """
