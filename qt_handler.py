@@ -1,33 +1,30 @@
 import matplotlib
 matplotlib.use('Qt5Agg')  # noqa
-from matplotlib.animation import TimedAnimation
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
 from matplotlib.backends.backend_qt5agg import NavigationToolbar2QT as NavigationToolbar
 
-from matplotlib import pyplot as plt
-from PyQt5 import QtGui, QtCore, QtWidgets
+from PyQt5 import QtCore, QtWidgets
 from PyQt5.QtWidgets import (
-        QApplication,
-        QMainWindow,
-        QWidget,
-        QHBoxLayout,
-        QVBoxLayout,
-        QSizePolicy,
-        QDockWidget,
-        QLineEdit,
-        )
+    QApplication,
+    QMainWindow,
+    QWidget,
+    QHBoxLayout,
+    QVBoxLayout,
+    QSizePolicy,
+    QDockWidget,
+    QLineEdit,
+)
 
 import sys
-import logging
-import ipdb
 
-#logging.basicConfig(level=logging.DEBUG)
+
+# logging.basicConfig(level=logging.DEBUG)
 def onclick_wrapper(onclick):
     def wrapper(*args, **kwargs):
-        if args[0].detect_mouse_event: # args[0] is self
+        if args[0].detect_mouse_event:  # args[0] is self
             return onclick(*args, **kwargs)
         else:
-            return lambda x:None
+            return lambda x: None
     return wrapper
 
 
@@ -71,79 +68,79 @@ class Viz_handler():
                 super(Additional_Window, self).__init__(parent)
                 self.setWindowTitle('Scatter Plot')
         self.additional_window = Additional_Window(self.window)
-        #self.add_figure(self.additional_figure, onclick=None, window=self.additional_window)
+        # self.add_figure(self.additional_figure, onclick=None, window=self.additional_window)
 
         right_dock = QtCore.Qt.RightDockWidgetArea
 
         # add textbox
         self.textboxs = {}
-        #logging.info("textboxs=adding")
+        # logging.info("textboxs=adding")
         self.textboxs['n_clusters'] = self.add_text_panel(
             'Number of clusters (default:120)',
             self.textbox_function_n_clusters,
             right_dock,
         )
         self.add_checkboxes(
-                "Filter by true class",
-                self.viz_engine.labels,
-                self.viz_engine.filter_true_class,
-                right_dock,
-                )
+            "Filter by true class",
+            self.viz_engine.labels,
+            self.viz_engine.filter_true_class,
+            right_dock,
+        )
         self.add_checkboxes(
-                "Filter by predicted class",
-                self.viz_engine.labels,
-                self.viz_engine.filter_pred_class,
-                right_dock,
-                )
+            "Filter by predicted class",
+            self.viz_engine.labels,
+            self.viz_engine.filter_pred_class,
+            right_dock,
+        )
         self.add_checkboxes(
-                "Navigation options",
-                ['detect mouse event'],
-                self.toogle_detect_mouse_event,
-                right_dock,
-                )
-        #logging.info("textboxs=ready")
+            "Navigation options",
+            ['detect mouse event'],
+            self.toogle_detect_mouse_event,
+            right_dock,
+        )
+        # logging.info("textboxs=ready")
 
         # add button
-        #logging.info("action buttons=adding")
+        # logging.info("action buttons=adding")
         self.add_button(
-                "Export x",
-                lambda :self.viz_engine.export(self.viz_engine.output_path),
-                right_dock,
-                )
+            "Export x",
+            lambda: self.viz_engine.export(self.viz_engine.output_path),
+            right_dock,
+        )
         self.add_button(
-                "View_details",
-                lambda :self.viz_engine.view_details_figure(),
-                right_dock,
-                )
-        #logging.info("action buttons=ready")
+            "View_details",
+            lambda: self.viz_engine.view_details_figure(),
+            right_dock,
+        )
+        # logging.info("action buttons=ready")
 
         # add menulist
         self.menulists = {}
         self.menulists['clustering_method'] = self.add_menulist(
-                'Clustering method',
-                'Clusterize', ['KMeans', 'DBSCAN', 'Dummy'],
-                self.viz_engine.request_new_clustering,
-                dockarea=right_dock,
-                )
+            'Clustering method',
+            'Clusterize', ['KMeans', 'DBSCAN', 'Dummy'],
+            self.viz_engine.request_new_clustering,
+            dockarea=right_dock,
+        )
         self.menulists['clustering_method'] = self.add_menulist(
-                'Clusters borders',
-                'Delimits',
-                ['Bhattacharyya', 'All', 'None'],
-                self.viz_engine.request_new_frontiers,
-                right_dock,
-                )
+            'Clusters borders',
+            'Delimits',
+            ['Bhattacharyya', 'All', 'None'],
+            self.viz_engine.request_new_frontiers,
+            right_dock,
+        )
         self.menulists['predict_set'] = self.add_menulist(
-                'Predictor set',
-                'Load',
-                self.viz_engine.predictors,
-                self.viz_engine.reload_predict,
-                right_dock,
-                )
+            'Predictor set',
+            'Load',
+            self.viz_engine.predictors,
+            self.viz_engine.reload_predict,
+            right_dock,
+        )
 
-        #logging.info('Vizualization=ready')
+        # logging.info('Vizualization=ready')
 
     def set_additional_graph(self, fig):
-        self.add_figure(fig, onclick=lambda x:x, window=self.additional_window)
+        self.add_figure(fig, onclick=lambda x: x, window=self.additional_window)
         self.refresh()
 
     def add_figure(self, figure, onclick, window):
@@ -164,9 +161,9 @@ class Viz_handler():
                         FigureCanvas.updateGeometry(self)
 
                         # add mouse event
-                        #logging.info("mouseEvents=adding")
+                        # logging.info("mouseEvents=adding")
                         self.figure.canvas.mpl_connect('button_press_event', self.onclick)
-                        #logging.info("mouseEvents=ready")
+                        # logging.info("mouseEvents=ready")
                 
                 self.canvas = MplCanvas(self.figure, self.onclick)
         
@@ -184,11 +181,8 @@ class Viz_handler():
         plot_wrapper_box = QHBoxLayout(panel)
 
         self.plottings.append(
-                MatplotlibWidget(
-                    figure=figure,
-                    onclick=onclick
-                    )
-                )
+            MatplotlibWidget(figure=figure, onclick=onclick
+                             ))
         plot_wrapper_box.addWidget(self.plottings[-1])
 
         panel.setLayout(plot_wrapper_box)
@@ -196,7 +190,6 @@ class Viz_handler():
         root.addDockWidget(QtCore.Qt.LeftDockWidgetArea, dock)
         dock.setWidget(panel)
         
-
     def add_menulist(self, menu_name, button_name, categories, onlaunch, dockarea):
         """
         Add a menu list with action button
@@ -266,9 +259,7 @@ class Viz_handler():
         :param name: name of Widget
         :param update: function to bind returnPressed event of textpanel
         """
-
-        #ipdb.set_trace()
-
+        # ipdb.set_trace()
         root = self.window
         panel = QWidget()
         hbox = QHBoxLayout(panel)
@@ -292,7 +283,7 @@ class Viz_handler():
         panel = QWidget()
         hbox = QHBoxLayout(panel)
         my_qlist = QtWidgets.QListWidget()
-        my_item_list={}
+        my_item_list = {}
 
         for i in items_name:
             item = QtWidgets.QListWidgetItem()
@@ -300,11 +291,10 @@ class Viz_handler():
             item.setFlags(item.flags() | QtCore.Qt.ItemIsUserCheckable)
             item.setCheckState(QtCore.Qt.Unchecked)
             my_qlist.addItem(item)
-            my_item_list[i]=item
+            my_item_list[i] = item
 
         my_qlist.itemChanged.connect(
-                lambda:action( {item_name:my_item_list[item_name].checkState() for item_name in items_name} )
-                )
+                lambda: action( {item_name: my_item_list[item_name].checkState() for item_name in items_name} ))
         hbox.addWidget(my_qlist)
         panel.setLayout(hbox)
 
