@@ -1,0 +1,19 @@
+architecture:
+  algorithm_version_name: v0
+  upload_parameters: false
+#  train_parameters_database_uri: ftp://ftpuser:ftp@ns3055354.ovh.net/parameters/train/
+  predict_parameters_database_uri: ftp://ftpuser:ftp@ns3055354.ovh.net/parameters/latest/
+  train_parameters_database_uri: "file:///config/parameters"
+
+data_viz:
+  meta_input_algorithms:
+    - chiitoi
+    - tsuri
+    - tango
+    - majika
+
+  meta_required_algorithms:
+    - chiitoi
+    - tsuri
+    - tango
+    - majika
