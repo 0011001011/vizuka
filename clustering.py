@@ -1,5 +1,3 @@
-from tSNE_viz import find_amplitude, find_grid_positions
-from utils import find_nearest
 '''
 Clustering engine to use with Vizualization
 
@@ -7,13 +5,15 @@ Clustering engine to use with Vizualization
     init    - with different params
     fit     - to prepare the algo for the data
     predict - to find out the cluster of a (x,y)
-''' 
+'''
 
 import numpy as np
 from matplotlib import pyplot as plt
 from sklearn.cluster import KMeans, DBSCAN
 from scipy.spatial import KDTree
 import ipdb
+
+from tSNE_viz import find_amplitude, find_grid_positions
 
 
 class Clusterizer():
@@ -33,7 +33,8 @@ class Clusterizer():
             :params xys: array-like of (x,y) points
             :return: array-like of cluster id
             """
-            return (0,)*len(xs)
+            return (0, ) * len(xs)
+
 
 class KmeansClusterizer(Clusterizer):
 
@@ -46,6 +47,7 @@ class KmeansClusterizer(Clusterizer):
     def predict(self, xs):
         return self.engine.predict(xs)
 
+
 class DBSCANClusterizer(Clusterizer):
 
     def __init__(self, *args, **kwargs):
@@ -57,7 +59,7 @@ class DBSCANClusterizer(Clusterizer):
         """
         xs_tuple = [ tuple(x) for x in xs ]
         tmp = self.engine.fit_predict(xs_tuple)
-        self.predictions = {xs_tuple[idx]:predict for idx, predict in enumerate(tmp)}
+        self.predictions = {xs_tuple[idx]: predict for idx, predict in enumerate(tmp)}
         self.kdtree = KDTree(xs)
         self.xs = xs
 
@@ -69,9 +71,10 @@ class DBSCANClusterizer(Clusterizer):
                 current_predicts.append(self.predictions[x_tuple])
             else:
                 current_predicts.append(
-                            self.predictions[tuple(self.xs[self.kdtree.query(x)[1]])]
-                            )
+                    self.predictions[tuple(self.xs[self.kdtree.query(x)[1]])]
+                )
         return current_predicts
+
 
 class DummyClusterizer(Clusterizer):
     def __init__(self, resolution):
@@ -86,11 +89,12 @@ class DummyClusterizer(Clusterizer):
         xgygs = find_grid_positions(xys, self.resolution, self.amplitude)
 
         attributed_cluster = [
-                xgyg[0] + (xgyg[1]+self.resolution/2+2)*self.resolution
-                for xgyg in xgygs
-                ]
+            xgyg[0] + (xgyg[1] + self.resolution/2 + 2) * self.resolution
+            for xgyg in xgygs
+        ]
 
         return attributed_cluster
+
 
 def make_clusterizer(xs, method='kmeans', **kwargs):
     """
@@ -112,6 +116,7 @@ def make_clusterizer(xs, method='kmeans', **kwargs):
     clusterizer.fit(xs)
 
     return clusterizer
+
 
 def plot_clusters(data, clusterizer):
     """
@@ -136,9 +141,9 @@ def plot_clusters(data, clusterizer):
     Z = Z.reshape(xx.shape)
     f, ax = plt.subplots()
     ax.imshow(Z, interpolation='nearest',
-               extent=(xx.min(), xx.max(), yy.min(), yy.max()),
-               cmap=plt.cm.Paired,
-               aspect='auto', origin='lower')
+              extent=(xx.min(), xx.max(), yy.min(), yy.max()),
+              cmap=plt.cm.Paired,
+              aspect='auto', origin='lower')
 
     ax.plot(data[:, 0], data[:, 1], 'k.', markersize=2)
     
@@ -154,7 +159,8 @@ def plot_clusters(data, clusterizer):
     ax.set_xlim(x_min, x_max)
     ax.set_ylim(y_min, y_max)
 
-    return f,ax
+    return f, ax
+
 
 if __name__ == '__main__':
     import dim_reduction as dr
