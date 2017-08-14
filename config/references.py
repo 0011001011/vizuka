@@ -1,9 +1,8 @@
 import os
-import pickle
 
 BASE_PATH       = 'data/'
 
-DATA_PATH       = os.path.join(BASE_PATH, 'set/')  
+DATA_PATH       = os.path.join(BASE_PATH, 'set/')
 TSNE_DATA_PATH  = os.path.join(BASE_PATH, 'tSNE/')
 MODEL_PATH      = os.path.join(BASE_PATH, 'models/')
 GRAPH_PATH      = os.path.join(BASE_PATH, 'graph/')
@@ -39,8 +38,8 @@ PARAMS = { 'perplexities'  : [80],
            'learning_rates': [1000],
            'inits'         : ['random'],
            'n_iters'       : [15000]
-         }
-PCA_DIMS=42 # ~90% of explained_variance
+           }
+PCA_DIMS = 42  # ~90% of explained_variance
 
 # 30 for OVH, 50 for local, 15 for epinal
 REDUCTION_SIZE_FACTOR = 1
