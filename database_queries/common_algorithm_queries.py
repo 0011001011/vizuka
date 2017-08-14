@@ -169,23 +169,22 @@ class TransactionQuery(BaseTransactionQuery):
             model.Company.activity_start_date,
             cls.complement_wording_construct(),
         ]).where(and_(
-                condition_pk,
-                cls.transaction_monitoring_join(),
-                model.TransactionMonitoring.active_flag == 1,
-                model.TransactionMonitoring.status_id == model.TransactionMonitoring.SELECTED,
-                cls.transaction_company_join(),
-                model.Company.bnc_option_pk == model.BncOption.pk,
-                model.Company.ape_code_pk == model.ApeCode.pk,
-                model.Company.vat_regime_pk == model.VatRegime.pk,
-                model.Company.fiscal_regime_pk == model.FiscalRegime.pk,
-                model.Company.imposition_regime_pk == model.ImpositionRegime.pk,
-                model.Company.legal_obligation_pk == model.LegalObligation.pk,
-                model.TransactionResult.algorithm_pk == 3,
-                cls.transaction_result_join(),
-                cls.bank_transaction_join(),
-                )
-            )
-
+            condition_pk,
+            cls.transaction_monitoring_join(),
+            model.TransactionMonitoring.active_flag == 1,
+            model.TransactionMonitoring.status_id == model.TransactionMonitoring.SELECTED,
+            cls.transaction_company_join(),
+            model.Company.bnc_option_pk == model.BncOption.pk,
+            model.Company.ape_code_pk == model.ApeCode.pk,
+            model.Company.vat_regime_pk == model.VatRegime.pk,
+            model.Company.fiscal_regime_pk == model.FiscalRegime.pk,
+            model.Company.imposition_regime_pk == model.ImpositionRegime.pk,
+            model.Company.legal_obligation_pk == model.LegalObligation.pk,
+            model.TransactionResult.algorithm_pk == 3,
+            cls.transaction_result_join(),
+            cls.bank_transaction_join(),
+        )
+        )
         
     @classmethod
     def transaction_base_training(cls, condition_pk=True):
