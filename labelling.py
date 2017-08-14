@@ -8,7 +8,6 @@ from config.references import (
     DEFAULT_PREDICTOR,
 )
 
-import keras
 import numpy as np
 
 class Predictor():
@@ -46,7 +45,7 @@ def predict_rnn(
 
     :return: vector of predictions
     """
-
+    import keras
     predictor = keras.models.load_model(path + nameRN + version)
     x_predicted = predictor.predict(x)
 
