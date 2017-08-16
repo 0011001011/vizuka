@@ -1,3 +1,7 @@
+"""
+Module built around the class Vizualization
+"""
+
 import matplotlib
 matplotlib.use('Qt5Agg')  # noqa
 from matplotlib.gridspec import GridSpec
@@ -11,18 +15,10 @@ from data_viz.ml_helpers import (
         )
 
 from data_viz.config.references import (
-    DATA_PATH,
-    VERSION,
-    TSNE_DATA_PATH,
-    PARAMS,
     MODEL_PATH,
-    DO_CALCULUS,
-)
-
-"""
+    )
 
 
-"""
 import logging
 import math
 import itertools
@@ -32,11 +28,6 @@ import numpy as np
 
 from matplotlib import pyplot as plt
 import pandas as pd
-
-"""
-from shared_helpers import config
-DATA_VIZ_CONFIG = config.load_config(__package__)
-"""
 
 
 def find_grid_position(x, y, resolution, amplitude):
