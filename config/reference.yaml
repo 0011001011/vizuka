@@ -6,13 +6,13 @@ architecture:
   train_parameters_database_uri: "file:///config/parameters"
 
 data_viz:
-  meta_input_algorithms:
+  data_viz_input_algorithms:
     - chiitoi
     - tsuri
     - tango
     - majika
 
-  meta_required_algorithms:
+  data_viz_required_algorithms:
     - chiitoi
     - tsuri
     - tango
