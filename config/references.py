@@ -1,6 +1,6 @@
 import os
 
-BASE_PATH       = 'data/'
+BASE_PATH       = os.path.join('data_viz','data/')
 
 DATA_PATH       = os.path.join(BASE_PATH, 'set/')
 TSNE_DATA_PATH  = os.path.join(BASE_PATH, 'tSNE/')

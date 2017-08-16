@@ -1,32 +1,24 @@
 import matplotlib
 matplotlib.use('Qt5Agg')  # noqa
 from matplotlib.gridspec import GridSpec
-
-import sys
 import os
 
-from qt_handler import Viz_handler
-import labelling
-import clustering
-import dim_reduction
-import metier
-from analyze_transactions import View_details
+from data_viz.qt_handler import Viz_handler
+from data_viz.analyze_transactions import View_details
+from data_viz.ml_helpers import (
+        cross_entropy,
+        bhattacharyya,
+        )
 
-from config.references import (
+from data_viz.config.references import (
     DATA_PATH,
     VERSION,
-    REDUCTION_SIZE_FACTOR,
     TSNE_DATA_PATH,
     PARAMS,
     MODEL_PATH,
     DO_CALCULUS,
-    GRAPH_PATH,
 )
-from config.manakin import (
-        COLUMNS_TO_SCATTER,
-        )
 
-# from config.references import *
 """
 
 
@@ -39,7 +31,6 @@ from collections import Counter
 import numpy as np
 
 from matplotlib import pyplot as plt
-import ipdb
 import pandas as pd
 
 """
@@ -47,57 +38,6 @@ from shared_helpers import config
 DATA_VIZ_CONFIG = config.load_config(__package__)
 """
 
-def rgb_to_hex(red, green, blue):
-    """
-    Convert (int, int, int) RGB to hex RGB
-    """
-
-    return '#%02x%02x%02x' % (red, green, blue)
-
-
-def entropy(my_dic):
-    """
-    StraightForward entropy calculation
-
-    :param my_dict: dict of occurence of different classes
-    :return: discrete entropy calculation
-    """
-    effectif_total = sum(my_dic.values())
-    s = 0
-    for effectif in my_dic.values():
-        proportion = effectif / effectif_total
-        if proportion > 0:
-            s += proportion * math.log(proportion)
-    return -s
-
-def cross_entropy(dict1, dict2):
-    """
-    Cross-entropy between two dicts
-    dict1 must contains all keys in dict2
-    """
-    sum_dict1, sum_dict2 = sum(dict1.values()), sum(dict2.values())
-    ce = 0
-
-    for label in dict2:
-        if dict1[label]==0 and dict2[label]==0:
-            print("fuck that shit", label)
-        elif dict1[label]==0:
-            print("fuck that big shit", label)
-        else:
-            ce -= dict2[label]/sum_dict2*math.log(dict1[label]/float(sum_dict1))
-
-    return ce
-
-def bhattacharyya(dict1, dict2):
-    """
-    Similarity measure between two distribution
-    
-    :param dict1: dict with key:class, value:nb of observations
-    """
-    s = 0
-    for i in {*dict1, *dict2}:
-        s+=(dict1.get(i,0)*dict2.get(i,0))**.5
-    return -math.log(s) if s!=0 else -np.inf
 
 def find_grid_position(x, y, resolution, amplitude):
     """
@@ -113,6 +53,7 @@ def find_grid_position(x, y, resolution, amplitude):
 
     return z1, z2
 
+
 def find_grid_positions(xys, resolution, amplitude):
         return [ 
                 find_grid_position(
@@ -122,6 +63,7 @@ def find_grid_positions(xys, resolution, amplitude):
                         )
                 for xy in xys
                 ]
+
 
 def find_amplitude(projection):
         """
@@ -133,7 +75,8 @@ def find_amplitude(projection):
             max(-min(np.array(projection)[:, 1]), max(np.array(projection)[:, 1])))
         return 2 * max(x_proj_amplitude, y_proj_amplitude)
 
-def separate_prediction(y_pred_decoded, y_true_decoded, name_of_void):  # TODO
+
+def separate_prediction(y_pred_decoded, y_true_decoded, name_of_void):
     """
     Gives the index of good/bad/not predicted
     :param y_pred_decoded: labels predicted, decoded (human-readable)
@@ -186,7 +129,6 @@ def show_occurences_total(x, y, grid, resolution, amplitude):
         return "nothing found here"
     else:
         return max(grid[z1][z2], key=grid[z1][z2].get)
-
 
 
 def find_similar(account_encoded, y_true_decoded, embedded):
@@ -414,15 +356,6 @@ class Vizualization:
     #######################################
     # Similarity functions to draw clusters
 
-    def get_dominant(self, x_g, y_g):
-        """
-        Returns dominant class of cluster
-        """
-        if self.grid_total[x_g][y_g] == {}:
-            return None
-        else:
-            return max(self.grid_total[x_g][y_g], key=self.grid_total[x_g][y_g].get)
-
     def contains_dominant(self, x0y0, xy):
         """
         Checks if two clusters have same dominant label
@@ -456,134 +389,6 @@ class Vizualization:
         grid_prop_x0_y0 = self.grid_proportion[x0][y0]
 
         return (grid_prop_x0_y0 * (1 + diff) < grid_prop_x_y < grid_prop_x0_y0 * (1 - diff))
-
-    def find_specific_clusters(self, class_):
-        """
-        Finds all clusters which contain :param class_:
-
-        :param class_: label (decoded) to look for
-        """
-        grid_axis_iterator = range(
-            int(-self.resolution / 2) - 1,
-            int(self.resolution / 2) + 1
-        )
-
-        selected_clusters = set()
-        for i, j in itertools.product(grid_axis_iterator, grid_axis_iterator):
-            if self.grid_total[i][j].get(class_, 0) > 0:
-                selected_clusters.add((i, j))
-
-        return selected_clusters
-
-    def find_similar_clusters(self, x_g, y_g,
-                              similarity_check=contains_dominant,
-                              propagation='proximity'):
-        """
-        Find the coordinates of all similar clusters
-
-        A cluster is considered similar if similarity_check function returns True
-        Not all clusters are checked depending on the :param propagation: parameter
-
-        :param propagation: set to "proximity" or "all"
-                - proximity means that only (recursively) adjacent tiles are checked
-                - all means that every tile is checked
-        :param similarity_check: function that finds if two tiles are "similar"
-                                 it should returns True in this case, input are (x0y0, xy)
-                                 ..seealso:: contains_dominant
-        :type x_g: int
-        :type y_g: int
-        """
-        similar_clusters = []
-
-        if propagation == 'proximity':
-            _, similar_clusters = self.proximity_search(
-                (x_g, y_g),
-                (x_g, y_g),
-                set(),
-                set(),
-                similarity_check
-            )
-        elif propagation == 'all':
-            similar_clusters = self.exhaustive_search(
-                (x_g, y_g),
-                similarity_check
-            )
-
-        return similar_clusters
-
-    def exhaustive_search(self, x0y0, similarity_check):
-        """
-        Search ALL tiles and check if similar
-
-        :return: array of tiles similar to original according to similarity_check
-
-        :param x0y0: original tile to compare others to
-        :param similarity_check: function returning True if tiles are "similar"
-        """
-        x_0, y_0 = x0y0
-
-        similar_clusters = []
-        grid_axis_iterator = range(
-            int(-self.resolution / 2) - 1,
-            int(self.resolution / 2) + 1
-        )
-
-        for x_g, y_g in itertools.product(grid_axis_iterator, grid_axis_iterator):
-            if similarity_check(self, (x_0, y_0), (x_g, y_g)):
-                similar_clusters.append((x_g, y_g))
-
-        return similar_clusters
-
-    def proximity_search(self, x0y0, xy, already_checked, similars, similarity_check): #TODO
-        """
-        Recursive function that check if (recursively) adjacent tiles are similar
-
-        Function starts its search at x0y0 (the cluster to which it compares others
-        Then it uses :param similarity_check: function to find if similars exist in its neighbors
-        proximity_search is then called again recursively on its similar neighbors
-
-        :param similarity_check: the function that finds if two tiles are "similar"
-        :param already_check: the set of already checked tiles
-        :param similars: the set of similar tiles within the already_checked' ones
-        :param x0y0: is the original tile from which we compare new ones
-        """
-
-        x0, y0 = x0y0
-        x, y = xy
-
-        if (x, y) in already_checked:
-            return already_checked, similars
-
-        already_checked.add((x, y))
-
-        if similarity_check(self, (x, y), (x0, y0)):
-
-            similars.add((x, y))
-
-            if x + self.size_centroid < self.amplitude:
-                already_checked, similars = self.proximity_search(
-                        (x0, y0),
-                        (x + self.size_centroid, y),
-                        already_checked,
-                        similars,
-                        similarity_check
-                        )
-            if x - self.size_centroid > -self.amplitude:
-                already_checked, similars = self.proximity_search((x0, y0), (x - 1, y),
-                                                                  already_checked,
-                                                                  similars,
-                                                                  similarity_check)
-            if y + 1 < self.resolution / 2:
-                already_checked, similars = self.proximity_search((x0, y0), (x, y + 1),
-                                                                  already_checked,
-                                                                  similars,
-                                                                  similarity_check)
-            if y - 1 > -self.resolution / 2:
-                already_checked, similars = self.proximity_search((x0, y0), (x, y - 1),
-                                                                  already_checked,
-                                                                  similars,
-                                                                  similarity_check)
-        return already_checked, similars
 
     def filter_true_class(self, states_by_class):
         all_unchecked = ( 0 == sum(states_by_class.values()) )
@@ -666,189 +471,6 @@ class Vizualization:
             self.ctrl_held = False
             logging.info("ctrl unheld")
 
-    def onclick(self, event):
-        """
-        Mouse event handler
-
-        Actions on mouse button pressed
-            1 : select a tile (and a class)
-            2 : find similar tiles
-            3 : reset vizualization (graph+summary)
-
-        """
-
-        x = event.xdata
-        y = event.ydata
-
-        button = event.button
-
-        self.summary_axe.clear()
-        self.summary_axe.axis('off')
-
-        x_g, y_g = find_grid_position(
-            x,
-            y,
-            self.resolution,
-            self.amplitude
-        )
-
-        if button == 1:
-
-            # show dominant account in grid fragment, in title
-            # select nearest point to mouse
-            # colorize them all
-
-            # find nearest point to click
-
-            if self.shift_held:
-                pass
-
-            clicked_cluster = self.clusterizer.predict([(x,y)])[0]
-
-            self.delimit_cluster(clicked_cluster, color=self.manual_cluster_color)
-
-            self.update_summary(clicked_cluster)
-            self.print_summary(self.summary_axe)
-
-        elif button == 2:
-            
-            dominant = self.get_dominant(x_g, y_g)
-            if dominant is None: return
-
-            similars = self.proj_by_class[dominant]
-            self.ax.scatter(
-                similars[:, 0],
-                similars[:, 1],
-                color='green',
-                marker='+'
-            )
-
-            propagation = 'all' if not self.shift_held else 'proximity'
-            similar_clusters = self.find_similar_clusters(
-                x_g,
-                y_g,
-                propagation=propagation
-            )
-
-            for x_g, y_g in similar_clusters:
-                self.update_summary(x_g, y_g)
-            self.print_summary(self.summary_axe)
-
-        elif button == 3:
-
-            # reboot vizualization
-            self.reset_summary()
-            self.reset_viz()
-
-        self.refresh_graph()
-
-    def reset_viz(self):
-        """
-        Reset (graphically) the vizualization
-        ..note:: does not touch the summary array, for this use self.reset_summary()
-        """
-        logging.info("scatterplot: removing specific objects")
-        for i in self.ax.get_children():
-            if isinstance(i, matplotlib.collections.PathCollection):
-                i.remove()
-            elif isinstance(i, matplotlib.lines.Line2D):
-                if i.get_color() == self.manual_cluster_color:
-                    i.remove()
-        
-        logging.info("scatterplot: drawing observations")
-        self.ax.scatter(
-            self.x_proj_good[:, 0],
-            self.x_proj_good[:, 1],
-            color='b', marker="+"
-        )
-        self.ax.scatter(
-            self.x_proj_bad[:, 0],
-            self.x_proj_bad[:, 1],
-            color='r',
-            marker='+'
-        )
-        self.ax.scatter(
-            self.x_proj_null[:, 0],
-            self.x_proj_null[:, 1],
-            marker='x',
-            color='g'
-        )
-        logging.info("scatterplot: ready")
-        
-        self.global_summary_axe.__clear()
-        self.print_global_summary(self.global_summary_axe)
-
-    def reset_summary(self):
-        """
-        Reset the local summary
-        """
-        self.local_effectif = {}
-        self.local_proportion = {}
-        self.local_confusion_by_class = { class_:{ class__:0  for class__ in self.labels } for class_ in self.labels }
-        self.local_bad_count_by_class = { class_:0 for class_ in self.labels }
-        self.local_classes = set()
-        self.local_sum = 0
-        self.currently_selected_cluster = []
-        self.cursor_ids = [0]
-
-        # Get the real labels found in true y
-
-        self.amplitude = find_amplitude(self.proj) 
-
-        mesh = np.meshgrid(
-                np.arange(
-                    -self.amplitude,
-                    self.amplitude,
-                    self.amplitude/(self.resolution/2)
-                    ),
-                np.arange(
-                    -self.amplitude,
-                    self.amplitude,
-                    self.amplitude/(self.resolution/2)
-                    ),
-                )
-        
-        self.size_centroid  = 2 * self.amplitude / self.resolution
-        self.mesh_centroids = np.c_[mesh[0].ravel(), mesh[1].ravel()]
-
-
-        (
-            self.index_bad_predicted,
-            self.index_good_predicted,
-            self.index_not_predicted,
-
-            ) = separate_prediction(
-
-            self.y_pred_decoded,
-            self.y_true_decoded,
-            special_class,
-        )
-
-        # Sort good/bad/not predictions in t-SNE space
-        logging.info("projections=listing")
-        self.proportion_by_class = { 
-                class_:
-                sum([
-                    (self.y_true_decoded[i]==self.y_pred_decoded[i])
-                    for i in self.index_by_class[class_]
-                    ])
-                /float(len(self.index_by_class[class_]))
-                for class_ in self.labels
-                }
-        logging.info("projections=sorting")
-        self.x_proj_good = np.array([self.proj[i] for i in self.index_good_predicted])
-        self.x_proj_bad  = np.array([self.proj[i] for i in self.index_bad_predicted])
-        self.x_proj_null = np.array([self.proj[i] for i in self.index_not_predicted])
-        logging.info("projections=ready")
-        
-        logging.info('clustering engine=fitting')
-        self.clusterizer = clustering.DummyClusterizer(resolution=self.resolution)
-        self.clusterizer.fit(self.proj)
-        
-        logging.info('clustering engine=ready')
-        self.normalize_frontier = True
-        
-
     #######################################
     # Similarity functions to draw clusters
 
@@ -860,40 +482,6 @@ class Vizualization:
             return None
         else:
             return max(self.grid_total[x_g][y_g], key=self.grid_total[x_g][y_g].get)
-
-    def contains_dominant(self, x0y0, xy):
-        """
-        Checks if two clusters have same dominant label
-
-        :type x0y0: (int, int) cluster coordinates
-        :type xy: (int, int) cluster coordinates
-        """
-        x0, y0 = x0y0
-        x, y = xy
-
-        if self.grid_total[x][y] == {} or self.grid_total[x0][y0] == {}:
-            return False
-
-        dominant = max(self.grid_total[x][y], key=self.grid_total[x][y].get)
-        other_dominant = max(self.grid_total[x0][y0], key=self.grid_total[x0][y0].get)
-
-        return (dominant == other_dominant)
-
-    def comparable_proportion(self, x0y0, xy, diff=0.10):
-        """
-        Checks if cluster have comparable *proportion*
-
-        :param diff: percent of max difference in proportion for two similar clusters
-        :type x0y0: (int, int) cluster coordinates
-        :type xy: (int, int) cluster coordinates
-        """
-        x0, y0 = x0y0
-        x, y = xy
-
-        grid_prop_x_y = self.grid_proportion[x][y]
-        grid_prop_x0_y0 = self.grid_proportion[x0][y0]
-
-        return (grid_prop_x0_y0 * (1 + diff) < grid_prop_x_y < grid_prop_x0_y0 * (1 - diff))
 
     def find_specific_clusters(self, class_):
         """
@@ -1077,22 +665,6 @@ class Vizualization:
             self.ax.set_title(''.join([str(class_)+' ' for class_ in classes]))
 
         self.refresh_graph()
-
-    def onmodifier_press(self, event):
-        if event.key == 'shift':
-            self.shift_held = True
-            logging.info("shift held")
-        if event.key == 'ctrl':
-            self.ctrl_held = True
-            logging.info("ctrl held")
-
-    def onmodifier_release(self, event):
-        if event.key == 'shift':
-            self.shift_held = False
-            logging.info("shift unheld")
-        if event.key == 'ctrl':
-            self.ctrl_held = False
-            logging.info("ctrl unheld")
 
     def onclick(self, event):
         """
@@ -1682,7 +1254,7 @@ class Vizualization:
         logging.info("cluster: done")
 
         self.label_mesh()
-        self.update_all_heatmaps_v2()
+        self.update_all_heatmaps()
 
         self.apply_borders(
                 self.normalize_frontier,
@@ -1691,25 +1263,6 @@ class Vizualization:
         logging.info('borders: done')
 
     def update_all_heatmaps(self):
-        """
-        Get all heatmaps registered by add_heatmap and draw them from scratch
-        """
-        for (heatmap_builder, axe) in self.heatmaps:
-            axe.clear()
-            
-            all_patches = heatmap_builder()
-            logging.info("heatmaps: adding patches to "+str(axe))
-            for p in all_patches:
-                axe.add_patch(p)
-            
-            logging.info("heatmaps: "+str(axe)+" ready")
-
-            axe.set_xlim(-self.amplitude / 2, self.amplitude / 2)
-            axe.set_ylim(-self.amplitude / 2, self.amplitude / 2)
-        
-        self.refresh_graph()
-
-    def update_all_heatmaps_v2(self):
         """
         Get all heatmaps registered by add_heatmap and draw them from scratch
         """
@@ -1740,14 +1293,6 @@ class Vizualization:
 
         :param current_cluster: cluster name selected by click
         """
-
-        # print("grid_total keys:", self.grid_total.keys())
-        # print("grid_total[0] keys:", self.grid_total[0].keys())
-        
-        #ipdb.set_trace()
-        
-        #print('currentcluster', type(current_cluster))
-        #print('real clusters', type(list(self.class_by_cluster.keys())[0]))
         to_include = self.class_by_cluster[current_cluster]
         to_include = { k:to_include[k] for k in to_include if to_include[k]!=0 }
 
@@ -1766,7 +1311,6 @@ class Vizualization:
         self.local_classes = self.local_classes.union(set(to_include.keys()))
         self.local_sum = sum(to_include.values()) + self.local_sum
 
-        #ipdb.set_trace()
         for c in new_rows:
             self.local_effectif[c] = to_include[c]
             self.local_proportion[c] = self.cluster_good_count_by_class[current_cluster].get(c,0) / (self.cluster_bad_count_by_class[current_cluster].get(c,0) + self.cluster_good_count_by_class[current_cluster].get(c,0))
@@ -1802,7 +1346,6 @@ class Vizualization:
 
         return indexes_selected
 
-
     def print_summary(self, axe, max_row=15):
         """
         Print a short summary with basic stats (occurrence, classification rate) on an axe
@@ -1830,7 +1373,7 @@ class Vizualization:
                     '{0:.2f}'.format(self.total_individual[c]/float(len(self.proj))*100)+'%)'
                     ),
                 
-                #'{0:.2f}'.format(self.proportion_by_class[c]*100),
+
                 (
                     ' '.join([
                         str(class_mistaken)+' ('+'{0:.0f}'.format(
@@ -1867,14 +1410,7 @@ class Vizualization:
             colLabels=self.cols,
             loc='center',
         )
-        
-        logging.info("Details=loading indexes of selected")
-        #selected_idxs = [self.index_by_label[label] for label in self.currently_selected_cluster ]
-        #selected_idxs = [i for j in selected_idxs for i in j]
 
-        indexes_shown = self.get_selected_indexes()
-
-        #self.view_details.update( indexes_shown )
         logging.info("Details=loaded")
 
         self.refresh_graph()
@@ -2005,119 +1541,20 @@ class Vizualization:
        
         self.label_mesh()
         
-        self.update_all_heatmaps_v2()
-        '''
         self.update_all_heatmaps()
-        '''
         logging.info("heatmap=ready")
 
         # draw scatter plot
         self.reset_viz()
-        
-        # draw clusters borders
-        #self.apply_borders(
-        #        self.normalize_frontier,
-        #        self.similarity_measure,
-        #        self.axes_needing_borders)
         self.request_new_frontiers('none')
         
 
         logging.info('Vizualization=ready')
 
     def show(self):
-        logging.info("showing")
         self.viz_handler.show()
-        #self.view_details.show()
-        print('\n'*10+'AAA')
 
     def refresh_graph(self):
         self.viz_handler.refresh()
 
-
-
-if __name__ == '__main__':
-
-    logging.basicConfig(level=logging.DEBUG)
-
-    logging.info("Starting script")
-
-    PARAMS['perplexities'] = [40, 50, 60, 70, 80]
-    PARAMS['learning_rates'] = [800, 1000]
-    PARAMS['inits'] = ['random', 'pca']
-    PARAMS['n_iters'] = [10000, 15000]
-    PARAM_VIZ = (80, 1000, 'random', 15000)
-
-    logging.info("raw_data=loading")
-    (
-        x_small,
-        y_small,
-        class_encoder,
-        class_decoder,
-
-    ) = dim_reduction.load_raw_data()
-
-    logging.info('raw_data=loaded')
-
-    if DO_CALCULUS:
-        logging.info("t-sne=learning")
-
-        x_transformed, models = dim_reduction.learn_tSNE(
-            PARAMS,
-            VERSION,
-            x_small,
-            TSNE_DATA_PATH,
-            REDUCTION_SIZE_FACTOR,
-        )
-        logging.info('t-sne=ready')
-    else:
-        logging.info("t-sne=loading")
-
-        x_transformed, models = dim_reduction.load_tSNE(
-            PARAMS,
-            VERSION,
-            TSNE_DATA_PATH,
-            REDUCTION_SIZE_FACTOR,
-        )
-        logging.info('t-sne=ready')
-
-    x_2D = x_transformed[PARAM_VIZ]
-
-    ###############
-    # PREDICT
-
-    if DO_CALCULUS:
-        logging.info('RNpredictions=predicting')
-        x_predicted = labelling.predict_rnn(
-            x_small,
-            y_small,
-            path=MODEL_PATH,
-            version=VERSION
-        )
-        logging.info('RNpredictions=ready')
-    else:
-        logging.info('RNpredictions=loading')
-        x_predicted = labelling.load_predict(
-            path=MODEL_PATH,
-            version=VERSION
-        )
-        logging.info('RNpredictions=ready')
-    logging.info("loading raw transactions for analysis..")
-
-    transactions_raw = np.load(
-        DATA_PATH + 'originals' + VERSION + '.npz'
-    )['originals']
-    
-    f = Vizualization(
-        x_raw = transactions_raw,
-        proj=x_2D,
-        y_true=y_small,
-        y_pred=x_predicted,
-        resolution=200,
-        class_decoder=class_decoder,
-        class_encoder=class_encoder,
-    )
-    
-    f.plot()
-    #plt.ion()
-    f.show()
 

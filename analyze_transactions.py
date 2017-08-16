@@ -2,13 +2,10 @@ import logging
 from collections import Counter
 
 import numpy as np
-from matplotlib import pyplot as plt
 import seaborn as sns
-
-import data_viz.metier
-from data_viz.config.references import GRAPH_PATH
-from data_viz.config.manakin import COLUMNS_TO_SCATTER
-
+from config.manakin import COLUMNS_TO_SCATTER
+from config.references import GRAPH_PATH
+from matplotlib import pyplot as plt
 
 logging.basicConfig(level=logging.DEBUG)
 
