@@ -10,18 +10,18 @@ from config.references import (
 
 import numpy as np
 
+
 class Predictor():
     def predict(x, **kwargs):
         pass
 
+
 class MetaPredict():
     def __init__(self, ordered_predictions):
         self.predictions = ordered_predictions
+        
     def predict(self, xs):
         return [self.predictions[self.predictions.indexof(x)] for x in xs]
-
-
-
 
 
 def predict_rnn(
