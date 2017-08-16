@@ -8,7 +8,7 @@ import os
 
 import numpy as np
 
-from config.references import (
+from data_viz.config.references import (
     DATA_PATH,
     INPUT_FILE_BASE_NAME,
     RAW_NAME,
@@ -16,10 +16,9 @@ from config.references import (
     DEFAULT_PREDICTOR,
     VERSION,
 )
-from config.manakin import URI
-from database_queries import db_interface
-
-logging.basicConfig(level=logging.DEBUG)
+from data_viz.config.manakin import URI
+from data_viz.database_queries import db_interface
+from data_viz import logger
 
 
 def query_meta(DBI, set_name):
@@ -33,13 +32,13 @@ def query_meta(DBI, set_name):
 
 def query_meta_all_sets(DBI):
     test, meta_pk, oracle_pk = query_meta(DBI, 'test')
-    logging.info('query_test=ready\n')
+    logger.info('query_test=ready\n')
     validation = query_meta(DBI, 'validation')[0]
-    logging.info('query_validation=ready\n')
+    logger.info('query_validation=ready\n')
     test += validation
     test = [np.array(t) for t in test]
     test = np.array(test)
-    logging.info('queries merged')
+    logger.info('queries merged')
 
     return test, meta_pk, oracle_pk
 
@@ -178,14 +177,14 @@ def get_predictions_by_engine(
 
 if __name__ == '__main__':
 
-    MDI = db_interface.MetaDatabaseInterface(URI)
-    get_algo_pk = MDI._register_algorithm_name
+    DVDI = db_interface.DataVizDatabaseInterface(URI)
+    get_algo_pk = DVDI._register_algorithm_name
 
-    logging.info('query db')
-    datas, meta_pk, oracle_pk = query_meta_all_sets(MDI)
-    logging.info('sort results')
+    logger.info('query db')
+    datas, meta_pk, oracle_pk = query_meta_all_sets(DVDI)
+    logger.info('sort results')
     raws, inputs, predictions, reality = separate(datas, meta_pk, oracle_pk)
-    logging.info('preprocess data')
+    logger.info('preprocess data')
     xs, ys, encoder = preprocess_meta(
         raws,
         inputs,
