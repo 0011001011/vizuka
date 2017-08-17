@@ -13,6 +13,7 @@ from data_viz.ml_helpers import (
         cross_entropy,
         bhattacharyya,
         )
+from data_viz import clustering
 
 from data_viz.config.references import (
     MODEL_PATH,
@@ -33,7 +34,6 @@ import pandas as pd
 def find_grid_position(x, y, resolution, amplitude):
     """
     Gives the int indexes of (x,y) inside the grid matrix
-
     :param resolution: size of grid (number of square by row/column)
     :param amplitude:  size of embedded space, as max of axis (rounded as an int)
                        e.g: [[-1,1],[.1,.1] as an amplitude of 2
@@ -44,17 +44,15 @@ def find_grid_position(x, y, resolution, amplitude):
 
     return z1, z2
 
-
 def find_grid_positions(xys, resolution, amplitude):
-        return [ 
+        return [
                 find_grid_position(
                         xy[0], xy[1],
                         resolution,
                         amplitude,
                         )
                 for xy in xys
-                ]
-
+]
 
 def find_amplitude(projection):
         """
@@ -96,68 +94,6 @@ def separate_prediction(y_pred_decoded, y_true_decoded, name_of_void):
             index_bad_predicted.add(i)
 
     return index_bad_predicted, index_good_predicted, index_not_predicted
-
-
-def show_occurences_total(x, y, grid, resolution, amplitude):
-    """
-    Finds key associated with the largest value in the grid fragment containing (x, y)
-    Use it with visualization.grid_total to get the most frequent label
-
-    :param resolution: size of grid (number of square by row/column)
-    :param amplitude:  size of embedded space, as max of axis (rounded as an int)
-                       e.g: [[-1,1],[.1,.1] as an amplitude of 2
-    :type x: float
-    :type y: float
-    :return: key of biggest value in grid
-    """
-
-    z1, z2 = find_grid_position(x, y, resolution, amplitude)
-    if z1 not in grid.keys():
-        return "out of space"
-    elif z2 not in grid[z1].keys():
-        return "out of space"
-    elif len(grid[z1][z2]) == 0:
-        return "nothing found here"
-    else:
-        return max(grid[z1][z2], key=grid[z1][z2].get)
-
-
-def find_similar(account_encoded, y_true_decoded, embedded):
-    """
-    Get indexes in proj of all similar point
-    Similar points are data with same labels as :param account_encoded:
-
-    :param account_encoded: label of initial point
-    :param y_true_decoded:  real labels decoded
-    :param embedded:        euclidian space
-
-    :rtype: array((x_similar, y_similar)), array(indexes)
-    """
-
-    idxs = []
-    similars = []
-
-    logging.info("similar to "+str(account_encoded.argsort()[-1]))
-
-    for i, account in enumerate(y_true_decoded[:len(embedded)]):
-        if account == account_encoded:
-            similars.append(embedded[i])
-            idxs.append(i)
-    logging.info("found ", len(similars), " similars points")
-
-    return np.array(similars), idxs
-
-def find_projected_in_cluster(cluster, cluster_by_idx):
-    """
-    Returns raw x in cluster containing (param:x,param:y)
-    """
-    selected_idx = set()
-
-    for idx, current_cluster in enumerate(cluster_by_idx):
-        if cluster == current_cluster:
-            selected_idx.add(idx)
-
-    return selected_idx
 
 
 class Vizualization:
@@ -297,9 +233,6 @@ class Vizualization:
         self.clusterizer = clustering.DummyClusterizer(resolution=self.resolution)
         self.clusterizer.fit(self.proj)
         logging.info('clustering engine=ready')
-        #self.similarity_measure = lambda x,y:0
-        #self.similarity_measure = lambda x,y:1
-        #self.request_new_frontiers(method='none')
         self.normalize_frontier = True
         
     def reload_predict(self, filename, model_path=MODEL_PATH):
@@ -401,7 +334,6 @@ class Vizualization:
         
         self.update_showonly_pred(to_scatter, all_unchecked=all_unchecked)
 
-
     def update_showonly_true(self, classes, all_unchecked):
         """
         Hide all other label but class_
@@ -417,9 +349,55 @@ class Vizualization:
 
         for class_ in classes:
             similars = self.proj_by_class[class_]
-            similars_idx = self.index_by_class[class_]
-            similars_good = [idx for idx in similars_idx if idx in self.index_good_predicted ]
-            similars_bad  = [idx for idx in similars_idx if idx in self.index_bad_predicted ]
+            similar_idxs = self.index_by_class[class_]
+
+            similars_good = [idx for idx in similar_idxs if idx in self.index_good_predicted ]
+            similars_bad  = [idx for idx in similar_idxs if idx in self.index_bad_predicted ]
+            if len(similars_bad):
+                if all_unchecked and str(class_) == str(self.special_class):
+                    continue
+                self.ax.scatter(x=np.array([self.proj[i] for i in similars_bad])[:, 0],
+                                y=np.array([self.proj[i] for i in similars_bad])[:, 1],
+                                color='r',
+                                marker='+')
+            if len(similars_good):
+                if all_unchecked and class_ == self.special_class:
+                    continue
+                self.ax.scatter(x=np.array([self.proj[i] for i in similars_good])[:, 0],
+                                y=np.array([self.proj[i] for i in similars_good])[:, 1],
+                                color='b',
+                                marker='+')
+        if all_unchecked:
+            self.ax.scatter(
+                    x=np.array([self.proj[i] for i in self.index_by_class[self.special_class]])[:,0],
+                    y=np.array([self.proj[i] for i in self.index_by_class[self.special_class]])[:,1],
+                    color='g',
+                    marker='x')
+            self.ax.set_title(self.ax_base_title)
+        else:
+            self.ax.set_title(''.join([str(class_)+' ' for class_ in classes]))
+
+        self.refresh_graph()
+
+    def update_showonly_pred(self, classes, all_unchecked):
+        """
+        Hide all other label but class_
+
+        :param classes: labels (decoded) to search and plot
+        """
+
+        logging.info("begin hiding...")
+
+        for i in self.ax.get_children():
+            if isinstance(i, matplotlib.collections.PathCollection):
+                i.remove()
+
+        for class_ in classes:
+            similars = self.proj_by_class[class_]
+            similar_idxs = [idx for idx, this_class in enumerate(self.y_pred_decoded) if this_class==class_]
+
+            similars_good = [idx for idx in similar_idxs if idx in self.index_good_predicted ]
+            similars_bad  = [idx for idx in similar_idxs if idx in self.index_bad_predicted ]
             if len(similars_bad):
                 if all_unchecked and str(class_) == str(self.special_class):
                     continue
@@ -464,33 +442,6 @@ class Vizualization:
 
     #######################################
     # Similarity functions to draw clusters
-
-    def get_dominant(self, x_g, y_g):
-        """
-        Returns dominant class of cluster
-        """
-        if self.grid_total[x_g][y_g] == {}:
-            return None
-        else:
-            return max(self.grid_total[x_g][y_g], key=self.grid_total[x_g][y_g].get)
-
-    def find_specific_clusters(self, class_):
-        """
-        Finds all clusters which contain :param class_:
-
-        :param class_: label (decoded) to look for
-        """
-        grid_axis_iterator = range(
-            int(-self.resolution / 2) - 1,
-            int(self.resolution / 2) + 1
-        )
-
-        selected_clusters = set()
-        for i, j in itertools.product(grid_axis_iterator, grid_axis_iterator):
-            if self.grid_total[i][j].get(class_, 0) > 0:
-                selected_clusters.add((i, j))
-
-        return selected_clusters
 
     def find_similar_clusters(self, x_g, y_g,
                               similarity_check=contains_dominant,
@@ -613,50 +564,6 @@ class Vizualization:
         self.update_showonly(to_scatter, all_unchecked=all_unchecked)
 
 
-    def update_showonly_pred(self, classes, all_unchecked):
-        """
-        Hide all other label but class_
-
-        :param classes: labels (decoded) to search and plot
-        """
-
-        logging.info("begin hiding...")
-
-        for i in self.ax.get_children():
-            if isinstance(i, matplotlib.collections.PathCollection):
-                i.remove()
-
-        for class_ in classes:
-            similars = self.proj_by_class[class_]
-            similars_idx = [idx for idx, this_class in enumerate(self.y_pred_decoded) if this_class==class_]
-            similars_good = [idx for idx in similars_idx if idx in self.index_good_predicted ]
-            similars_bad  = [idx for idx in similars_idx if idx in self.index_bad_predicted ]
-            if len(similars_bad):
-                if all_unchecked and str(class_) == str(self.special_class):
-                    continue
-                self.ax.scatter(x=np.array([self.proj[i] for i in similars_bad])[:, 0],
-                                y=np.array([self.proj[i] for i in similars_bad])[:, 1],
-                                color='r',
-                                marker='+')
-            if len(similars_good):
-                if all_unchecked and class_ == self.special_class:
-                    continue
-                self.ax.scatter(x=np.array([self.proj[i] for i in similars_good])[:, 0],
-                                y=np.array([self.proj[i] for i in similars_good])[:, 1],
-                                color='b',
-                                marker='+')
-        if all_unchecked:
-            self.ax.scatter(
-                    x=np.array([self.proj[i] for i in self.index_by_class[self.special_class]])[:,0],
-                    y=np.array([self.proj[i] for i in self.index_by_class[self.special_class]])[:,1],
-                    color='g',
-                    marker='x')
-            self.ax.set_title(self.ax_base_title)
-        else:
-            self.ax.set_title(''.join([str(class_)+' ' for class_ in classes]))
-
-        self.refresh_graph()
-
     def onclick(self, event):
         """
         Mouse event handler
@@ -676,64 +583,7 @@ class Vizualization:
         self.summary_axe.clear()
         self.summary_axe.axis('off')
 
-        x_g, y_g = find_grid_position(
-            x,
-            y,
-            self.resolution,
-            self.amplitude
-        )
-
         if button == 1:
-
-            # show dominant account in grid fragment, in title
-            # select nearest point to mouse
-            # colorize them all
-
-            # find nearest point to click
-
-            if self.shift_held:
-
-                #nearest, idx = find_nearest(x, y, self.proj)
-                #class_nearest = self.y_true_decoded[idx]
-                #logging.info("looking for class", class_nearest)
-                #similars, _ = find_similar(
-                #    class_nearest, self.y_true_decoded, self.proj)
-
-                self.ax.scatter(
-                    self.x_proj_good[:, 0],
-                    self.x_proj_good[:, 1],
-                    color='b',
-                    marker="+"
-                )
-                self.ax.scatter(
-                    self.x_proj_bad[:, 0],
-                    self.x_proj_bad[:, 1],
-                    color='r',
-                    marker='+'
-                )
-                self.ax.scatter(
-                    similars[:, 0],
-                    similars[:, 1],
-                    color='green',
-                    marker='+'
-                )
-                dominant = str(
-                    show_occurences_total(
-                        x,
-                        y,
-                        self.grid_total,
-                        self.resolution,
-                        self.amplitude
-                    )
-                )
-                self.ax.set_title(''.join([
-                    'dominant class: ',
-                    dominant,
-                    ', colorizing ',
-                    str(self.labels[idx])
-                ]))
-            
-            #ipdb.set_trace()
             clicked_cluster = self.clusterizer.predict([(x,y)])[0]
 
             self.delimit_cluster(clicked_cluster, color=self.manual_cluster_color)
@@ -741,45 +591,7 @@ class Vizualization:
 
             self.print_summary(self.summary_axe)
 
-            selected_x_idx = find_projected_in_cluster(
-                clicked_cluster,
-                self.cluster_by_idx,
-            )
-
-            """
-            logging.info('\n\n' + ('-' * 12) + '\nSelected transactions:')
-            for idx in selected_x_idx:
-                logging.info(self.x_raw[idx])
-            """
-
-            logging.debug('x=%s y=%s x_grid=%s y_grid=%s\n', x, y, x_g, y_g)
-
-        elif button == 2:
-            
-            dominant = self.get_dominant(x_g, y_g)
-            if dominant is None: return
-
-            similars = self.proj_by_class[dominant]
-            self.ax.scatter(
-                similars[:, 0],
-                similars[:, 1],
-                color='green',
-                marker='+'
-            )
-
-            propagation = 'all' if not self.shift_held else 'proximity'
-            similar_clusters = self.find_similar_clusters(
-                x_g,
-                y_g,
-                propagation=propagation
-            )
-
-            for x_g, y_g in similar_clusters:
-                self.update_summary(x_g, y_g)
-            self.print_summary(self.summary_axe)
-
         elif button == 3:
-
             # reboot vizualization
             self.reset_summary()
             self.reset_viz()
@@ -1084,7 +896,7 @@ class Vizualization:
                 pass
         logging.info('borders: ready')
 
-    def heatmap_proportion_v2(self):
+    def heatmap_proportion(self):
         """
         Prepare the patches for a 'proportion' heatmap (good predictions / total effectif)
 
@@ -1130,7 +942,7 @@ class Vizualization:
         return all_colors
 
 
-    def heatmap_entropy_v2(self):
+    def heatmap_entropy(self):
         """
         Prepares the patches for an entropy heatmap
 
@@ -1257,7 +1069,7 @@ class Vizualization:
         """
         Get all heatmaps registered by add_heatmap and draw them from scratch
         """
-        for (heatmap_builder, axe) in self.heatmaps_v2:
+        for (heatmap_builder, axe) in self.heatmaps:
             axe.clear()
             
             heatmap_color = heatmap_builder()
@@ -1436,16 +1248,6 @@ class Vizualization:
         summary.auto_set_font_size(False)
         summary.set_fontsize(8)
     
-    def add_heatmap_v2(self, heatmap_builder, axe):
-        """
-        Draw a heatmap based on a heatmap_builder on an axe
-
-        :param heatmap_builder: a Vizualization parameterless method which returns patches
-        :param axe: matplotlib axe object in which the heatmap will be plotted
-        """
-
-        self.heatmaps_v2.append((heatmap_builder, axe))
-
     def add_heatmap(self, heatmap_builder, axe):
         """
         Draw a heatmap based on a heatmap_builder on an axe
@@ -1455,7 +1257,7 @@ class Vizualization:
         """
 
         self.heatmaps.append((heatmap_builder, axe))
-    
+
     def export(self, output_path):
         logging.info('exporting:...')
         pd.DataFrame(
@@ -1489,9 +1291,7 @@ class Vizualization:
         self.view_details = View_details(self.x_raw)
         self.viz_handler = Viz_handler(self, self.main_fig, self.onclick)
         
-
         # main subplot with the scatter plot
-        #self.ax = self.main_fig.add_subplot(3, 1, (1, 2))
         self.ax = self.main_fig.add_subplot(gs[:2,:3])
         self.ax_base_title = 'Correct VS incorrect predictions'
         self.ax.set_title(self.ax_base_title)
@@ -1516,9 +1316,6 @@ class Vizualization:
 
         self.axes_needing_borders = (self.ax, self.heat_proportion, self.heat_entropy)
 
-        def wrapper_show_occurences_total(x, y):
-            return show_occurences_total(x, y, self.grid_total, self.resolution, self.amplitude)
-        
         # draw heatmap
         logging.info("heatmap=calculating")
         '''
@@ -1526,9 +1323,9 @@ class Vizualization:
         self.add_heatmap(self.heatmap_proportion, self.heat_proportion)
         self.add_heatmap(self.heatmap_entropy, self.heat_entropy)
         '''
-        self.heatmaps_v2 = []
-        self.add_heatmap_v2(self.heatmap_proportion_v2, self.heat_proportion)
-        self.add_heatmap_v2(self.heatmap_entropy_v2, self.heat_entropy)
+        self.heatmaps = []
+        self.add_heatmap(self.heatmap_proportion, self.heat_proportion)
+        self.add_heatmap(self.heatmap_entropy, self.heat_entropy)
        
         self.label_mesh()
         
@@ -1538,7 +1335,6 @@ class Vizualization:
         # draw scatter plot
         self.reset_viz()
         self.request_new_frontiers('none')
-        
 
         logging.info('Vizualization=ready')
 
@@ -1547,5 +1343,3 @@ class Vizualization:
 
     def refresh_graph(self):
         self.viz_handler.refresh()
-
-
