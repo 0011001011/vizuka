@@ -1,7 +1,5 @@
-#!/usr/bin/python3
-
-from database_queries import db_interface
-from database_queries.query_and_process import (
+from data_viz.database_queries import db_interface
+from data_viz.database_queries.query_and_process import (
         query_meta_all_sets,
         separate,
         preprocess_meta,

@@ -5,7 +5,7 @@ import logging
 from sklearn.decomposition import PCA
 from MulticoreTSNE import MulticoreTSNE as multitsne
 
-from config.references import (
+from data_viz.config.references import (
     INPUT_FILE_BASE_NAME,
     DATA_PATH,
     VERSION,
