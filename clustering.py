@@ -13,7 +13,7 @@ from sklearn.cluster import KMeans, DBSCAN
 from scipy.spatial import KDTree
 import ipdb
 
-from tSNE_viz import find_amplitude, find_grid_positions
+from vizualization import find_amplitude, find_grid_positions
 
 
 class Clusterizer():
@@ -77,6 +77,7 @@ class DBSCANClusterizer(Clusterizer):
 
 
 class DummyClusterizer(Clusterizer):
+
     def __init__(self, resolution):
         self.resolution = resolution
 
