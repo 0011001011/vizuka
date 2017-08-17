@@ -7,7 +7,7 @@ from data_viz import get_config
 
 OFFSET_FROM_TIIME = 0  # 10**11  # see database_interface.nine_gates_of_tiime.tiime_query OFFSET_FOR_TIIME
 DATA_VIZ_INPUT_ALGORITHM_CONFIG_KEY = 'data_viz_input_algorithms'
-DATA_VIZ_REQUIRED_ALGORITHM_CONFIG_KEY = 'data_viz_input_algorithms'
+DATA_VIZ_REQUIRED_ALGORITHM_CONFIG_KEY = 'data_viz_required_algorithms'
 
 
 class DataVizDatabaseInterface(AlgorithmDatabaseInterface):
