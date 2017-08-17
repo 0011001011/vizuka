@@ -69,12 +69,19 @@ def preprocess_meta(raws, inputs, predictions,
                     raw_filename=RAW_NAME,
                     predictions_filename=DEFAULT_PREDICTOR,
                     predictions_path=MODEL_PATH,
-                    version=VERSION,):
+                    version=VERSION,
+                    translator=lambda x:x):
 
     class_predicted = set()
     class_existing  = set()
     engines = set()
-    
+
+    for input_ in inputs:
+        for suggestion in input_:
+            suggestion[2] = translator(suggestion[2])
+    for prediction in predictions:
+        prediction[2] = translator(prediction[2])
+
     # One-hot encoding for engines predictions feeding meta
     for input_ in inputs:
         for suggestion in input_:
@@ -83,7 +90,7 @@ def preprocess_meta(raws, inputs, predictions,
     engines = list(engines)
 
     for transaction in raws:
-        class_existing.add(transaction[-3])
+        class_existing.add(translator(transaction[-3]))
     for prediction in predictions:
         class_existing.add(prediction[2])
 
@@ -131,6 +138,13 @@ def preprocess_meta(raws, inputs, predictions,
             pred=np.array(predictions)[:, 2], )
     
     return xs, ys, encoder
+
+def make_translator():
+    from accounting_plan import manakin_accounting_plan
+    my_dict = {}
+    for i in manakin_accounting_plan:
+        my_dict[int(i[0])] = i[0] + ' : '+i[4]
+    return lambda x:my_dict[x]
 
 
 def get_predictions_by_engine(

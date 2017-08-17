@@ -5,6 +5,7 @@ from data_viz.database_queries.query_and_process import (
         preprocess_meta,
         get_predictions_by_engine,
         URI,
+        make_translator,
         )
 
 DVDI = db_interface.DataVizDatabaseInterface(URI)
@@ -15,10 +16,14 @@ datas, meta_pk, oracle_pk = query_meta_all_sets(DVDI)
 logger.info('sort results')
 raws, inputs, predictions, reality = separate(datas, meta_pk, oracle_pk)
 logger.info('preprocess data')
+
+translator = make_translator()
+
 xs, ys, encoder = preprocess_meta(
     raws,
     inputs,
     predictions,
+    translator,
 )
 
 algo_names = ['final', 'majika', 'tsuri', 'chiitoi', 'tango', 'meta']
