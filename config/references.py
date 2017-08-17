@@ -1,6 +1,6 @@
 import os
 
-BASE_PATH       = os.path.join('data_viz','data/')
+BASE_PATH       = os.path.join('data/')
 
 DATA_PATH       = os.path.join(BASE_PATH, 'set/')
 TSNE_DATA_PATH  = os.path.join(BASE_PATH, 'tSNE/')
@@ -23,22 +23,21 @@ OUTPUT_NAME = 'account'
 
 # t-SNE parameters
 # best tuple so far is (50,1000,pca,15000)
-"""
-
-PARAMS = { 'perplexities'  : [30,40,50], # roughly the number of neighbors in cluster
+PARAMS_LEARNING = { 'perplexities'  : [30,40,50,80],
+                                         # roughly the number of neighbors in cluster
                                          # https://lvdmaaten.github.io/publications/papers/JMLR_2008.pdf
                                          # p4
            'learning_rates': [500, 800, 1000],
            'inits'         : ['random', 'pca'],
            'n_iters'       : [5000, 15000]
          }
-"""
 
-PARAMS = { 'perplexities'  : [80],
-           'learning_rates': [1000],
-           'inits'         : ['random'],
-           'n_iters'       : [15000]
+PARAMS_VIZ = { 'perplexity'  : 80,
+           'learning_rate': 1000,
+           'init'         : 'random',
+           'n_iter'       : 15000,
            }
+
 PCA_DIMS = 42  # ~90% of explained_variance
 
 # 30 for OVH, 50 for local, 15 for epinal
