@@ -7,6 +7,8 @@ from config.manakin import COLUMNS_TO_SCATTER
 from config.references import GRAPH_PATH
 from matplotlib import pyplot as plt
 
+from data_viz.manakin.metier import Annotations
+
 logging.basicConfig(level=logging.DEBUG)
 
 
@@ -124,7 +126,7 @@ class View_details():
 
         # self.montant_plot.update(montant_dict)
 
-        df = data_viz.metier.Annotations(transaction_list)
+        df = Annotations(transaction_list)
         for col in df.columns:
             if col not in self.columns_to_scatter:
                 df = df.drop(col, axis=1)

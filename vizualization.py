@@ -8,7 +8,7 @@ from matplotlib.gridspec import GridSpec
 import os
 
 from data_viz.qt_handler import Viz_handler
-from data_viz.analyze_transactions import View_details
+from data_viz.manakin.analyze_transactions import View_details
 from data_viz.ml_helpers import (
         cross_entropy,
         bhattacharyya,
