@@ -11,7 +11,7 @@ from config.references import (
     VERSION,
     REDUCTION_SIZE_FACTOR,
     TSNE_DATA_PATH,
-    PARAMS,
+    PARAMS_LEARNING,
     OUTPUT_NAME,
     PCA_DIMS,
 )
@@ -94,7 +94,7 @@ def load_raw_data(
     #y_small = y[:int(y.shape[0] / reduction_factor)]; del y # noqa
 
 
-def learn_tSNE(x, params=PARAMS, version=VERSION, path=TSNE_DATA_PATH,
+def learn_tSNE(x, params=PARAMS_LEARNING, version=VERSION, path=TSNE_DATA_PATH,
                reduction_size_factor=REDUCTION_SIZE_FACTOR, pca_components=None):
     """
     Learn tSNE representation.
@@ -118,7 +118,8 @@ def learn_tSNE(x, params=PARAMS, version=VERSION, path=TSNE_DATA_PATH,
     :return: Embedded data in 2D space, and t-SNE model
     :rtype:  dict{params:(float,float)}, dict({params:tsne.model})
     """
-
+    
+    print(params)
     perplexities = params['perplexities']
     learning_rates = params['learning_rates']
     inits = params['inits']
@@ -179,7 +180,7 @@ def learn_tSNE(x, params=PARAMS, version=VERSION, path=TSNE_DATA_PATH,
     return x_transformed, models
 
 
-def load_tSNE(params=PARAMS, version=VERSION, path=TSNE_DATA_PATH,
+def load_tSNE(params=PARAMS_LEARNING, version=VERSION, path=TSNE_DATA_PATH,
               reduction_size_factor=REDUCTION_SIZE_FACTOR):
     """
     Load tSNE representation.
