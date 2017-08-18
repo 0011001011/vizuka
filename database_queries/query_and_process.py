@@ -89,7 +89,7 @@ def preprocess_meta(raws, inputs, predictions,
     # One-hot encoding for engines predictions feeding meta
     for input_ in inputs:
         for suggestion in input_:
-            class_predicted.add(suggestion[2])
+            class_predicted.add(translator(suggestion[2]))
             engines.add(suggestion[0])
     engines = list(engines)
 
@@ -119,7 +119,7 @@ def preprocess_meta(raws, inputs, predictions,
         x = blank_x.copy()
         for prediction in transaction:
             engine_label = prediction[0]
-            class_ = prediction[2]
+            class_ = translator(prediction[2])
             idx_vector = (engines.index(engine_label) * len(blank_y) + encoding_compress.index(class_))
             x[idx_vector] = prediction[3]
         xs.append(x)
