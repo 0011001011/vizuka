@@ -180,7 +180,7 @@ def get_predictions_by_engine(
                 predictions_by_pk[pk].append(0)  # which means None
             else:
                 predictions_by_pk[pk].append(
-                    proposals[np.array(proposals)[:, 1].argmax()][0]
+                    translator(proposals[np.array(proposals)[:, 1].argmax()][0])
                 )
 
     if save:
@@ -188,7 +188,7 @@ def get_predictions_by_engine(
             np.savez(
                 os.path.join(model_path,
                              "{algo_name}predict{version}.npz".format(algo_name=algo_name, version=version)),
-                pred=np.array(predictions)[:, 2],
+                pred=np.array(predictions_by_pk[get_algo_pk(algo_name)]),
             )
     return predictions_by_pk
 
