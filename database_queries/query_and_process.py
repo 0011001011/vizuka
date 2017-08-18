@@ -140,7 +140,7 @@ def preprocess_meta(raws, inputs, predictions,
     return xs, ys, encoder
 
 def make_translator():
-    from accounting_plan import manakin_accounting_plan
+    from data_viz.database_queries.accounting_plan import manakin_accounting_plan
     my_dict = {}
     for i in manakin_accounting_plan:
         my_dict[int(i[0])] = i[0] + ' : '+i[4]
