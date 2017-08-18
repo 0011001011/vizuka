@@ -78,9 +78,13 @@ def preprocess_meta(raws, inputs, predictions,
 
     for input_ in inputs:
         for suggestion in input_:
-            suggestion[2] = tuple(translator(list(suggestion)[2]))
+            suggestion_list = list(suggestion)
+            suggestion_list[2] = translator(suggestion_list[2])
+            suggestion = tuple(suggestion_list)
     for prediction in predictions:
-        prediction[2] = tuple(translatorlist((prediction)[2]))
+        prediction_list = list(prediction)
+        prediction_list[2] = translator(prediction_list[2])
+        prediction = tuple(prediction_list)
 
     # One-hot encoding for engines predictions feeding meta
     for input_ in inputs:
