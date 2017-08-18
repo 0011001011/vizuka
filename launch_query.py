@@ -23,7 +23,7 @@ xs, ys, encoder = preprocess_meta(
     raws,
     inputs,
     predictions,
-    translator,
+    translator=translator,
 )
 
 algo_names = ['final', 'majika', 'tsuri', 'chiitoi', 'tango', 'meta']

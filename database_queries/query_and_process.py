@@ -148,7 +148,7 @@ def make_translator():
     my_dict = {}
     for i in manakin_accounting_plan:
         my_dict[int(i[0])] = i[0] + ' : '+i[4]
-    return lambda x:my_dict[x]
+    return lambda x:my_dict.get(x,x)
 
 
 def get_predictions_by_engine(
