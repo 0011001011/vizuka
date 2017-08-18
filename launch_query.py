@@ -11,11 +11,8 @@ from data_viz.database_queries.query_and_process import (
 DVDI = db_interface.DataVizDatabaseInterface(URI)
 get_algo_pk = DVDI._register_algorithm_name
 
-logger.info('query db')
 datas, meta_pk, oracle_pk = query_meta_all_sets(DVDI)
-logger.info('sort results')
 raws, inputs, predictions, reality = separate(datas, meta_pk, oracle_pk)
-logger.info('preprocess data')
 
 translator = make_translator()
 
