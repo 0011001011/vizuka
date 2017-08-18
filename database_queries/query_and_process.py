@@ -157,7 +157,8 @@ def get_predictions_by_engine(
         get_algo_pk,
         model_path=MODEL_PATH,
         version=VERSION,
-        save=True,):
+        save=True,
+        translator=lambda x:x):
     
     pks = []
     for algo_name in algo_names:

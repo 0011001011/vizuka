@@ -27,4 +27,4 @@ xs, ys, encoder = preprocess_meta(
 )
 
 algo_names = ['final', 'majika', 'tsuri', 'chiitoi', 'tango', 'meta']
-get_predictions_by_engine(datas, algo_names, get_algo_pk)
+get_predictions_by_engine(datas, algo_names, get_algo_pk, translator=translator)
