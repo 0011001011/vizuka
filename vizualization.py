@@ -113,7 +113,7 @@ class Vizualization:
             y_pred,
             y_true,
             resolution=100,
-            special_class=0,
+            special_class='0',
             n_clusters=120,
             class_decoder=(lambda x: x), class_encoder=(lambda x: x),
             output_path='output.csv',
@@ -137,15 +137,18 @@ class Vizualization:
 
         self.y_true_decoded = y_true
         self.y_pred_decoded = y_pred
-        self.y_true = [class_encoder[y] for y in self.y_true_decoded]
-        self.y_pred = [class_encoder[y] for y in self.y_pred_decoded]
+        #self.y_true = [class_encoder[y] for y in self.y_true_decoded]
+        #self.y_pred = [class_encoder[y] for y in self.y_pred_decoded]
         self.proj = proj
         self.x_raw = x_raw
         self.n_clusters = n_clusters 
         self.class_decoder = class_decoder
         self.special_class = special_class
         
-        self.labels = list({self.class_decoder(y_encoded) for y_encoded in self.y_true})
+        #self.labels = list({self.class_decoder(y_encoded) for y_encoded in self.y_true_decoded})
+        self.labels = list(set(self.y_true_decoded).union(set(self.y_pred_decoded)))
+        self.labels.remove(None)
+        
         self.labels.sort()
 
         self.proj_by_class = {y: [] for y in self.y_true_decoded}
@@ -243,7 +246,7 @@ class Vizualization:
 
 
         self.y_pred_decoded = y_pred
-        self.y_pred = [class_encoder[y] for y in self.y_pred_decoded]
+        #self.y_pred = [class_encoder[y] for y in self.y_pred_decoded]
 
         (
             self.index_bad_predicted,
