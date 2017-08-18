@@ -123,7 +123,7 @@ def preprocess_meta(raws, inputs, predictions,
             idx_vector = (engines.index(engine_label) * len(blank_y) + encoding_compress.index(class_))
             x[idx_vector] = prediction[3]
         xs.append(x)
-        ys.append(raws[idx][-3])
+        ys.append(translator(raws[idx][-3]))
 
     if preprocessed_filename != '':
         np.savez(
