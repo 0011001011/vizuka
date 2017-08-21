@@ -3,7 +3,7 @@ import os
 
 setup(
         name='Data-viz',
-        version='0.9.1',
+        version='0.10',
         packages=['data_viz'],
         description='Represents your high-dimensional datas in a 2D space and play wih it',
         long_description = open(os.path.join(os.path.dirname(__file__),'README.md')).read(),

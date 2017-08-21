@@ -324,114 +324,62 @@ class Vizualization:
         return (grid_prop_x0_y0 * (1 + diff) < grid_prop_x_y < grid_prop_x0_y0 * (1 - diff))
 
     def filter_true_class(self, states_by_class):
-        all_unchecked = ( 0 == sum(states_by_class.values()) )
+        self.true_class_to_display = {
+                class_ for class_,state in states_by_class.items() if state
+                }
+        self.display_by_filter()
 
-        to_scatter = set()
-        for class_, state in states_by_class.items():
-            if state or all_unchecked:
-                to_scatter.add(class_)
-        
-        self.update_showonly_true(to_scatter, all_unchecked=all_unchecked)
-    
     def filter_pred_class(self, states_by_class):
-        all_unchecked = ( 0 == sum(states_by_class.values()) )
+        self.pred_class_to_display = {
+                class_ for class_,state in states_by_class.items() if state
+                }
 
-        to_scatter = set()
-        for class_, state in states_by_class.items():
-            if state or all_unchecked:
-                to_scatter.add(class_)
+    def display_by_filter(self):
+        all_unchecked = (not self.pred_class_to_display) and (not self.true_class_to_display)
+        index_to_scatter = set()
+
+        for class_ in self.pred_class_to_display:
+            for idx, pred_class in enumerate(self.y_pred_decoded):
+                if pred_class == class_:
+                    index_to_scatter.add(idx)
         
-        self.update_showonly_pred(to_scatter, all_unchecked=all_unchecked)
-
-    def update_showonly_true(self, classes, all_unchecked):
-        """
-        Hide all other label but class_
-
-        :param classes: labels (decoded) to search and plot
-        """
-
-        logging.info("begin hiding...")
-
+        for class_ in self.true_class_to_display:
+            for idx, true_class in enumerate(self.y_true_decoded) :
+                if true_class == class_:
+                    index_to_scatter.add(idx)
+    
         for i in self.ax.get_children():
             if isinstance(i, matplotlib.collections.PathCollection):
                 i.remove()
 
-        for class_ in classes:
-            similars = self.proj_by_class[class_]
-            similar_idxs = self.index_by_class[class_]
+        bad_to_display, good_to_display, special_to_display = set(), set(), set()
 
-            similars_good = [idx for idx in similar_idxs if idx in self.index_good_predicted ]
-            similars_bad  = [idx for idx in similar_idxs if idx in self.index_bad_predicted ]
-            if len(similars_bad):
-                if all_unchecked and str(class_) == str(self.special_class):
-                    continue
-                self.ax.scatter(x=np.array([self.proj[i] for i in similars_bad])[:, 0],
-                                y=np.array([self.proj[i] for i in similars_bad])[:, 1],
-                                color='r',
-                                marker='+')
-            if len(similars_good):
-                if all_unchecked and class_ == self.special_class:
-                    continue
-                self.ax.scatter(x=np.array([self.proj[i] for i in similars_good])[:, 0],
-                                y=np.array([self.proj[i] for i in similars_good])[:, 1],
-                                color='b',
-                                marker='+')
-        if all_unchecked:
-            self.ax.scatter(
-                    x=np.array([self.proj[i] for i in self.index_by_class[self.special_class]])[:,0],
-                    y=np.array([self.proj[i] for i in self.index_by_class[self.special_class]])[:,1],
-                    color='g',
-                    marker='.')
-            self.ax.set_title(self.ax_base_title)
-        else:
-            self.ax.set_title(''.join([str(class_)+' ' for class_ in classes]))
+        for idx in index_to_scatter:
+            if idx in self.index_bad_predicted:
+                bad_to_display.add(idx)
+            elif idx in self.index_good_predicted:
+                good_to_display.add(idx)
+            else:
+                special_to_display.add(idx)
+
+        if len(bad_to_display):
+            self.ax.scatter(x=np.array([self.proj[i] for i in bad_to_display])[:, 0],
+                            y=np.array([self.proj[i] for i in bad_to_display])[:, 1],
+                            color='r',
+                            marker='+')
+        if len(good_to_display):
+            self.ax.scatter(x=np.array([self.proj[i] for i in good_to_display])[:, 0],
+                            y=np.array([self.proj[i] for i in good_to_display])[:, 1],
+                            color='b',
+                            marker='+')
+        if len(special_to_display):
+            self.ax.scatter(x=np.array([self.proj[i] for i in special_to_display])[:, 0],
+                            y=np.array([self.proj[i] for i in special_to_display])[:, 1],
+                            color='g',
+                            marker='+')
 
         self.refresh_graph()
 
-    def update_showonly_pred(self, classes, all_unchecked):
-        """
-        Hide all other label but class_
-
-        :param classes: labels (decoded) to search and plot
-        """
-
-        logging.info("begin hiding...")
-
-        for i in self.ax.get_children():
-            if isinstance(i, matplotlib.collections.PathCollection):
-                i.remove()
-
-        for class_ in classes:
-            similars = self.proj_by_class[class_]
-            similar_idxs = [idx for idx, this_class in enumerate(self.y_pred_decoded) if this_class==class_]
-
-            similars_good = [idx for idx in similar_idxs if idx in self.index_good_predicted ]
-            similars_bad  = [idx for idx in similar_idxs if idx in self.index_bad_predicted ]
-            if len(similars_bad):
-                if all_unchecked and str(class_) == str(self.special_class):
-                    continue
-                self.ax.scatter(x=np.array([self.proj[i] for i in similars_bad])[:, 0],
-                                y=np.array([self.proj[i] for i in similars_bad])[:, 1],
-                                color='r',
-                                marker='+')
-            if len(similars_good):
-                if all_unchecked and class_ == self.special_class:
-                    continue
-                self.ax.scatter(x=np.array([self.proj[i] for i in similars_good])[:, 0],
-                                y=np.array([self.proj[i] for i in similars_good])[:, 1],
-                                color='b',
-                                marker='+')
-        if all_unchecked:
-            self.ax.scatter(
-                    x=np.array([self.proj[i] for i in self.index_by_class[self.special_class]])[:,0],
-                    y=np.array([self.proj[i] for i in self.index_by_class[self.special_class]])[:,1],
-                    color='g',
-                    marker='x')
-            self.ax.set_title(self.ax_base_title)
-        else:
-            self.ax.set_title(''.join([str(class_)+' ' for class_ in classes]))
-
-        self.refresh_graph()
 
     def onmodifier_press(self, event):
         if event.key == 'shift':
