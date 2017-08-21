@@ -14,7 +14,7 @@ from data_viz.ml_helpers import (
         )
 from data_viz import clustering
 
-from data_viz.config.references import (
+from data_viz.config import (
     MODEL_PATH,
     )
 
@@ -145,6 +145,8 @@ class Vizualization:
         self.n_clusters = n_clusters 
         self.class_decoder = class_decoder
         self.special_class = str(special_class)
+
+        self.last_clusterizer_method = None
         
         #self.labels = list({self.class_decoder(y_encoded) for y_encoded in self.y_true_decoded})
         self.labels = list(set(self.y_true_decoded).union(set(self.y_pred_decoded)))
@@ -1050,6 +1052,8 @@ class Vizualization:
         """
         method = method.lower()
         logging.info("cluster: requesting a new "+method+" engine")
+        if method is None:
+            method=self.last_clusterizer_method
         if method=='kmeans':
             self.clusterizer = clustering.KmeansClusterizer(
                     n_clusters=self.n_clusters,
@@ -1060,6 +1064,8 @@ class Vizualization:
             self.clusterizer = clustering.DummyClusterizer(
                     resolution=self.resolution,
                     )
+
+        self.last_clusterizer_method = method
         self.clusterizer.fit(xs=self.proj)
         logging.info("cluster: done")
 
@@ -1072,21 +1078,37 @@ class Vizualization:
                 self.axes_needing_borders) 
         logging.info('borders: done')
 
+        self.reset_summary()
+        self.reset_viz()
+        self.refresh_graph()
+
     def update_all_heatmaps(self):
         """
         Get all heatmaps registered by add_heatmap and draw them from scratch
         """
-        for (heatmap_builder, axe) in self.heatmaps:
+        for (heatmap_builder, axe, title) in self.heatmaps:
             axe.clear()
             
             heatmap_color = heatmap_builder()
             logging.info("heatmaps: drawing in "+str(axe))
-            axe.imshow(heatmap_color, interpolation='nearest', vmin=0, vmax=1, extent=(-self.amplitude-self.size_centroid/2, self.amplitude-self.size_centroid/2, -self.amplitude-self.size_centroid/2, self.amplitude-self.size_centroid/2), aspect='auto')
-            
+            im = axe.imshow(
+                    heatmap_color,
+                    interpolation='nearest',
+                    vmin=0, vmax=1,
+                    extent=(
+                        -self.amplitude-self.size_centroid/2,
+                        self.amplitude-self.size_centroid/2,
+                        -self.amplitude-self.size_centroid/2,
+                        self.amplitude-self.size_centroid/2
+                        ),
+                    aspect='auto')
+
             logging.info("heatmaps: "+str(axe)+" ready")
 
             axe.set_xlim(-self.amplitude / 2, self.amplitude / 2)
             axe.set_ylim(-self.amplitude / 2, self.amplitude / 2)
+            axe.axis('off')
+            axe.set_title(title)
         
         self.refresh_graph()
 
@@ -1256,7 +1278,7 @@ class Vizualization:
         summary.auto_set_font_size(False)
         summary.set_fontsize(8)
     
-    def add_heatmap(self, heatmap_builder, axe):
+    def add_heatmap(self, heatmap_builder, axe, title):
         """
         Draw a heatmap based on a heatmap_builder on an axe
 
@@ -1264,7 +1286,7 @@ class Vizualization:
         :param axe: matplotlib axe object in which the heatmap will be plotted
         """
 
-        self.heatmaps.append((heatmap_builder, axe))
+        self.heatmaps.append((heatmap_builder, axe, title))
 
     def export(self, output_path):
         logging.info('exporting:...')
@@ -1315,8 +1337,6 @@ class Vizualization:
         # heatmap subplots
         # contain proportion of correct prediction and entropy
         self.heat_proportion = self.main_fig.add_subplot(gs[1,3], sharex=self.ax, sharey=self.ax)
-        self.heat_proportion.set_title('\nHeatmap: accuracy')
-        self.heat_proportion.axis('off')
 
         self.heat_entropy = self.main_fig.add_subplot(gs[0,3], sharex=self.ax, sharey=self.ax)
         self.heat_entropy.set_title('\nHeatmap: cross-entropy cluster/all')
@@ -1332,8 +1352,14 @@ class Vizualization:
         self.add_heatmap(self.heatmap_entropy, self.heat_entropy)
         '''
         self.heatmaps = []
-        self.add_heatmap(self.heatmap_proportion, self.heat_proportion)
-        self.add_heatmap(self.heatmap_entropy, self.heat_entropy)
+        self.add_heatmap(
+                self.heatmap_proportion,
+                self.heat_proportion,
+                title='Heatmap: proportion correct predictions')
+        self.add_heatmap(
+                self.heatmap_entropy,
+                self.heat_entropy,
+                title='Heatmap: cross-entropy Cluster-All')
        
         self.label_mesh()
         

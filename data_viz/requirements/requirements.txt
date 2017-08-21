@@ -4,4 +4,4 @@ matplotlib
 keras
 ipdb
 seaborn
-PyQt5
+pyqt5==5.9

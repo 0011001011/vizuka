@@ -2,7 +2,7 @@
 Functions needed to predict/loadpredictions/format labels
 """
 
-from config.references import (
+from data_viz.config import (
     MODEL_PATH,
     VERSION,
     DEFAULT_PREDICTOR,

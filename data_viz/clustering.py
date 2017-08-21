@@ -13,7 +13,7 @@ from sklearn.cluster import KMeans, DBSCAN
 from scipy.spatial import KDTree
 import ipdb
 
-from vizualization import find_amplitude, find_grid_positions
+from . import vizualization
 
 
 class Clusterizer():
@@ -82,12 +82,12 @@ class DummyClusterizer(Clusterizer):
         self.resolution = resolution
 
     def fit(self, xs):
-        self.amplitude = find_amplitude(xs)
+        self.amplitude = vizualization.find_amplitude(xs)
 
     def predict(self, xys):
 
         attributed_cluster = []
-        xgygs = find_grid_positions(xys, self.resolution, self.amplitude)
+        xgygs = vizualization.find_grid_positions(xys, self.resolution, self.amplitude)
 
         attributed_cluster = [
             xgyg[0] + (xgyg[1] + self.resolution/2 + 2) * self.resolution

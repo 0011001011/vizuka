@@ -9,7 +9,7 @@ from data_viz import dim_reduction
 from data_viz import labelling
 from data_viz import vizualization
 
-from data_viz.config.references import (
+from data_viz.config import (
     DATA_PATH,
     VERSION,
     REDUCTION_SIZE_FACTOR,

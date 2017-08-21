@@ -75,11 +75,6 @@ class Viz_handler():
         # add textbox
         self.textboxs = {}
         # logging.info("textboxs=adding")
-        self.textboxs['n_clusters'] = self.add_text_panel(
-            'Number of clusters (default:120)',
-            self.textbox_function_n_clusters,
-            right_dock,
-        )
         self.add_checkboxes(
             "Filter by true class",
             self.viz_engine.labels,
@@ -127,6 +122,11 @@ class Viz_handler():
             'Delimits',
             ['Bhattacharyya', 'All', 'None'],
             self.viz_engine.request_new_frontiers,
+            right_dock,
+        )
+        self.textboxs['n_clusters'] = self.add_text_panel(
+            'Number of clusters (default:120)',
+            self.textbox_function_n_clusters,
             right_dock,
         )
         self.menulists['predict_set'] = self.add_menulist(
@@ -310,4 +310,5 @@ class Viz_handler():
         n_str = self.textboxs['n_clusters'].text()
         n = int(n_str)
         self.viz_engine.n_clusters = n
+        self.viz_engine.request_new_clustering()
 

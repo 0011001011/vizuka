@@ -6,7 +6,7 @@ from sklearn.decomposition import PCA
 #from MulticoreTSNE import MulticoreTSNE as tsne
 from sklearn.manifold import TSNE as tsne
 
-from data_viz.config.references import (
+from data_viz.config import (
     INPUT_FILE_BASE_NAME,
     DATA_PATH,
     VERSION,
