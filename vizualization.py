@@ -113,7 +113,7 @@ class Vizualization:
             y_pred,
             y_true,
             resolution=100,
-            special_class='0',
+            special_class=0,
             n_clusters=120,
             class_decoder=(lambda x: x), class_encoder=(lambda x: x),
             output_path='output.csv',
@@ -147,7 +147,10 @@ class Vizualization:
         
         #self.labels = list({self.class_decoder(y_encoded) for y_encoded in self.y_true_decoded})
         self.labels = list(set(self.y_true_decoded).union(set(self.y_pred_decoded)))
-        self.labels.remove(None)
+        try:
+            self.labels.remove(None)
+        except ValueError:
+            pass
         
         self.labels.sort()
 
@@ -375,7 +378,7 @@ class Vizualization:
                     x=np.array([self.proj[i] for i in self.index_by_class[self.special_class]])[:,0],
                     y=np.array([self.proj[i] for i in self.index_by_class[self.special_class]])[:,1],
                     color='g',
-                    marker='x')
+                    marker='.')
             self.ax.set_title(self.ax_base_title)
         else:
             self.ax.set_title(''.join([str(class_)+' ' for class_ in classes]))
