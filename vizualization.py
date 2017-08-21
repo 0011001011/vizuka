@@ -113,7 +113,7 @@ class Vizualization:
             y_pred,
             y_true,
             resolution=100,
-            special_class=0,
+            special_class='0',
             n_clusters=120,
             class_decoder=(lambda x: x), class_encoder=(lambda x: x),
             output_path='output.csv',
