@@ -146,6 +146,9 @@ class Vizualization:
         self.class_decoder = class_decoder
         self.special_class = str(special_class)
 
+        self.true_class_to_display = {}
+        self.pred_class_to_display = {}
+
         self.last_clusterizer_method = None
         
         #self.labels = list({self.class_decoder(y_encoded) for y_encoded in self.y_true_decoded})
@@ -333,6 +336,7 @@ class Vizualization:
         self.pred_class_to_display = {
                 class_ for class_,state in states_by_class.items() if state
                 }
+        self.display_by_filter()
 
     def display_by_filter(self):
         all_unchecked = (not self.pred_class_to_display) and (not self.true_class_to_display)
@@ -377,6 +381,25 @@ class Vizualization:
                             y=np.array([self.proj[i] for i in special_to_display])[:, 1],
                             color='g',
                             marker='+')
+        if all_unchecked:
+
+            self.ax.scatter(
+                self.x_proj_good[:, 0],
+                self.x_proj_good[:, 1],
+                color='b', marker="+"
+            )
+            self.ax.scatter(
+                self.x_proj_bad[:, 0],
+                self.x_proj_bad[:, 1],
+                color='r',
+                marker='+'
+            )
+            self.ax.scatter(
+                self.x_proj_null[:, 0],
+                self.x_proj_null[:, 1],
+                marker='x',
+                color='g'
+            )
 
         self.refresh_graph()
 
