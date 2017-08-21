@@ -135,15 +135,17 @@ class Vizualization:
         self.output_path = output_path
         self.predictors = os.listdir(model_path)
 
-        self.y_true_decoded = y_true
-        self.y_pred_decoded = y_pred
+        self.y_true_decoded = [str(y) for y in y_true]
+        self.y_true_decoded = [y*(y!='None')+'0'*(y=='None') for y in self.y_true_decoded]
+        self.y_pred_decoded = [str(y) for y in y_pred]
+        self.y_pred_decoded = [y*(y!='None')+'0'*(y=='None') for y in self.y_pred_decoded]
         #self.y_true = [class_encoder[y] for y in self.y_true_decoded]
         #self.y_pred = [class_encoder[y] for y in self.y_pred_decoded]
         self.proj = proj
         self.x_raw = x_raw
         self.n_clusters = n_clusters 
         self.class_decoder = class_decoder
-        self.special_class = special_class
+        self.special_class = str(special_class)
         
         #self.labels = list({self.class_decoder(y_encoded) for y_encoded in self.y_true_decoded})
         self.labels = list(set(self.y_true_decoded).union(set(self.y_pred_decoded)))
@@ -1128,7 +1130,6 @@ class Vizualization:
                 if idx in self.index_bad_predicted:
                     current_class = self.y_true_decoded[idx]
                     self.local_bad_count_by_class[current_class] += 1
-                    print(idx, current_class)
                     self.local_confusion_by_class[current_class][self.y_pred_decoded[idx]]+=1
 
         self.local_confusion_by_class_sorted = { k:[] for k in self.local_confusion_by_class.keys() }
@@ -1185,7 +1186,7 @@ class Vizualization:
 
                 (
                     ' '.join([
-                        str(class_mistaken)+' ('+'{0:.0f}'.format(
+                        str(class_mistaken)[:6]+' ('+'{0:.0f}'.format(
                             error_count/float(self.local_bad_count_by_class[c])*100
                             )
                         +'%) '
@@ -1200,7 +1201,7 @@ class Vizualization:
         arg_sort = np.argsort([self.local_effectif[c] for c in row_labels])
 
         values = [values[i] for i in arg_sort[::-1]]
-        row_labels = [row_labels[i] for i in arg_sort[::-1]]
+        row_labels = [row_labels[i][:6] for i in arg_sort[::-1]]
 
         # add row "all" for recap :
 
@@ -1220,6 +1221,8 @@ class Vizualization:
             loc='center',
         )
 
+        summary.auto_set_font_size(False)
+        summary.set_fontsize(8)
         logging.info("Details=loaded")
 
         self.refresh_graph()
@@ -1247,7 +1250,7 @@ class Vizualization:
 
         summary = ax.table(
             cellText=values,
-            rowLabels=row_labels,
+            rowLabels=[r[:6] for r in row_labels],
             colLabels=cols,
             loc='center',
         )
