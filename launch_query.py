@@ -1,3 +1,7 @@
+from ml_shared import package_get_config, logger  # noqa
+
+get_config = package_get_config(__package__)  # noqa
+
 from data_viz.database_queries import db_interface
 from data_viz.database_queries.query_and_process import (
         query_meta_all_sets,
