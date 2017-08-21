@@ -5,12 +5,3 @@ keras
 ipdb
 seaborn
 PyQt5
-
-# http://movingthelamppost.com/blog/html/2013/07/12/installing_pyqt____because_it_s_too_good_for_pip_or_easy_install_.html
-# PyQt4
-
-#manakin-ml-database-interface
-#manakin-ml-algorithm-meta
-
-# manakin-ml-shared when used
-# problem with qt4

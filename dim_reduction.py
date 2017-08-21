@@ -3,7 +3,8 @@ import itertools
 import numpy as np
 import logging
 from sklearn.decomposition import PCA
-from MulticoreTSNE import MulticoreTSNE as multitsne
+#from MulticoreTSNE import MulticoreTSNE as tsne
+from sklearn.manifold import TSNE as tsne
 
 from data_viz.config.references import (
     INPUT_FILE_BASE_NAME,
@@ -154,7 +155,7 @@ def learn_tSNE(x, params=PARAMS_LEARNING, version=VERSION, path=TSNE_DATA_PATH,
             n_iter=n_iter
         )'''  # in a desperate move to save RAM
         logging.info("learning model %s %s %s %s", str(perplexity), str(learning_rate), str(init), str(n_iter))
-        x_transformed[param] = multitsne(
+        x_transformed[param] = tsne(
             perplexity=perplexity,
             learning_rate=learning_rate,
             n_iter=n_iter,
