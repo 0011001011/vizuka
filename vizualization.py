@@ -1296,7 +1296,7 @@ class Vizualization:
 
         gs=GridSpec(3,4)
         
-        self.view_details = View_details(self.x_raw)
+        #self.view_details = View_details(self.x_raw)
         self.viz_handler = Viz_handler(self, self.main_fig, self.onclick)
         
         # main subplot with the scatter plot
