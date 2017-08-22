@@ -47,12 +47,12 @@ def load_raw_data(
                 (VERSION) is for e.g "_20170614"
                 (FILE_BASE_NAME) if for e.g 'processed_predictions' or 'one_hot'
         - contains entry x with input data
-        - contains entry y_(OUTPUT_NAME) with output data (labels to predict)
-        - optionnaly an encoder to translate machine-readable labels to human-readable labels
+        - contains entry y_(OUTPUT_NAME) with output data (possible_outputs_list to predict)
+        - optionnaly an encoder to translate machine-readable possible_outputs_list to human-readable possible_outputs_list
                 (actually it is the opposite e.g: {604600:[False, True, False, .., False]})
 
-    :return: (input for t-SNE, classes, encoder (humantomachine class labels),
-    decoder (machinetohuman labels))
+    :return: (input for t-SNE, classes, encoder (humantomachine class possible_outputs_list),
+    decoder (machinetohuman possible_outputs_list))
 
     Note that encoder/decoder are assumed trivial if no encoder are found in npz
 

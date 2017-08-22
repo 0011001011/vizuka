@@ -64,11 +64,11 @@ def find_amplitude(projection):
         return 2 * max(x_proj_amplitude, y_proj_amplitude)
 
 
-def separate_prediction(y_pred_decoded, y_true_decoded, name_of_void):
+def separate_prediction(predicted_outputs, true_outputs, name_of_void):
     """
     Gives the index of good/bad/not predicted
-    :param y_pred_decoded: labels predicted, decoded (human-readable)
-    :param y_true_decoded: true labels, decoded  (human-readable)
+    :param predicted_outputs: possible_outputs_list predicted, decoded (human-readable)
+    :param true_outputs: true possible_outputs_list, decoded  (human-readable)
     :param name_of_void: label (decoded) of special class (typically 0 hence void)
 
     :return: indexes of (bad predictions, good prediction, name_of_void predictions)
@@ -76,23 +76,23 @@ def separate_prediction(y_pred_decoded, y_true_decoded, name_of_void):
     """
 
     index_bad_predicted = set()
-    index_good_predicted = set()
+    index_well_predicted = set()
     index_not_predicted = set()
-
+    
     # Sort good / bad / not predictions
-    for i, pred in enumerate(y_pred_decoded):
+    for index, prediction in enumerate(predicted_outputs):
         """
         logging.info(name_of_void)
         logging.info(y_true[i])
         """
-        if name_of_void == y_true_decoded[i]:
-            index_not_predicted.add(i)
-        if pred == y_true_decoded[i]:
-            index_good_predicted.add(i)
+        if name_of_void == true_outputs[index]:
+            index_not_predicted.add(index)
+        if prediction == true_outputs[index]:
+            index_well_predicted.add(index)
         else:
-            index_bad_predicted.add(i)
+            index_bad_predicted.add(index)
 
-    return index_bad_predicted, index_good_predicted, index_not_predicted
+    return index_bad_predicted, index_well_predicted, index_not_predicted
 
 
 class Vizualization:
@@ -100,20 +100,20 @@ class Vizualization:
     """
     This class contains all the tools for the vizualiation
 
-    It is created with only the vector of predictions (containing labels) with its decoder function
+    It is created with only the vector of predictions (containing possible_outputs_list) with its decoder function
     Resolution is the size of the grid of the viz, used for heatmap and clustering
     Mouse control and keyboard shortcuts are used (later: QtButtons) ..seealso:: self.controls
     """
 
     def __init__(
             self,
-            x_raw,
-            proj,
-            y_pred,
-            y_true,
+            raw_inputs,
+            projected_input,
+            predicted_outputs,
+            true_outputs,
             resolution=100,
             special_class='0',
-            n_clusters=120,
+            number_of_clusters=120,
             class_decoder=(lambda x: x), class_encoder=(lambda x: x),
             output_path='output.csv',
             model_path=MODEL_PATH
@@ -121,11 +121,11 @@ class Vizualization:
         """
         Central function, draw heatmap + scatter plot + zoom + annotations on tSNE data
 
-        :param y_pred: vector of predicted labels
-        :param y_true: vector of true labels
-        :param proj: vector of t-SNE projected data
-        :param class_dn_jobs=4, ecoder: function to decode labels machinetohuman
-        :param class_encoder: dict to encode labels humantomachine
+        :param predicted_outputs: vector of predicted possible_outputs_list
+        :param true_outputs: vector of true possible_outputs_list
+        :param projected_input: vector of t-SNE projected data (i.e project_input[index] = (x, y)
+        :param class_dn_jobs=4, ecoder: function to decode possible_outputs_list machinetohuman
+        :param class_encoder: dict to encode possible_outputs_list humantomachine
         """
 
         logging.info("Vizualization=generating")
@@ -133,16 +133,18 @@ class Vizualization:
         self.manual_cluster_color = 'cyan'
         self.output_path = output_path
         self.predictors = os.listdir(model_path)
-
-        self.y_true_decoded = [str(y) for y in y_true]
-        self.y_true_decoded = [y*(y!='None')+'0'*(y=='None') for y in self.y_true_decoded]
-        self.y_pred_decoded = [str(y) for y in y_pred]
-        self.y_pred_decoded = [y*(y!='None')+'0'*(y=='None') for y in self.y_pred_decoded]
-        #self.y_true = [class_encoder[y] for y in self.y_true_decoded]
-        #self.y_pred = [class_encoder[y] for y in self.y_pred_decoded]
-        self.proj = proj
-        self.x_raw = x_raw
-        self.n_clusters = n_clusters 
+        
+        def str_with_default_value(value):
+            if not value:
+                return str(special_class)
+            return str(value)
+            
+        self.true_outputs = [str_with_default_value(true_output) for true_output in true_outputs]
+        self.prediction_outputs = [str_with_default_value(predicted_output) for predicted_output in predicted_outputs]
+        
+        self.projected_input = projected_input
+        self.x_raw = raw_inputs
+        self.number_of_clusters = number_of_clusters
         self.class_decoder = class_decoder
         self.special_class = str(special_class)
 
@@ -151,27 +153,26 @@ class Vizualization:
 
         self.last_clusterizer_method = None
         
-        #self.labels = list({self.class_decoder(y_encoded) for y_encoded in self.y_true_decoded})
-        self.labels = list(set(self.y_true_decoded).union(set(self.y_pred_decoded)))
-        try:
-            self.labels.remove(None)
-        except ValueError:
-            pass
-        
-        self.labels.sort()
+        #self.possible_outputs_list = list({self.class_decoder(y_encoded) for y_encoded in self.true_outputs})
+        self.possible_outputs_set = set(self.true_outputs).union(set(self.prediction_outputs))
+        self.possible_outputs_set.discard(None)
+        self.possible_outputs_list = list(self.possible_outputs_set)
+        self.possible_outputs_list.sort()
 
-        self.proj_by_class = {y: [] for y in self.y_true_decoded}
-        self.total_individual = {}
-        self.index_by_class = {class_:[] for class_ in self.y_true_decoded}
+        self.projection_points_list_by_true_output = {y: [] for y in self.true_outputs}
+        self.number_of_individual_by_true_output = {}
+        self.index_by_true_output = {class_:[] for class_ in self.true_outputs}
 
-        for idx, projection in enumerate(self.proj):
-            self.proj_by_class[self.y_true_decoded[idx]].append(projection)
-            self.index_by_class[self.y_true_decoded[idx]].append(idx)
+        for index, projected_input in enumerate(self.projected_input):
+            self.projection_points_list_by_true_output[self.true_outputs[index]].append(projected_input)
+            self.index_by_true_output[self.true_outputs[index]].append(index)
 
         # convert dict values to np.array
-        for class_ in self.proj_by_class:
-            self.proj_by_class[class_] = np.array(self.proj_by_class[class_])
-            self.total_individual[class_] = len(self.proj_by_class[class_])
+        for possible_output in self.projection_points_list_by_true_output:
+            self.projection_points_list_by_true_output[possible_output] = np.array(
+                self.projection_points_list_by_true_output[possible_output])
+            self.number_of_individual_by_true_output[possible_output] = len(
+                self.projection_points_list_by_true_output[possible_output])
 
         self.resolution = resolution # counts of tiles per row/column
 
@@ -183,16 +184,16 @@ class Vizualization:
                      'common mistakes']
         self.local_effectif = {}
         self.local_proportion = {}
-        self.local_confusion_by_class = { class_:{ class__:0  for class__ in self.labels } for class_ in self.labels }
-        self.local_bad_count_by_class = { class_:0 for class_ in self.labels }
+        self.local_confusion_by_class = {class_:{class__:0 for class__ in self.possible_outputs_list} for class_ in self.possible_outputs_list}
+        self.local_bad_count_by_class = {class_:0 for class_ in self.possible_outputs_list}
         self.local_classes = set()
         self.local_sum = 0
         self.currently_selected_cluster = []
         self.cursor_ids = [0]
 
-        # Get the real labels found in true y
+        # Get the real possible_outputs_list found in true y
 
-        self.amplitude = find_amplitude(self.proj) 
+        self.amplitude = find_amplitude(self.projected_input)
 
         mesh = np.meshgrid(
                 np.arange(
@@ -210,41 +211,45 @@ class Vizualization:
         self.size_centroid  = 2 * self.amplitude / self.resolution
         self.mesh_centroids = np.c_[mesh[0].ravel(), mesh[1].ravel()]
 
+        self.calculate_prediction_projection_arrays()
+        
+        logging.info('clustering engine=fitting')
+        self.clusterizer = clustering.DummyClusterizer(mesh=self.mesh_centroids)
+        self.clusterizer.fit(self.projected_input)
+        logging.info('clustering engine=ready')
+        self.normalize_frontier = True
+        
+    def calculate_prediction_projection_arrays(self):
 
         (
             self.index_bad_predicted,
             self.index_good_predicted,
             self.index_not_predicted,
-
-            ) = separate_prediction(
-
-            self.y_pred_decoded,
-            self.y_true_decoded,
-            special_class,
+        ) = separate_prediction(
+            self.prediction_outputs,
+            self.true_outputs,
+            self.special_class,
         )
-
+    
         # Sort good/bad/not predictions in t-SNE space
         logging.info("projections=listing")
-        self.proportion_by_class = { 
-                class_:
+        self.proportion_by_class = {
+            possible_output:
                 sum([
-                    (self.y_true_decoded[i]==self.y_pred_decoded[i])
-                    for i in self.index_by_class[class_]
-                    ])
-                /float(len(self.index_by_class[class_]))
-                for class_ in self.labels
-                }
+                    (self.true_outputs[i] == self.prediction_outputs[i])
+                    for i in self.index_by_true_output[possible_output]
+                ])
+                / float(len(self.index_by_true_output[possible_output]))
+            for possible_output in self.possible_outputs_list
+        }
         logging.info("projections=sorting")
-        self.x_proj_good = np.array([self.proj[i] for i in self.index_good_predicted])
-        self.x_proj_bad  = np.array([self.proj[i] for i in self.index_bad_predicted])
-        self.x_proj_null = np.array([self.proj[i] for i in self.index_not_predicted])
+        self.well_predicted_projected_points_array = np.array(
+            [self.projected_input[i] for i in self.index_good_predicted])
+        self.misspredicted_projected_points_array = np.array(
+            [self.projected_input[i] for i in self.index_bad_predicted])
+        self.not_predicted_projected_points_array = np.array(
+            [self.projected_input[i] for i in self.index_not_predicted])
         logging.info("projections=ready")
-        
-        logging.info('clustering engine=fitting')
-        self.clusterizer = clustering.DummyClusterizer(mesh=self.mesh_centroids)
-        self.clusterizer.fit(self.proj)
-        logging.info('clustering engine=ready')
-        self.normalize_frontier = True
         
     def reload_predict(self, filename, model_path=MODEL_PATH):
         
@@ -253,36 +258,10 @@ class Vizualization:
                 )['pred']
 
 
-        self.y_pred_decoded = y_pred
-        #self.y_pred = [class_encoder[y] for y in self.y_pred_decoded]
+        self.prediction_outputs = y_pred
+        #self.y_pred = [class_encoder[y] for y in self.prediction_outputs]
 
-        (
-            self.index_bad_predicted,
-            self.index_good_predicted,
-            self.index_not_predicted,
-
-            ) = separate_prediction(
-
-            self.y_pred_decoded,
-            self.y_true_decoded,
-            self.special_class,
-        )
-
-        self.proportion_by_class = { 
-                class_:
-                sum([
-                    (self.y_true_decoded[i]==self.y_pred_decoded[i])
-                    for i in self.index_by_class[class_]
-                    ])
-                /float(len(self.index_by_class[class_]))
-                for class_ in self.labels
-                }
-        
-        logging.info("projections=sorting")
-        self.x_proj_good = np.array([self.proj[i] for i in self.index_good_predicted])
-        self.x_proj_bad  = np.array([self.proj[i] for i in self.index_bad_predicted])
-        self.x_proj_null = np.array([self.proj[i] for i in self.index_not_predicted])
-        logging.info("projections=ready")
+        self.calculate_prediction_projection_arrays()
 
         self.reset_viz()
         self.refresh_graph()
@@ -342,12 +321,12 @@ class Vizualization:
         index_to_scatter = set()
 
         for class_ in self.pred_class_to_display:
-            for idx, pred_class in enumerate(self.y_pred_decoded):
+            for idx, pred_class in enumerate(self.prediction_outputs):
                 if pred_class == class_:
                     index_to_scatter.add(idx)
         
         for class_ in self.true_class_to_display:
-            for idx, true_class in enumerate(self.y_true_decoded) :
+            for idx, true_class in enumerate(self.true_outputs) :
                 if true_class == class_:
                     index_to_scatter.add(idx)
     
@@ -366,36 +345,36 @@ class Vizualization:
                 special_to_display.add(idx)
 
         if len(bad_to_display):
-            self.ax.scatter(x=np.array([self.proj[i] for i in bad_to_display])[:, 0],
-                            y=np.array([self.proj[i] for i in bad_to_display])[:, 1],
+            self.ax.scatter(x=np.array([self.projected_input[i] for i in bad_to_display])[:, 0],
+                            y=np.array([self.projected_input[i] for i in bad_to_display])[:, 1],
                             color='r',
                             marker='+')
         if len(good_to_display):
-            self.ax.scatter(x=np.array([self.proj[i] for i in good_to_display])[:, 0],
-                            y=np.array([self.proj[i] for i in good_to_display])[:, 1],
+            self.ax.scatter(x=np.array([self.projected_input[i] for i in good_to_display])[:, 0],
+                            y=np.array([self.projected_input[i] for i in good_to_display])[:, 1],
                             color='b',
                             marker='+')
         if len(special_to_display):
-            self.ax.scatter(x=np.array([self.proj[i] for i in special_to_display])[:, 0],
-                            y=np.array([self.proj[i] for i in special_to_display])[:, 1],
+            self.ax.scatter(x=np.array([self.projected_input[i] for i in special_to_display])[:, 0],
+                            y=np.array([self.projected_input[i] for i in special_to_display])[:, 1],
                             color='g',
                             marker='+')
         if all_unchecked:
 
             self.ax.scatter(
-                self.x_proj_good[:, 0],
-                self.x_proj_good[:, 1],
+                self.well_predicted_projected_points_array[:, 0],
+                self.well_predicted_projected_points_array[:, 1],
                 color='b', marker="+"
             )
             self.ax.scatter(
-                self.x_proj_bad[:, 0],
-                self.x_proj_bad[:, 1],
+                self.misspredicted_projected_points_array[:, 0],
+                self.misspredicted_projected_points_array[:, 1],
                 color='r',
                 marker='+'
             )
             self.ax.scatter(
-                self.x_proj_null[:, 0],
-                self.x_proj_null[:, 1],
+                self.not_predicted_projected_points_array[:, 0],
+                self.not_predicted_projected_points_array[:, 1],
                 marker='x',
                 color='g'
             )
@@ -596,19 +575,19 @@ class Vizualization:
         
         logging.info("scatterplot: drawing observations")
         self.ax.scatter(
-            self.x_proj_good[:, 0],
-            self.x_proj_good[:, 1],
+            self.well_predicted_projected_points_array[:, 0],
+            self.well_predicted_projected_points_array[:, 1],
             color='b', marker="+"
         )
         self.ax.scatter(
-            self.x_proj_bad[:, 0],
-            self.x_proj_bad[:, 1],
+            self.misspredicted_projected_points_array[:, 0],
+            self.misspredicted_projected_points_array[:, 1],
             color='r',
             marker='+'
         )
         self.ax.scatter(
-            self.x_proj_null[:, 0],
-            self.x_proj_null[:, 1],
+            self.not_predicted_projected_points_array[:, 0],
+            self.not_predicted_projected_points_array[:, 1],
             marker='x',
             color='g'
         )
@@ -620,8 +599,8 @@ class Vizualization:
         """
         self.local_effectif = {}
         self.local_proportion = {}
-        self.local_confusion_by_class = { class_:{ class__:0  for class__ in self.labels } for class_ in self.labels }
-        self.local_bad_count_by_class = { class_:0 for class_ in self.labels }
+        self.local_confusion_by_class = {class_:{class__:0 for class__ in self.possible_outputs_list} for class_ in self.possible_outputs_list}
+        self.local_bad_count_by_class = {class_:0 for class_ in self.possible_outputs_list}
         self.local_classes = set()
         self.local_sum = 0
         self.currently_selected_cluster = []
@@ -635,14 +614,14 @@ class Vizualization:
         clusteriser of the vizualization
         """
 
-        self.cluster_by_idx = self.clusterizer.predict(self.proj)
+        self.cluster_by_idx = self.clusterizer.predict(self.projected_input)
         all_cluster_labels = set(self.cluster_by_idx)
         
         index_by_label = { label:[] for label in all_cluster_labels }
 
         class_by_cluster = {
                 label:{
-                    class_:0 for class_ in self.proj_by_class }
+                    class_:0 for class_ in self.projection_points_list_by_true_output }
                 for label in all_cluster_labels
                 }
         
@@ -654,7 +633,7 @@ class Vizualization:
         
         for idx, label in enumerate(self.cluster_by_idx):
             index_by_label[label].append(idx)
-            class_by_cluster[label][self.y_true_decoded[idx]]+=1
+            class_by_cluster[label][self.true_outputs[idx]]+=1
            
 
         logging.info('clustering: analyze each one')
@@ -671,15 +650,15 @@ class Vizualization:
                 if i in self.index_good_predicted:
                     cluster_good[label]+=1
                     try:
-                        cluster_good_count_by_class[label][self.y_true_decoded[i]]+=1
+                        cluster_good_count_by_class[label][self.true_outputs[i]]+=1
                     except KeyError:
-                        cluster_good_count_by_class[label][self.y_true_decoded[i]]=1
+                        cluster_good_count_by_class[label][self.true_outputs[i]]=1
                 else:
                     cluster_bad[label]+=1
                     try:
-                        cluster_bad_count_by_class[label][self.y_true_decoded[i]]+=1
+                        cluster_bad_count_by_class[label][self.true_outputs[i]]+=1
                     except KeyError:
-                        cluster_bad_count_by_class[label][self.y_true_decoded[i]]=1
+                        cluster_bad_count_by_class[label][self.true_outputs[i]]=1
                 if i in self.index_not_predicted:
                     cluster_null[label]+=1
         
@@ -967,7 +946,7 @@ class Vizualization:
                 else:
                     current_entropy = (
                         cross_entropy(
-                            self.total_individual,
+                            self.number_of_individual_by_true_output,
                             self.class_by_cluster[current_centroid_label]
                             )
                         )
@@ -1041,7 +1020,7 @@ class Vizualization:
             method=self.last_clusterizer_method
         if method=='kmeans':
             self.clusterizer = clustering.KmeansClusterizer(
-                    n_clusters=self.n_clusters,
+                    n_clusters=self.number_of_clusters,
                     )
         elif method=='dbscan':
             self.clusterizer = clustering.DBSCANClusterizer()
@@ -1051,7 +1030,7 @@ class Vizualization:
                     )
 
         self.last_clusterizer_method = method
-        self.clusterizer.fit(xs=self.proj)
+        self.clusterizer.fit(xs=self.projected_input)
         logging.info("cluster: done")
 
         self.label_mesh()
@@ -1103,7 +1082,7 @@ class Vizualization:
 
         Three objects are important inside the object Vizualization and need to be updated :
             - self.currently_selected_cluster is the collection of selected tiles
-            - self.local_classes contains labels inside current_cluster
+            - self.local_classes contains possible_outputs_list inside current_cluster
             - self.local_effectif contains the effetif of each label inside current_cluster
             - self.local_sum the sum of local_effectif
             - self.local_proportion is the ratio of good/total predicted inside cluster, by label
@@ -1134,9 +1113,9 @@ class Vizualization:
         for current_cluster in self.currently_selected_cluster:
             for idx in self.index_by_label[current_cluster]:
                 if idx in self.index_bad_predicted:
-                    current_class = self.y_true_decoded[idx]
+                    current_class = self.true_outputs[idx]
                     self.local_bad_count_by_class[current_class] += 1
-                    self.local_confusion_by_class[current_class][self.y_pred_decoded[idx]]+=1
+                    self.local_confusion_by_class[current_class][self.prediction_outputs[idx]]+=1
 
         self.local_confusion_by_class_sorted = { k:[] for k in self.local_confusion_by_class.keys() }
         for class_, errors in self.local_confusion_by_class.items():
@@ -1178,15 +1157,15 @@ class Vizualization:
         values = [
             [
                 (
-                    '{0:.0f}'.format(self.local_effectif[c])+ "  ("
-                    + '{0:.2f}'.format(self.local_effectif[c]/self.total_individual[c]*100)+"%)"),
+                    '{0:.0f}'.format(self.local_effectif[c]) + "  ("
+                    + '{0:.2f}'.format(self.local_effectif[c] / self.number_of_individual_by_true_output[c] * 100) + "%)"),
                 (
                     '{0:.2f}'.format(self.local_proportion[c]*100)+"% ("+
                     '{0:.2f}'.format((self.local_proportion[c]-self.proportion_by_class[c])*100)+"%)"
                     ),
                 (
-                    '{0:.0f}'.format(self.total_individual[c])+' ('+
-                    '{0:.2f}'.format(self.total_individual[c]/float(len(self.proj))*100)+'%)'
+                    '{0:.0f}'.format(self.number_of_individual_by_true_output[c]) + ' (' +
+                    '{0:.2f}'.format(self.number_of_individual_by_true_output[c] / float(len(self.projected_input)) * 100) + '%)'
                     ),
                 
 
@@ -1215,7 +1194,7 @@ class Vizualization:
         values     = values[:max_row]
         row_labels = row_labels[:max_row]
         
-        values.append([self.local_sum, .856789, len(self.proj), ' '])
+        values.append([self.local_sum, .856789, len(self.projected_input), ' '])
         row_labels.append('all')
 
         self.rows = row_labels
@@ -1238,7 +1217,7 @@ class Vizualization:
         cols = ['accuracy', 'effectif']
         most_common_classes = Counter(
                 {
-                    c:len(self.index_by_class[c]) for c in self.labels
+                    c:len(self.index_by_true_output[c]) for c in self.possible_outputs_list
                     }
                 ).most_common(max_row)
 
@@ -1247,8 +1226,8 @@ class Vizualization:
             [
                 '{0:.2f}'.format(self.proportion_by_class[c]*100)+"%",
                 (
-                    '{0:.0f}'.format(self.total_individual[c])+' ('+
-                    '{0:.2f}'.format(self.total_individual[c]/float(len(self.proj))*100)+'%)'
+                    '{0:.0f}'.format(self.number_of_individual_by_true_output[c]) + ' (' +
+                    '{0:.2f}'.format(self.number_of_individual_by_true_output[c] / float(len(self.projected_input)) * 100) + '%)'
                     ),
             ]
             for c in row_labels
