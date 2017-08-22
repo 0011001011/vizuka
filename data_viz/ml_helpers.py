@@ -23,6 +23,9 @@ def cross_entropy(dict1, dict2):
     """
     Cross-entropy between two dicts
     dict1 must contains all keys in dict2
+
+    :param dict1: dictionnary containing {class_label:occurence}
+    :param dict2: dictionnary containing {class_label:occurence}
     """
     sum_dict1, sum_dict2 = sum(dict1.values()), sum(dict2.values())
     ce = 0
@@ -39,9 +42,10 @@ def cross_entropy(dict1, dict2):
 
 def bhattacharyya(dict1, dict2):
     """
-    Similarity measure between two distribution
+    Similarity measure between two empirical distribution
     
-    :param dict1: dict with key:class, value:nb of observations
+    :param dict1: dictionnary containing {class_label:occurence}
+    :param dict2: dictionnary containing {class_label:occurence}
     """
     s = 0
     for i in {*dict1, *dict2}:

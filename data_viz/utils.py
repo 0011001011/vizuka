@@ -1,3 +1,7 @@
+"""
+Collection of once-used functions I may be using one day again
+"""
+
 def rgb_to_hex(red, green, blue):
     """
     Convert (int, int, int) RGB to hex RGB

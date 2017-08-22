@@ -1,3 +1,11 @@
+"""
+Qt handler for drawing buttons and IHM black magic.
+Please do read it you fool. I must admit I am not
+proud of everything written down there.
+
+This should be rewritten with QtCreator's help.
+"""
+
 import matplotlib
 matplotlib.use('Qt5Agg')  # noqa
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
@@ -20,6 +28,11 @@ import sys
 
 # logging.basicConfig(level=logging.DEBUG)
 def onclick_wrapper(onclick):
+    """
+    This decorator for onclick detects if the mouse event
+    should trigger something.
+    Hummmm...
+    """
     def wrapper(*args, **kwargs):
         if args[0].detect_mouse_event:  # args[0] is self
             return onclick(*args, **kwargs)
@@ -29,22 +42,46 @@ def onclick_wrapper(onclick):
 
 
 class Viz_handler():
+    """
+    A Viz_handler is attached to the viz_engine defined in vizualization.py
+    It basically lists lots of QWidget things and propose methods to init
+    them "gracefully", hum...
+
+    Only IHM here.
+    """
 
     def show(self):
+        """
+        Shows the window you built with your tears
+        """
         self.window.show()
-        self.additional_window.show()
+        # self.additional_window.show()
         self.refresh()
         sys.exit(self.app.exec_())
 
     def refresh(self):
+        """
+        Refresh the matplotlib plots
+        """
         for p in self.plottings:
             p.canvas.draw()
     
     @onclick_wrapper
     def onclick(self, *args, **kwargs):
+        """
+        ..seealso::onclick_wrapper
+        """
         self.base_onclick(*args, **kwargs)
 
     def __init__(self, viz_engine, figure, onclick):
+        """
+        This object is a QtWindow (or 2-3-4...) with a mamtplotlib.Figure
+        and a onclick event handler. As you can see it is also linked to
+        a viz_engine which will do the magic.
+        
+        This instance should only do IHM stuff, nothing intellectual, everything
+        is handled by the viz_engine
+        """
 
         self.viz_engine = viz_engine
         self.figure = figure
@@ -67,7 +104,7 @@ class Viz_handler():
             def __init__(self, parent=None):
                 super(Additional_Window, self).__init__(parent)
                 self.setWindowTitle('Scatter Plot')
-        self.additional_window = Additional_Window(self.window)
+        # self.additional_window = Additional_Window(self.window)
         # self.add_figure(self.additional_figure, onclick=None, window=self.additional_window)
 
         right_dock = QtCore.Qt.RightDockWidgetArea
@@ -139,11 +176,14 @@ class Viz_handler():
 
         # logging.info('Vizualization=ready')
 
-    def set_additional_graph(self, fig):
-        self.add_figure(fig, onclick=lambda x: x, window=self.additional_window)
-        self.refresh()
-
     def add_figure(self, figure, onclick, window):
+        """
+        Easy method for adding a matplotlib figure to the Qt window
+
+        :param figure:  matplotlib figure to attach
+        :param onclick: onclick function to attach to figure
+        :param window:  which window to attach the figure to
+        """
 
         class MatplotlibWidget(QWidget):
             def __init__(self, figure, onclick, parent=None, *args, **kwargs):
@@ -194,10 +234,10 @@ class Viz_handler():
         """
         Add a menu list with action button
 
-        :param menu_name: the name of the list (displayed)
+        :param menu_name:   displayed name of the list (displayed)
         :param button_name: the name of the button
-        :param categories: categories available for selection
-        :param onlaunch: action to trigger on click to button
+        :param categories:  categories available for selection
+        :param onlaunch:    action to trigger on click to button
         """
 
         root = self.window
@@ -238,6 +278,9 @@ class Viz_handler():
     def add_button(self, name, action, dockarea):
         """
         Adds a simple button
+
+        :param name: diplayed button name
+        :param action: function triggered on click event
         """
         root = self.window
         panel = QWidget()
@@ -256,7 +299,7 @@ class Viz_handler():
         """
         Adds a text panel (how surprising) and binds it to a function
 
-        :param name: name of Widget
+        :param name:i  diplayed name of Widget
         :param update: function to bind returnPressed event of textpanel
         """
         # ipdb.set_trace()
@@ -276,9 +319,19 @@ class Viz_handler():
         return textbox
 
     def toogle_detect_mouse_event(self, *args, **kwargs):
+        """
+        Enable/Disable mouse_event handling ..seealso::onclick_wrapper
+        """
         self.detect_mouse_event = not self.detect_mouse_event
 
     def add_checkboxes(self, name, items_name, action, dockarea):
+        """
+        Add some checkboxes, linked to some action.
+
+        :param name:       the name of this checkboxes set
+        :param items_name: displayed name of each item
+        :param action:     triggered on each check/uncheck
+        """
         root = self.window
         panel = QWidget()
         hbox = QHBoxLayout(panel)

@@ -1,4 +1,12 @@
+"""
+Here are the default parameters used in all the package
+There are 1.path 2.filenames 3.learning parameters
+"""
 import os
+
+#
+# ALL DEFAULT PATH
+#
 
 BASE_PATH       = os.path.join('data/')
 
@@ -7,6 +15,10 @@ TSNE_DATA_PATH  = os.path.join(BASE_PATH, 'tSNE/')
 MODEL_PATH      = os.path.join(BASE_PATH, 'models/')
 GRAPH_PATH      = os.path.join(BASE_PATH, 'graph/')
 
+
+#
+# ALL DEFAULT FILENAME
+#
 
 # File containing data to be t-SNEed
 INPUT_FILE_BASE_NAME = 'preprocessed_inputs'
@@ -21,6 +33,11 @@ VERSION = '_20170817'
 # data output name (labels)
 OUTPUT_NAME = 'account'
 
+
+#
+# ALL LEARNING PARAMETERS
+#
+
 # t-SNE parameters
 # best tuple so far is (50,1000,pca,15000)
 PARAMS_LEARNING = { 'perplexities'  : [30,40,50,80],
@@ -32,6 +49,7 @@ PARAMS_LEARNING = { 'perplexities'  : [30,40,50,80],
            'n_iters'       : [5000, 15000]
          }
 
+# t-SNE parameters for the reduced data we will draw
 PARAMS_VIZ = { 'perplexity'  : 80,
            'learning_rate': 1000,
            'init'         : 'random',
@@ -42,9 +60,3 @@ PCA_DIMS = 42  # ~90% of explained_variance
 
 # 30 for OVH, 50 for local, 15 for epinal
 REDUCTION_SIZE_FACTOR = 1
-
-# False -> load representation
-# True  -> find new projection for t-SNE
-DO_CALCULUS = False
-
-

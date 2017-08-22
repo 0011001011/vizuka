@@ -1,3 +1,9 @@
+"""
+This is the main script to launch everything
+Is able to reduce the data and launch a vizualization
+from it.
+"""
+
 import logging
 
 import matplotlib
@@ -17,12 +23,14 @@ from data_viz.config import (
     PARAMS_LEARNING,
     PARAMS_VIZ,
     MODEL_PATH,
-    DO_CALCULUS,
 )
 
 import argparse
 
 if __name__ == '__main__':
+    """
+    See --help if you want help
+    """
     
     logging.basicConfig(level=logging.DEBUG)
 
@@ -35,6 +43,9 @@ if __name__ == '__main__':
         help='specify a version of the files to load/generate, currently: '+VERSION)
     parser.add_argument(
         '--no_vizualize', action="store_true",
+         help='do not prepare a nice data vizualization')
+    parser.add_argument(
+        '--no_plot', action="store_true",
          help='do not show a nice data vizualization (but prepare it nonetheless)')
 
     args = parser.parse_args()
@@ -86,18 +97,6 @@ if __name__ == '__main__':
 
     ###############
     # PREDICT
-    
-    """
-    if DO_CALCULUS:
-        logging.info('RNpredictions=predicting')
-        x_predicted = labelling.predict_rnn(
-            x_small,
-            y_small,
-            path=MODEL_PATH,
-            version=VERSION
-        )
-        logging.info('RNpredictions=ready')
-    """
     logging.info('RNpredictions=loading')
     x_predicted = labelling.load_predict(
         path=MODEL_PATH,
@@ -122,5 +121,6 @@ if __name__ == '__main__':
             class_encoder=class_encoder,
         )
 
-        f.plot()
-        f.show()
+        if not args.no_plot:
+            f.plot()
+            f.show()

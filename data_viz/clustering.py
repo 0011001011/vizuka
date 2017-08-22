@@ -1,8 +1,11 @@
 '''
 Clustering engine to use with Vizualization
 
-3 methods :
-    init    - with different params
+If you want to implement one, dont forget to add it
+on qt_handler, to be able to select on the IHM
+
+3 methods are necessary to implement, cf Clusterizer():
+    init    - set main params
     fit     - to prepare the algo for the data
     predict - to find out the cluster of a (x,y)
 '''
@@ -21,16 +24,31 @@ class Clusterizer():
         def __init__(self, *args, **kwargs):
             """
             Builds a clusterizer object e.g: kmeans
+            Do not know the datas at this point, just pass it the bare
+            minimum to initialize an engine.
 
             :param *args **kwargs: parameters passed to the clusterizer engine
+                                   it can literally be whatever you want
             """
             self.engine = None
 
+        def fit(self, xs):
+            """
+            First time the engine sees the data.
+            Depending on the algorithm you may do your magic your own way
+            and maybe store new variable in self, maybe store all the
+            predicts for each x directly in a dict.
+
+            :param xs: a list containing data to clusterize
+            """
+            pass
+
+
         def predict(self, xs):
             """
-            Gives the cluster in which the data is
+            Finds the cluster(s) in which the data is.
 
-            :params xys: array-like of (x,y) points
+            :params xs: array-like of (x,y) points
             :return: array-like of cluster id
             """
             return (0, ) * len(xs)
@@ -39,23 +57,52 @@ class Clusterizer():
 class KmeansClusterizer(Clusterizer):
 
     def __init__(self, n_clusters=120, *args, **kwargs):
+        """
+        Uses sklearn kmeans, accepts same arguments.
+        Default number of cluster : 120
+        """
         self.engine = KMeans(n_clusters=n_clusters, *args, **kwargs)
 
     def fit(self, xs):
+        """
+        Fit the datas and find clusterization adapted to the data provided
+
+        :param xs: data to clusterize
+        """
         self.engine.fit(xs)
 
     def predict(self, xs):
+        """
+        Predicts cluster label
+
+        :param xs: array-like of datas
+        :return:   list of cluster labels
+        """
         return self.engine.predict(xs)
 
 
 class DBSCANClusterizer(Clusterizer):
 
     def __init__(self, *args, **kwargs):
+        """
+        Inits a DBSCAN clustering engine from sklearn
+        Accepts the same arguments
+        """
         self.engine = DBSCAN(n_jobs=4, *args, **kwargs)
 
     def fit(self, xs):
         """
         There is no dbscan.predict so...
+        We are going to predict everything and
+        put it on a big dict.
+
+        This is stupid but thank sklearn for that.
+        If you want to predict the class of a point
+        not initially in your data (e.g the mesh_centroids)
+        then the engine will first find the nearest fitted
+        data, and give you its cluster labelling.
+
+        :param xs: array-like of datas
         """
         xs_tuple = [ tuple(x) for x in xs ]
         tmp = self.engine.fit_predict(xs_tuple)
@@ -64,6 +111,11 @@ class DBSCANClusterizer(Clusterizer):
         self.xs = xs
 
     def predict(self, xs):
+        """
+        Predicts cluster label
+        :param xs: array-like of datas to classify
+        ..seealso:: self.fit
+        """
         current_predicts = []
         for x in xs:
             x_tuple = tuple(x)
@@ -77,24 +129,40 @@ class DBSCANClusterizer(Clusterizer):
 
 
 class DummyClusterizer(Clusterizer):
+    """
+    The DummyClusterizer is a clustering engine which
+    return the index of your point in a big mesh.
 
-    def __init__(self, resolution):
-        self.resolution = resolution
+    Give it the resolution of your mesh and its amplitude,
+    it will center it on (0,0) and "clusterize". There are
+    resolution*resolution clusters, come of them being..
+    hum.. empty yes.
+    """
+
+    def __init__(self, mesh):
+        """
+        Inits the "engine" by giving it a resolution.
+        The resolution will be the square root of the
+        number of clusters.
+        """
+        self.mesh   = mesh
+        self.kdtree = KDTree(self.mesh)
 
     def fit(self, xs):
-        self.amplitude = vizualization.find_amplitude(xs)
+        """
+        Fit to the data, for this it finds how big the mesh
+        will need to be
 
-    def predict(self, xys):
+        :param xs: array-like of data to clusterize
+        """
+        pass
 
-        attributed_cluster = []
-        xgygs = vizualization.find_grid_positions(xys, self.resolution, self.amplitude)
-
-        attributed_cluster = [
-            xgyg[0] + (xgyg[1] + self.resolution/2 + 2) * self.resolution
-            for xgyg in xgygs
-        ]
-
-        return attributed_cluster
+    def predict(self, xs):
+        """
+        Simply give you the index of the mesh in which the
+        data is, it is considered as a cluster label
+        """
+        return [self.kdtree.query(x)[1] for x in xs]
 
 
 def make_clusterizer(xs, method='kmeans', **kwargs):
@@ -102,9 +170,11 @@ def make_clusterizer(xs, method='kmeans', **kwargs):
     Clusterize the data with specified algorithm
     Naively assume you pass the right parameters for the right algo
 
-    :param data: array with shape (n,2) of in put to clusterize
-    :param method: algo to use, supported: kmeans
-    :param n_clusters: number of clusters to find (if apply)
+    :param data:       array with shape (n,2) of inputs to clusterize
+    :param method:     algo to use, supported: kmeans, dbscan, dummy
+    :param n_clusters: number of clusters to find (if applicable)
+
+    :return: a clusterizer object (instance of child of Clusterizer())
     """
     
     clusterizer = None
@@ -122,6 +192,7 @@ def make_clusterizer(xs, method='kmeans', **kwargs):
 def plot_clusters(data, clusterizer):
     """
     Nicely returns a viz of the clusters
+    -> UNUSED IN CODE BUT FANCY
 
     :param data: array with shape (n,2) of in put to clusterize
     :param clusterizer: ..seealso::clusterizer
@@ -164,6 +235,9 @@ def plot_clusters(data, clusterizer):
 
 
 if __name__ == '__main__':
+    """
+    Yes, I like to test my code with __main__
+    """
     import dim_reduction as dr
     datas_sets, models = dr.load_tSNE()
     datas = datas_sets[50, 1000, 'pca', 15000]

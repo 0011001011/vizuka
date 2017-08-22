@@ -1,3 +1,15 @@
+"""
+Here is the code summoned to reduce the dimension of your
+precious data, and also to load it.
+We use t-SNE and, if you want, PCA just before it.
+
+..note:: tSNE from sklearn is not the best but is standard
+I suggest you to uncomment 'from MulticoreTSNE import TSNE as tsne'
+as it will be much faster and won't crash if you use too much RAM.
+However this needs extra-install steps :
+-> cf https://github.com/DmitryUlyanov/Multicore-TSNE
+"""
+
 import itertools
 
 import numpy as np
@@ -17,22 +29,6 @@ from data_viz.config import (
     PCA_DIMS,
 )
 
-"""
-from shared_helpers import config
-
-DATA_VIZ_CONFIG = config.load_config(__package__)
-
-REDUCTION_SIZE_FACTOR = DATA_VIZ_CONFIG['REDUCTION_SIZE_FACTOR']
-VERSION = DATA_VIZ_CONFIG['VERSION']
-PARAMS = DATA_VIZ_CONFIG['PARAMS']
-
-DATA_PATH = DATA_VIZ_CONFIG['DATA_PATH']
-
-INPUT_FILE_BASE_NAME = os.path.join(DATA_PATH, DATA_VIZ_CONFIG['INPUT_FILE_BASE_NAME'])
-DATA_PATH            = os.path.join(DATA_PATH, DATA_VIZ_CONFIG['DATA_PATH'])
-TSNE_DATA_PATH       = os.path.join(BASE_PATH, DATA_VIZ_CONFIG['TSNE_DATA_PATH'])
-"""
-
 
 def load_raw_data(
         file_base_name=INPUT_FILE_BASE_NAME,
@@ -47,11 +43,11 @@ def load_raw_data(
 
     File to load should :
         - be in path
-        - has name "$(file_base_name)_x_y_$(version).npz"
-                $(version) is for e.g "20170614"
-                $(file_base_name) if for e.g 'processed_predictions' or 'one_hot'
+        - has name "(INPUT_FILE_BASE_NAME)_x_y_(VERSION).npz"
+                (VERSION) is for e.g "_20170614"
+                (FILE_BASE_NAME) if for e.g 'processed_predictions' or 'one_hot'
         - contains entry x with input data
-        - contains entry y_$(output_name) with output data (labels)
+        - contains entry y_(OUTPUT_NAME) with output data (labels to predict)
         - optionnaly an encoder to translate machine-readable labels to human-readable labels
                 (actually it is the opposite e.g: {604600:[False, True, False, .., False]})
 
@@ -102,7 +98,7 @@ def learn_tSNE(x, params=PARAMS_LEARNING, version=VERSION, path=TSNE_DATA_PATH,
 
     :param x: input data to project
     :param params: t-SNE parameters to learn
-                   learn every combination possible
+                   it will learn every combination possible
                    .. seealso:: sklearn.manifold.TSNE()
     :type params: {
                     'perplexities':array(int),

@@ -240,9 +240,8 @@ class Vizualization:
         self.x_proj_null = np.array([self.proj[i] for i in self.index_not_predicted])
         logging.info("projections=ready")
         
-        #self.clusterizer = clustering.DummyClusterizer(resolution=self.resolution)
         logging.info('clustering engine=fitting')
-        self.clusterizer = clustering.DummyClusterizer(resolution=self.resolution)
+        self.clusterizer = clustering.DummyClusterizer(mesh=self.mesh_centroids)
         self.clusterizer.fit(self.proj)
         logging.info('clustering engine=ready')
         self.normalize_frontier = True
@@ -684,11 +683,6 @@ class Vizualization:
                 if i in self.index_not_predicted:
                     cluster_null[label]+=1
         
-        logging.info('labelling: mesh centroids')
-        centroids_label = self.clusterizer.predict(self.mesh_centroids)
-        logging.info('labelling: done')
-
-        self.centroids_label       = centroids_label
         self.cluster_good_count    = cluster_good
         self.cluster_bad_count     = cluster_bad
         self.cluster_good_count_by_class    = cluster_good_count_by_class
@@ -701,15 +695,16 @@ class Vizualization:
         """
         Delimits one cluster by drawing lines around it
         """
-        size = len(self.centroids_label)
+        centroids_label = self.clusterizer.predict(self.mesh_centroids)
+        size = len(centroids_label)
         borders = set()
     
         for idx, xy in enumerate(self.mesh_centroids):
-            if self.centroids_label[idx] == cluster:
-                label_down_neighbor = self.centroids_label[max(idx-self.resolution,0)]
-                label_left_neighbor = self.centroids_label[max(idx-1,0)]
-                label_right_neighbor = self.centroids_label[min(idx+1,size-1)]
-                label_up_neighbor = self.centroids_label[min(idx+self.resolution,size-1)]
+            if centroids_label[idx] == cluster:
+                label_down_neighbor = centroids_label[max(idx-self.resolution,0)]
+                label_left_neighbor = centroids_label[max(idx-1,0)]
+                label_right_neighbor = centroids_label[min(idx+1,size-1)]
+                label_up_neighbor = centroids_label[min(idx+self.resolution,size-1)]
                 
                 x, y = xy
 
@@ -779,12 +774,13 @@ class Vizualization:
         frontier = {}
         
         logging.info('borders: calculating')
+        centroids_label = self.clusterizer.predict(self.mesh_centroids)
         for idx,xy in enumerate(self.mesh_centroids):
 
-            current_centroid_label = self.centroids_label[idx]
+            current_centroid_label = centroids_label[idx]
             x, y = xy[0], xy[1]
             try:
-                label_down_neighbor = self.centroids_label[idx-self.resolution]
+                label_down_neighbor = centroids_label[idx-self.resolution]
                 if label_down_neighbor != current_centroid_label:
                     try:
                         frontier[(label_down_neighbor, current_centroid_label)]
@@ -799,7 +795,7 @@ class Vizualization:
                 pass
             
             try:
-                label_left_neighbor = self.centroids_label[idx-1]
+                label_left_neighbor = centroids_label[idx-1]
                 if label_left_neighbor != current_centroid_label:
                     try:
                         frontier[(label_left_neighbor, current_centroid_label)]
@@ -833,12 +829,12 @@ class Vizualization:
         logging.info('borders: drawing')
         for idx,xy in enumerate(self.mesh_centroids):
 
-            current_centroid_label = self.centroids_label[idx]
+            current_centroid_label = centroids_label[idx]
             x, y = xy[0], xy[1]
 
             #if x+size_rect>0>x-size_rect and y+size_rect>0>y-size_rect:ipdb.set_trace()
             try:
-                label_down_neighbor = self.centroids_label[idx-self.resolution]
+                label_down_neighbor = centroids_label[idx-self.resolution]
                 if label_down_neighbor != current_centroid_label:
                     frontier_density = frontier[(label_down_neighbor, current_centroid_label)]
                     for axe in axes:
@@ -857,7 +853,7 @@ class Vizualization:
                 pass
 
             try:
-                label_left_neighbor = self.centroids_label[idx-1]
+                label_left_neighbor = centroids_label[idx-1]
                 if label_left_neighbor != current_centroid_label:
                     frontier_density = frontier[(label_left_neighbor, current_centroid_label)]
                     for axe in axes:
@@ -890,12 +886,12 @@ class Vizualization:
         """
 
         all_colors = [[0 for _ in range(self.resolution)] for _ in range(self.resolution) ]
-        centroid_label = {}
+        centroids_label = self.clusterizer.predict(self.mesh_centroids)
         logging.info('heatmap: drawing proportion heatmap')
 
         for idx,xy in enumerate(self.mesh_centroids):
 
-            current_centroid_label = self.centroids_label[idx]
+            current_centroid_label = centroids_label[idx]
             x, y = xy[0], xy[1]
             count = (
                     self.cluster_good_count.get(current_centroid_label, 0)
@@ -936,14 +932,14 @@ class Vizualization:
         """
 
         all_colors = [[0 for _ in range(self.resolution)] for _ in range(self.resolution) ]
-        centroid_label = {}
         logging.info('heatmap entropy: drawing')
+        centroids_label = self.clusterizer.predict(self.mesh_centroids)
         
         entropys = []
 
         for idx,xy in enumerate(self.mesh_centroids):
 
-            current_centroid_label = self.centroids_label[idx]
+            current_centroid_label = centroids_label[idx]
             x, y = xy[0], xy[1]
             current_entropy = 0
             
@@ -1033,7 +1029,7 @@ class Vizualization:
             self.clusterizer = clustering.DBSCANClusterizer()
         else:
             self.clusterizer = clustering.DummyClusterizer(
-                    resolution=self.resolution,
+                    mesh=self.mesh_centroids,
                     )
 
         self.last_clusterizer_method = method
