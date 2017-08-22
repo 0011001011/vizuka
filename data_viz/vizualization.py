@@ -534,19 +534,28 @@ class Vizualization:
 
         x = event.xdata
         y = event.ydata
-
         button = event.button
 
         self.summary_axe.clear()
         self.summary_axe.axis('off')
 
         if button == 1:
+            import time
+            tic = time.time()
+            
             clicked_cluster = self.clusterizer.predict([(x,y)])[0]
-
+            toc = time.time()
+            logging.info("calculate witch cluster is predicted %s", toc-tic)
             self.delimit_cluster(clicked_cluster, color=self.manual_cluster_color)
+
+            toc1 = time.time()
+            logging.info("total delimit cluster time %s", toc1 -toc)
             self.update_summary(clicked_cluster)
 
             self.print_summary(self.summary_axe)
+            toc2 = time.time()
+            logging.info("summarys %s", toc2 -toc1)
+
 
         elif button == 3:
             # reboot vizualization
@@ -674,71 +683,88 @@ class Vizualization:
         self.index_by_label        = index_by_label
         self.class_by_cluster      = class_by_cluster
 
+    def calculate_centroid_coordinates(self, x, y):
+        return x + self.resolution * y
+
+    def draw_the_line(self, x_list, y_list):
+        for axe in self.axes_needing_borders:
+            axe.add_artist(matplotlib.lines.Line2D(xdata=x_list, ydata=y_list))
+
+    def line(self, float_point):
+        return (float_point - self.size_centroid / 2, float_point + self.size_centroid / 2)
+
+    def lower_bound(self, float_point, plus_one=None):
+        if plus_one:
+            return (float_point + self.size_centroid / 2,)
+        return (float_point - self.size_centroid / 2,)
+
     def delimit_cluster(self, cluster, **kwargs):
         """
         Delimits one cluster by drawing lines around it
         """
-        size = len(self.centroids_label)
-        borders = set()
-    
-        for idx, xy in enumerate(self.mesh_centroids):
-            if self.centroids_label[idx] == cluster:
-                label_down_neighbor = self.centroids_label[max(idx-self.resolution,0)]
-                label_left_neighbor = self.centroids_label[max(idx-1,0)]
-                label_right_neighbor = self.centroids_label[min(idx+1,size-1)]
-                label_up_neighbor = self.centroids_label[min(idx+self.resolution,size-1)]
-                
-                x, y = xy
+        import time
+        tic = time.time()
+        culster_y_list_by_x = [[] for x in range(self.resolution)]
+        culster_x_list_by_y = [[] for y in range(self.resolution)]
 
-                if label_down_neighbor != cluster:
-                    for axe in self.axes_needing_borders:
-                          axe.add_artist(
-                              matplotlib.lines.Line2D(
-                                  xdata = (
-                                      x-self.size_centroid/2,
-                                      x+self.size_centroid/2),
-                                  ydata = (
-                                      y-self.size_centroid/2,),
-                                  **kwargs,
-                                  )
-                              )
-                if label_up_neighbor != cluster:
-                    for axe in self.axes_needing_borders:
-                          axe.add_artist(
-                              matplotlib.lines.Line2D(
-                                  xdata = (
-                                      x-self.size_centroid/2,
-                                      x+self.size_centroid/2),
-                                  ydata = (
-                                      y+self.size_centroid/2,),
-                                  **kwargs,
-                                  )
-                              )
-                if label_left_neighbor != cluster:
-                    for axe in self.axes_needing_borders:
-                          axe.add_artist(
-                              matplotlib.lines.Line2D(
-                                  xdata = (
-                                      x-self.size_centroid/2,),
-                                  ydata = (
-                                      y-self.size_centroid/2,
-                                      y+self.size_centroid/2,),
-                                  **kwargs,
-                                  )
-                              )
-                if label_right_neighbor != cluster:
-                    for axe in self.axes_needing_borders:
-                          axe.add_artist(
-                              matplotlib.lines.Line2D(
-                                  xdata = (
-                                      x+self.size_centroid/2,),
-                                  ydata = (
-                                      y-self.size_centroid/2,
-                                      y+self.size_centroid/2,),
-                                  **kwargs,
-                                  )
-                              )
-        self.refresh_graph()
+        iter_all_coordinates = ((x, y) for x in range(0, self.resolution) for y in range(0, self.resolution))
+
+        for idx, (x, y) in enumerate(iter_all_coordinates):
+            if self.centroids_label[idx] == cluster:
+                culster_y_list_by_x[x].append(y)
+                culster_x_list_by_y[y].append(x)
+                
+        calculate_coordinates = self.calculate_centroid_coordinates
+
+        def draw_all_lines(self, list_points, swapped_coordinates=False):
+            for a in range(0, self.resolution):
+                a_line_b_list = list_points[a]
+                if not a_line_b_list:
+                    continue
+                min_b = min(a_line_b_list)
+                max_b = max(a_line_b_list)
+                no_hole = (max_b - min_b + 1) == len(a_line_b_list)
+                if no_hole:
+                    if swapped_coordinates:  # swaped if a is y and b is x, not swapt if a is  and b is y
+                        b_float_position, a_float_position= self.mesh_centroids[calculate_coordinates(min_b, a)]
+                        self.draw_the_line(self.lower_bound(b_float_position), self.line(a_float_position))
+                        b_float_position, a_float_position = self.mesh_centroids[calculate_coordinates(max_b, a)]
+                        self.draw_the_line(
+                            self.lower_bound(b_float_position, plus_one=True), self.line(a_float_position))
+                    else:
+                        a_float_position, b_float_position= self.mesh_centroids[calculate_coordinates(a, min_b)]
+                        self.draw_the_line(self.line(a_float_position), self.lower_bound(b_float_position))
+                        a_float_position, b_float_position = self.mesh_centroids[calculate_coordinates(a, max_b)]
+                        self.draw_the_line(
+                            self.line(a_float_position), self.lower_bound(b_float_position, plus_one=True))
+                else:  # case not convex, which is not often so it's gonna be dirty
+                    for b in a_line_b_list:
+                        if swapped_coordinates:
+                            if (b - 1) not in a_line_b_list:
+                                b_float_position, a_float_position = self.mesh_centroids[calculate_coordinates(b, a)]
+                                self.draw_the_line(self.lower_bound(b_float_position), self.line(a_float_position))
+                            if (b + 1) not in a_line_b_list:
+                                b_float_position, a_float_position = self.mesh_centroids[calculate_coordinates(b, a)]
+                                self.draw_the_line(
+                                    self.lower_bound(b_float_position, plus_one=True), self.line(a_float_position))
+                        else:
+                            if (b - 1) not in a_line_b_list:
+                                a_float_position, b_float_position = self.mesh_centroids[calculate_coordinates(a, b)]
+                                self.draw_the_line(self.line(a_float_position), self.lower_bound(b_float_position))
+                            if (b + 1) not in a_line_b_list:
+                                a_float_position, b_float_position = self.mesh_centroids[calculate_coordinates(a, b)]
+                                self.draw_the_line(
+                                    self.line(a_float_position), self.lower_bound(b_float_position, plus_one=True))
+                            
+        draw_all_lines(self, culster_y_list_by_x, swapped_coordinates=True)
+        draw_all_lines(self, culster_x_list_by_y, swapped_coordinates=False)
+
+        toc2 = time.time()
+        logging.info("delimit_cluster %s", (toc2 - tic) )
+
+        # self.refresh_graph()
+        # looks like he disn't worked
+
     
     def apply_borders(self, normalize_frontier, frontier_builder, *args):
         """
@@ -756,39 +782,32 @@ class Vizualization:
         frontier = {}
         
         logging.info('borders: calculating')
-        for idx,xy in enumerate(self.mesh_centroids):
+        for index_center, (x, y) in enumerate(self.mesh_centroids):
 
-            current_centroid_label = self.centroids_label[idx]
-            x, y = xy[0], xy[1]
-            try:
-                label_down_neighbor = self.centroids_label[idx-self.resolution]
-                if label_down_neighbor != current_centroid_label:
-                    try:
-                        frontier[(label_down_neighbor, current_centroid_label)]
-                    except KeyError:
+            current_centroid_label = self.centroids_label[index_center]
+            lower_centroid = index_center - self.resolution
+            if not lower_centroid < 0:
+                down_neighbor_label = self.centroids_label[lower_centroid]
+                if down_neighbor_label != current_centroid_label:
+                    if (down_neighbor_label, current_centroid_label) not in frontier:
                         current_frontier = frontier_builder(
-                                    self.class_by_cluster[label_down_neighbor],
+                                    self.class_by_cluster[down_neighbor_label],
                                     self.class_by_cluster[current_centroid_label]
                                     )
                         if current_frontier > -np.inf:
-                            frontier[(label_down_neighbor, current_centroid_label)] = current_frontier
-            except KeyError:
-                pass
+                            frontier[(down_neighbor_label, current_centroid_label)] = current_frontier
             
-            try:
-                label_left_neighbor = self.centroids_label[idx-1]
-                if label_left_neighbor != current_centroid_label:
-                    try:
-                        frontier[(label_left_neighbor, current_centroid_label)]
-                    except KeyError:
+            left_centroid = index_center - 1 if (index_center % self.resolution != 0) else None
+            if left_centroid:
+                left_neighbor_label = self.centroids_label[left_centroid]
+                if left_neighbor_label != current_centroid_label:
+                    if (left_neighbor_label, current_centroid_label) not in frontier:
                         current_frontier = frontier_builder(
-                                    self.class_by_cluster[label_left_neighbor],
+                                    self.class_by_cluster[left_neighbor_label],
                                     self.class_by_cluster[current_centroid_label]
                                     )
                         if current_frontier > -np.inf:
-                            frontier[(label_left_neighbor, current_centroid_label)] = current_frontier
-            except KeyError:
-                pass
+                            frontier[(left_neighbor_label, current_centroid_label)] = current_frontier
 
         frontier = { key:frontier[key] for key in frontier if frontier[key] != -np.inf }
         
@@ -808,16 +827,15 @@ class Vizualization:
                     i.remove()
 
         logging.info('borders: drawing')
-        for idx,xy in enumerate(self.mesh_centroids):
+        for index_center, (x, y) in enumerate(self.mesh_centroids):
 
-            current_centroid_label = self.centroids_label[idx]
-            x, y = xy[0], xy[1]
+            current_centroid_label = self.centroids_label[index_center]
 
             #if x+size_rect>0>x-size_rect and y+size_rect>0>y-size_rect:ipdb.set_trace()
             try:
-                label_down_neighbor = self.centroids_label[idx-self.resolution]
-                if label_down_neighbor != current_centroid_label:
-                    frontier_density = frontier[(label_down_neighbor, current_centroid_label)]
+                down_neighbor_label = self.centroids_label[index_center-self.resolution]
+                if down_neighbor_label != current_centroid_label:
+                    frontier_density = frontier[(down_neighbor_label, current_centroid_label)]
                     for axe in axes:
                         axe.add_artist(
                             matplotlib.lines.Line2D(
@@ -834,9 +852,9 @@ class Vizualization:
                 pass
 
             try:
-                label_left_neighbor = self.centroids_label[idx-1]
-                if label_left_neighbor != current_centroid_label:
-                    frontier_density = frontier[(label_left_neighbor, current_centroid_label)]
+                left_neighbor_label = self.centroids_label[index_center-1]
+                if left_neighbor_label != current_centroid_label:
+                    frontier_density = frontier[(left_neighbor_label, current_centroid_label)]
                     for axe in axes:
                         axe.add_artist(
                             matplotlib.lines.Line2D(

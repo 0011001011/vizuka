@@ -310,5 +310,4 @@ class Viz_handler():
         n_str = self.textboxs['n_clusters'].text()
         n = int(n_str)
         self.viz_engine.n_clusters = n
-        self.viz_engine.request_new_clustering()
 
