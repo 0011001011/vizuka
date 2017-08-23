@@ -468,8 +468,6 @@ class Vizualization:
 
         logging.info('clustering: analyze each one')
         for cluster_label in all_cluster_labels:
-            number_of_points_by_cluster = len(index_by_cluster_label[cluster_label])
-
             number_good_point_by_cluster[cluster_label] = 0
             number_bad_point_by_cluster[cluster_label]  = 0
             number_null_point_by_cluster[cluster_label] = 0
@@ -479,20 +477,23 @@ class Vizualization:
             for point_in_cluster_index in index_by_cluster_label[cluster_label]:
                 point_correct_output = self.correct_outputs[point_in_cluster_index]
                 if point_in_cluster_index in self.index_good_predicted:
+                    number_good_point_by_cluster[cluster_label] += 1
                     if point_correct_output in number_good_point_by_class_by_cluster[cluster_label]:
                         number_good_point_by_class_by_cluster[cluster_label][point_correct_output] += 1
                     else:
                         number_good_point_by_class_by_cluster[cluster_label][point_correct_output] = 1
 
-                else:
-                    number_bad_point_by_cluster[cluster_label]+=1
+                elif point_in_cluster_index in self.index_bad_predicted:
+                    number_bad_point_by_cluster[cluster_label] += 1
                     if point_correct_output in number_bad_point_by_class_by_cluster[cluster_label]:
-                        number_bad_point_by_class_by_cluster[cluster_label][point_correct_output]+=1
+                        number_bad_point_by_class_by_cluster[cluster_label][point_correct_output] += 1
                     else:
                         number_bad_point_by_class_by_cluster[cluster_label][point_correct_output] = 1
-                # /!\ : the sum is more than the number of points, not predicted stuff get counted more than once
-                if point_in_cluster_index in self.index_not_predicted:
-                    number_null_point_by_cluster[cluster_label]+=1
+                elif point_in_cluster_index in self.index_not_predicted:
+                    number_null_point_by_cluster[cluster_label] += 1
+                else:
+                    logging.error("index not in any indexes : %s", point_in_cluster_index)
+                
         
         self.number_good_point_by_cluster = number_good_point_by_cluster
         self.number_bad_point_by_cluster = number_bad_point_by_cluster
