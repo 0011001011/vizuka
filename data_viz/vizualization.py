@@ -709,11 +709,12 @@ class Vizualization:
             current_centroid_cluster_label = centroids_cluster_by_index[index]
             number_good_points = self.number_good_point_by_cluster.get(current_centroid_cluster_label, 0)
             number_bad_points = self.number_bad_point_by_cluster.get(current_centroid_cluster_label, 0)
+            number_null_points = self.number_null_point_by_cluster.get(current_centroid_cluster_label, 0)
             number_of_valid_cluster_points = number_good_points + number_bad_points
 
             if number_of_valid_cluster_points > 0:
                 proportion_correct = number_good_points / float(number_of_valid_cluster_points)
-                proportion_null    = number_bad_points / float(number_of_valid_cluster_points)
+                proportion_null    = number_null_points / float(number_of_valid_cluster_points)
                 proportion_incorrect = 1 - proportion_correct
             else:
                 proportion_correct = 1
