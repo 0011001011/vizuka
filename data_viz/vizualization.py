@@ -110,7 +110,7 @@ class Vizualization:
             raw_inputs,
             projected_input,
             predicted_outputs,
-            true_outputs,
+            correct_outputs,
             resolution=100,
             special_class='0',
             number_of_clusters=120,
@@ -122,7 +122,7 @@ class Vizualization:
         Central function, draw heatmap + scatter plot + zoom + annotations on tSNE data
 
         :param predicted_outputs: vector of predicted possible_outputs_list
-        :param true_outputs: vector of true possible_outputs_list
+        :param correct_outputs: vector of true possible_outputs_list
         :param projected_input: vector of t-SNE projected data (i.e project_input[index] = (x, y)
         :param class_dn_jobs=4, ecoder: function to decode possible_outputs_list machinetohuman
         :param class_encoder: dict to encode possible_outputs_list humantomachine
@@ -138,8 +138,8 @@ class Vizualization:
             if not value:
                 return str(special_class)
             return str(value)
-            
-        self.true_outputs = [str_with_default_value(true_output) for true_output in true_outputs]
+        self.correct_outputs = [str_with_default_value(correct_output) for correct_output in correct_outputs]
+
         self.prediction_outputs = [str_with_default_value(predicted_output) for predicted_output in predicted_outputs]
         
         self.projected_input = projected_input
@@ -148,31 +148,31 @@ class Vizualization:
         self.class_decoder = class_decoder
         self.special_class = str(special_class)
 
-        self.true_class_to_display = {}
-        self.pred_class_to_display = {}
+        self.correct_class_to_display = {}
+        self.predicted_class_to_display = {}
 
         self.last_clusterizer_method = None
         
-        #self.possible_outputs_list = list({self.class_decoder(y_encoded) for y_encoded in self.true_outputs})
-        self.possible_outputs_set = set(self.true_outputs).union(set(self.prediction_outputs))
+        #self.possible_outputs_list = list({self.class_decoder(y_encoded) for y_encoded in self.correct_outputs})
+        self.possible_outputs_set = set(self.correct_outputs).union(set(self.prediction_outputs))
         self.possible_outputs_set.discard(None)
         self.possible_outputs_list = list(self.possible_outputs_set)
         self.possible_outputs_list.sort()
-
-        self.projection_points_list_by_true_output = {y: [] for y in self.true_outputs}
+        # logging.info("correct outputs : %", self.correct_outputs)
+        self.projection_points_list_by_correct_output = {y: [] for y in self.correct_outputs}
         self.number_of_individual_by_true_output = {}
-        self.index_by_true_output = {class_:[] for class_ in self.true_outputs}
+        self.index_by_true_output = {class_:[] for class_ in self.possible_outputs_list}
 
         for index, projected_input in enumerate(self.projected_input):
-            self.projection_points_list_by_true_output[self.true_outputs[index]].append(projected_input)
-            self.index_by_true_output[self.true_outputs[index]].append(index)
+            self.projection_points_list_by_correct_output[self.correct_outputs[index]].append(projected_input)
+            self.index_by_true_output[self.correct_outputs[index]].append(index)
 
         # convert dict values to np.array
-        for possible_output in self.projection_points_list_by_true_output:
-            self.projection_points_list_by_true_output[possible_output] = np.array(
-                self.projection_points_list_by_true_output[possible_output])
+        for possible_output in self.projection_points_list_by_correct_output:
+            self.projection_points_list_by_correct_output[possible_output] = np.array(
+                self.projection_points_list_by_correct_output[possible_output])
             self.number_of_individual_by_true_output[possible_output] = len(
-                self.projection_points_list_by_true_output[possible_output])
+                self.projection_points_list_by_correct_output[possible_output])
 
         self.resolution = resolution # counts of tiles per row/column
 
@@ -227,21 +227,26 @@ class Vizualization:
             self.index_not_predicted,
         ) = separate_prediction(
             self.prediction_outputs,
-            self.true_outputs,
+            self.correct_outputs,
             self.special_class,
         )
     
         # Sort good/bad/not predictions in t-SNE space
         logging.info("projections=listing")
-        self.proportion_by_class = {
-            possible_output:
-                sum([
-                    (self.true_outputs[i] == self.prediction_outputs[i])
-                    for i in self.index_by_true_output[possible_output]
-                ])
-                / float(len(self.index_by_true_output[possible_output]))
-            for possible_output in self.possible_outputs_list
-        }
+        logging.info("projections= %s", {key: len(output) for key, output in self.index_by_true_output.items()})
+        
+        self.proportion_by_class = {}
+        for possible_output in self.possible_outputs_list:
+            if not possible_output in self.index_by_true_output:
+                continue
+            list_correct_index = self.index_by_true_output[possible_output]
+            if not len(list_correct_index) > 0:
+                self.proportion_by_class[possible_output] = 0
+                continue
+            self.proportion_by_class[possible_output] = sum([
+                            (self.correct_outputs[i] == self.prediction_outputs[i])
+                            for i in list_correct_index]) / float(len(list_correct_index))
+
         logging.info("projections=sorting")
         self.well_predicted_projected_points_array = np.array(
             [self.projected_input[i] for i in self.index_good_predicted])
@@ -253,131 +258,90 @@ class Vizualization:
         
     def reload_predict(self, filename, model_path=MODEL_PATH):
         
-        y_pred = np.load(
-                os.path.join(model_path, filename)
-                )['pred']
+        prediction_output = np.load(os.path.join(model_path, filename))['pred']
 
-
-        self.prediction_outputs = y_pred
-        #self.y_pred = [class_encoder[y] for y in self.prediction_outputs]
+        self.prediction_outputs = prediction_output
 
         self.calculate_prediction_projection_arrays()
 
         self.reset_viz()
         self.refresh_graph()
-
+    
+    def draw_scatterplot(self, well_predcited_array, badly_predicted_array, not_predicted_array):
+        if len(well_predcited_array):
+            self.ax.scatter(
+                x=well_predcited_array[:, 0],
+                y=well_predcited_array[:, 1],
+                color='b', marker="+"
+            )
+        if len(badly_predicted_array):
+            self.ax.scatter(
+                x=badly_predicted_array[:, 0],
+                y=badly_predicted_array[:, 1],
+                color='r',
+                marker='+'
+            )
+        if len(well_predcited_array):
+            self.ax.scatter(
+                x=not_predicted_array[:, 0],
+                y=not_predicted_array[:, 1],
+                marker='x',
+                color='g'
+            )
 
     #######################################
     # Similarity functions to draw clusters
 
-    def contains_dominant(self, x0y0, xy):
-        """
-        Checks if two clusters have same dominant label
-
-        :type x0y0: (int, int) cluster coordinates
-        :type xy: (int, int) cluster coordinates
-        """
-        x0, y0 = x0y0
-        x, y = xy
-
-        if self.grid_total[x][y] == {} or self.grid_total[x0][y0] == {}:
-            return False
-
-        dominant = max(self.grid_total[x][y], key=self.grid_total[x][y].get)
-        other_dominant = max(self.grid_total[x0][y0], key=self.grid_total[x0][y0].get)
-
-        return (dominant == other_dominant)
-
-    def comparable_proportion(self, x0y0, xy, diff=0.10):
-        """
-        Checks if cluster have comparable *proportion*
-
-        :param diff: percent of max difference in proportion for two similar clusters
-        :type x0y0: (int, int) cluster coordinates
-        :type xy: (int, int) cluster coordinates
-        """
-        x0, y0 = x0y0
-        x, y = xy
-
-        grid_prop_x_y = self.grid_proportion[x][y]
-        grid_prop_x0_y0 = self.grid_proportion[x0][y0]
-
-        return (grid_prop_x0_y0 * (1 + diff) < grid_prop_x_y < grid_prop_x0_y0 * (1 - diff))
-
-    def filter_true_class(self, states_by_class):
-        self.true_class_to_display = {
-                class_ for class_,state in states_by_class.items() if state
+    def filter_by_correct_class(self, selected_outputs_class_list):
+        self.correct_class_to_display = {
+                output_class for output_class, selected in selected_outputs_class_list.items() if selected
                 }
         self.display_by_filter()
 
-    def filter_pred_class(self, states_by_class):
-        self.pred_class_to_display = {
-                class_ for class_,state in states_by_class.items() if state
+    def filter_by_predicted_class(self, selected_outputs_class_list):
+        self.predicted_class_to_display = {
+                output_class for output_class, selected in selected_outputs_class_list.items() if selected
                 }
         self.display_by_filter()
 
     def display_by_filter(self):
-        all_unchecked = (not self.pred_class_to_display) and (not self.true_class_to_display)
-        index_to_scatter = set()
+        all_unchecked = (not self.predicted_class_to_display) and (not self.correct_class_to_display)
+        index_inputs_to_display = set()
 
-        for class_ in self.pred_class_to_display:
-            for idx, pred_class in enumerate(self.prediction_outputs):
-                if pred_class == class_:
-                    index_to_scatter.add(idx)
+        for output_class in self.predicted_class_to_display:
+            for index, predited_class in enumerate(self.prediction_outputs):
+                if predited_class == output_class:
+                    index_inputs_to_display.add(index)
         
-        for class_ in self.true_class_to_display:
-            for idx, true_class in enumerate(self.true_outputs) :
-                if true_class == class_:
-                    index_to_scatter.add(idx)
+        for output_class in self.correct_class_to_display:
+            for index, true_class in enumerate(self.correct_outputs) :
+                if true_class == output_class:
+                    index_inputs_to_display.add(index)
     
-        for i in self.ax.get_children():
-            if isinstance(i, matplotlib.collections.PathCollection):
-                i.remove()
+        for child in self.ax.get_children():
+            if isinstance(child, matplotlib.collections.PathCollection):
+                child.remove()
 
         bad_to_display, good_to_display, special_to_display = set(), set(), set()
 
-        for idx in index_to_scatter:
-            if idx in self.index_bad_predicted:
-                bad_to_display.add(idx)
-            elif idx in self.index_good_predicted:
-                good_to_display.add(idx)
+        for index in index_inputs_to_display:
+            if index in self.index_bad_predicted:
+                bad_to_display.add(index)
+            elif index in self.index_good_predicted:
+                good_to_display.add(index)
             else:
-                special_to_display.add(idx)
+                special_to_display.add(index)
 
-        if len(bad_to_display):
-            self.ax.scatter(x=np.array([self.projected_input[i] for i in bad_to_display])[:, 0],
-                            y=np.array([self.projected_input[i] for i in bad_to_display])[:, 1],
-                            color='r',
-                            marker='+')
-        if len(good_to_display):
-            self.ax.scatter(x=np.array([self.projected_input[i] for i in good_to_display])[:, 0],
-                            y=np.array([self.projected_input[i] for i in good_to_display])[:, 1],
-                            color='b',
-                            marker='+')
-        if len(special_to_display):
-            self.ax.scatter(x=np.array([self.projected_input[i] for i in special_to_display])[:, 0],
-                            y=np.array([self.projected_input[i] for i in special_to_display])[:, 1],
-                            color='g',
-                            marker='+')
+        bad_to_display_array = np.array([self.projected_input[i] for i in bad_to_display])
+        good_to_display_array = np.array([self.projected_input[i] for i in good_to_display])
+        special_to_display_array = np.array([self.projected_input[i] for i in special_to_display])
+
+        self.draw_scatterplot(bad_to_display_array, good_to_display_array, special_to_display_array)
+
         if all_unchecked:
-
-            self.ax.scatter(
-                self.well_predicted_projected_points_array[:, 0],
-                self.well_predicted_projected_points_array[:, 1],
-                color='b', marker="+"
-            )
-            self.ax.scatter(
-                self.misspredicted_projected_points_array[:, 0],
-                self.misspredicted_projected_points_array[:, 1],
-                color='r',
-                marker='+'
-            )
-            self.ax.scatter(
-                self.not_predicted_projected_points_array[:, 0],
-                self.not_predicted_projected_points_array[:, 1],
-                marker='x',
-                color='g'
-            )
+            self.draw_scatterplot(self.well_predicted_projected_points_array,
+                                  self.misspredicted_projected_points_array,
+                                  self.not_predicted_projected_points_array)
 
         self.refresh_graph()
 
@@ -401,127 +365,6 @@ class Vizualization:
     #######################################
     # Similarity functions to draw clusters
 
-    def find_similar_clusters(self, x_g, y_g,
-                              similarity_check=contains_dominant,
-                              propagation='proximity'):
-        """
-        Find the coordinates of all similar clusters
-
-        A cluster is considered similar if similarity_check function returns True
-        Not all clusters are checked depending on the :param propagation: parameter
-
-        :param propagation: set to "proximity" or "all"
-                - proximity means that only (recursively) adjacent tiles are checked
-                - all means that every tile is checked
-        :param similarity_check: function that finds if two tiles are "similar"
-                                 it should returns True in this case, input are (x0y0, xy)
-                                 ..seealso:: contains_dominant
-        :type x_g: int
-        :type y_g: int
-        """
-        similar_clusters = []
-
-        if propagation == 'proximity':
-            _, similar_clusters = self.proximity_search(
-                (x_g, y_g),
-                (x_g, y_g),
-                set(),
-                set(),
-                similarity_check
-            )
-        elif propagation == 'all':
-            similar_clusters = self.exhaustive_search(
-                (x_g, y_g),
-                similarity_check
-            )
-
-        return similar_clusters
-
-    def exhaustive_search(self, x0y0, similarity_check):
-        """
-        Search ALL tiles and check if similar
-
-        :return: array of tiles similar to original according to similarity_check
-
-        :param x0y0: original tile to compare others to
-        :param similarity_check: function returning True if tiles are "similar"
-        """
-        x_0, y_0 = x0y0
-
-        similar_clusters = []
-        grid_axis_iterator = range(
-            int(-self.resolution / 2) - 1,
-            int(self.resolution / 2) + 1
-        )
-
-        for x_g, y_g in itertools.product(grid_axis_iterator, grid_axis_iterator):
-            if similarity_check(self, (x_0, y_0), (x_g, y_g)):
-                similar_clusters.append((x_g, y_g))
-
-        return similar_clusters
-
-    def proximity_search(self, x0y0, xy, already_checked, similars, similarity_check): #TODO
-        """
-        Recursive function that check if (recursively) adjacent tiles are similar
-
-        Function starts its search at x0y0 (the cluster to which it compares others
-        Then it uses :param similarity_check: function to find if similars exist in its neighbors
-        proximity_search is then called again recursively on its similar neighbors
-
-        :param similarity_check: the function that finds if two tiles are "similar"
-        :param already_check: the set of already checked tiles
-        :param similars: the set of similar tiles within the already_checked' ones
-        :param x0y0: is the original tile from which we compare new ones
-        """
-
-        x0, y0 = x0y0
-        x, y = xy
-
-        if (x, y) in already_checked:
-            return already_checked, similars
-
-        already_checked.add((x, y))
-
-        if similarity_check(self, (x, y), (x0, y0)):
-
-            similars.add((x, y))
-
-            if x + self.size_centroid < self.amplitude:
-                already_checked, similars = self.proximity_search(
-                        (x0, y0),
-                        (x + self.size_centroid, y),
-                        already_checked,
-                        similars,
-                        similarity_check
-                        )
-            if x - self.size_centroid > -self.amplitude:
-                already_checked, similars = self.proximity_search((x0, y0), (x - 1, y),
-                                                                  already_checked,
-                                                                  similars,
-                                                                  similarity_check)
-            if y + 1 < self.resolution / 2:
-                already_checked, similars = self.proximity_search((x0, y0), (x, y + 1),
-                                                                  already_checked,
-                                                                  similars,
-                                                                  similarity_check)
-            if y - 1 > -self.resolution / 2:
-                already_checked, similars = self.proximity_search((x0, y0), (x, y - 1),
-                                                                  already_checked,
-                                                                  similars,
-                                                                  similarity_check)
-        return already_checked, similars
-
-    def filter_class(self, states_by_class):
-        all_unchecked = ( 0 == sum(states_by_class.values()) )
-
-        to_scatter = set()
-        for class_, state in states_by_class.items():
-            if state or all_unchecked:
-                to_scatter.add(class_)
-        
-        self.update_showonly(to_scatter, all_unchecked=all_unchecked)
-
-
     def onclick(self, event):
         """
         Mouse event handler
@@ -530,26 +373,26 @@ class Vizualization:
             1 : select a tile (and a class)
             2 : find similar tiles
             3 : reset vizualization (graph+summary)
-
+            
         """
 
         x = event.xdata
         y = event.ydata
-
         button = event.button
+        left_click, right_click = ((button == 1), (button == 3))
 
         self.summary_axe.clear()
         self.summary_axe.axis('off')
 
-        if button == 1:
+        if left_click:
             clicked_cluster = self.clusterizer.predict([(x,y)])[0]
-
+            
             self.delimit_cluster(clicked_cluster, color=self.manual_cluster_color)
+            
             self.update_summary(clicked_cluster)
-
             self.print_summary(self.summary_axe)
 
-        elif button == 3:
+        elif right_click:
             # reboot vizualization
             self.reset_summary()
             self.reset_viz()
@@ -574,23 +417,9 @@ class Vizualization:
                     i.remove()
         
         logging.info("scatterplot: drawing observations")
-        self.ax.scatter(
-            self.well_predicted_projected_points_array[:, 0],
-            self.well_predicted_projected_points_array[:, 1],
-            color='b', marker="+"
-        )
-        self.ax.scatter(
-            self.misspredicted_projected_points_array[:, 0],
-            self.misspredicted_projected_points_array[:, 1],
-            color='r',
-            marker='+'
-        )
-        self.ax.scatter(
-            self.not_predicted_projected_points_array[:, 0],
-            self.not_predicted_projected_points_array[:, 1],
-            marker='x',
-            color='g'
-        )
+        self.draw_scatterplot(self.well_predicted_projected_points_array,
+                              self.misspredicted_projected_points_array,
+                              self.not_predicted_projected_points_array)
         logging.info("scatterplot: ready")
 
     def reset_summary(self):
@@ -599,13 +428,15 @@ class Vizualization:
         """
         self.local_effectif = {}
         self.local_proportion = {}
-        self.local_confusion_by_class = {class_:{class__:0 for class__ in self.possible_outputs_list} for class_ in self.possible_outputs_list}
-        self.local_bad_count_by_class = {class_:0 for class_ in self.possible_outputs_list}
+        self.local_confusion_by_class = {output_class: {other_output_class:0
+                                                  for other_output_class in self.possible_outputs_list}
+                                            for output_class in self.possible_outputs_list}
+        self.local_bad_count_by_class = {output_class:0 for output_class in self.possible_outputs_list}
         self.local_classes = set()
         self.local_sum = 0
         self.currently_selected_cluster = []
 
-    def label_mesh(self):
+    def cluster_label_mesh(self):
         """
         Labels the mesh centroids
 
@@ -617,58 +448,57 @@ class Vizualization:
         self.cluster_by_idx = self.clusterizer.predict(self.projected_input)
         all_cluster_labels = set(self.cluster_by_idx)
         
-        index_by_label = { label:[] for label in all_cluster_labels }
+        index_by_cluster_label = { cluster_label:[] for cluster_label in all_cluster_labels }
 
-        class_by_cluster = {
-                label:{
-                    class_:0 for class_ in self.projection_points_list_by_true_output }
-                for label in all_cluster_labels
+        number_of_points_by_class_by_cluster = {
+                cluster_label: {
+                    output_class:0 for output_class in self.projection_points_list_by_correct_output }
+                for cluster_label in all_cluster_labels
                 }
         
-        cluster_null = dict()
-        cluster_good = dict()
-        cluster_bad  = dict()
-        cluster_good_count_by_class = dict()
-        cluster_bad_count_by_class  = dict()
+        number_null_point_by_cluster = dict()
+        number_good_point_by_cluster = dict()
+        number_bad_point_by_cluster  = dict()
+        number_good_point_by_class_by_cluster = dict()
+        number_bad_point_by_class_by_cluster  = dict()
         
-        for idx, label in enumerate(self.cluster_by_idx):
-            index_by_label[label].append(idx)
-            class_by_cluster[label][self.true_outputs[idx]]+=1
-           
+        for index, cluster_label in enumerate(self.cluster_by_idx):
+            index_by_cluster_label[cluster_label].append(index)
+            number_of_points_by_class_by_cluster[cluster_label][self.correct_outputs[index]]+=1
 
         logging.info('clustering: analyze each one')
-        for label in all_cluster_labels:
-            count = len(index_by_label[label])
+        for cluster_label in all_cluster_labels:
+            number_of_points_by_cluster = len(index_by_cluster_label[cluster_label])
 
-            cluster_good[label] = 0
-            cluster_bad[label]  = 0
-            cluster_null[label] = 0
-            cluster_good_count_by_class[label]={}
-            cluster_bad_count_by_class[label]={}
+            number_good_point_by_cluster[cluster_label] = 0
+            number_bad_point_by_cluster[cluster_label]  = 0
+            number_null_point_by_cluster[cluster_label] = 0
+            number_good_point_by_class_by_cluster[cluster_label] = {}
+            number_bad_point_by_class_by_cluster[cluster_label] = {}
 
-            for i in index_by_label[label]:
-                if i in self.index_good_predicted:
-                    cluster_good[label]+=1
+            for point_in_cluster_index in index_by_cluster_label[cluster_label]:
+                if point_in_cluster_index in self.index_good_predicted:
+                    number_good_point_by_cluster[cluster_label]+=1
                     try:
-                        cluster_good_count_by_class[label][self.true_outputs[i]]+=1
+                        number_good_point_by_class_by_cluster[cluster_label][self.correct_outputs[point_in_cluster_index]]+=1
                     except KeyError:
-                        cluster_good_count_by_class[label][self.true_outputs[i]]=1
+                        number_good_point_by_class_by_cluster[cluster_label][self.correct_outputs[point_in_cluster_index]]=1
                 else:
-                    cluster_bad[label]+=1
+                    number_bad_point_by_cluster[cluster_label]+=1
                     try:
-                        cluster_bad_count_by_class[label][self.true_outputs[i]]+=1
+                        number_bad_point_by_class_by_cluster[cluster_label][self.correct_outputs[point_in_cluster_index]]+=1
                     except KeyError:
-                        cluster_bad_count_by_class[label][self.true_outputs[i]]=1
-                if i in self.index_not_predicted:
-                    cluster_null[label]+=1
+                        number_bad_point_by_class_by_cluster[cluster_label][self.correct_outputs[point_in_cluster_index]]=1
+                if point_in_cluster_index in self.index_not_predicted:
+                    number_null_point_by_cluster[cluster_label]+=1
         
-        self.cluster_good_count    = cluster_good
-        self.cluster_bad_count     = cluster_bad
-        self.cluster_good_count_by_class    = cluster_good_count_by_class
-        self.cluster_bad_count_by_class     = cluster_bad_count_by_class
-        self.cluster_null_count    = cluster_null
-        self.index_by_label        = index_by_label
-        self.class_by_cluster      = class_by_cluster
+        self.cluster_good_count    = number_good_point_by_cluster
+        self.cluster_bad_count     = number_bad_point_by_cluster
+        self.cluster_good_count_by_class    = number_good_point_by_class_by_cluster
+        self.cluster_bad_count_by_class     = number_bad_point_by_class_by_cluster
+        self.cluster_null_count    = number_null_point_by_cluster
+        self.index_by_label        = index_by_cluster_label
+        self.class_by_cluster      = number_of_points_by_class_by_cluster
 
     def calculate_centroid_coordinates(self, x, y):
         return x + self.resolution * y
@@ -1033,7 +863,7 @@ class Vizualization:
         self.clusterizer.fit(xs=self.projected_input)
         logging.info("cluster: done")
 
-        self.label_mesh()
+        self.cluster_label_mesh()
         self.update_all_heatmaps()
 
         self.apply_borders(
@@ -1113,7 +943,7 @@ class Vizualization:
         for current_cluster in self.currently_selected_cluster:
             for idx in self.index_by_label[current_cluster]:
                 if idx in self.index_bad_predicted:
-                    current_class = self.true_outputs[idx]
+                    current_class = self.correct_outputs[idx]
                     self.local_bad_count_by_class[current_class] += 1
                     self.local_confusion_by_class[current_class][self.prediction_outputs[idx]]+=1
 
@@ -1325,7 +1155,7 @@ class Vizualization:
                 self.heat_entropy,
                 title='Heatmap: cross-entropy Cluster-All')
        
-        self.label_mesh()
+        self.cluster_label_mesh()
         
         self.update_all_heatmaps()
         logging.info("heatmap=ready")
