@@ -138,8 +138,8 @@ class Vizualization:
             if not value:
                 return str(special_class)
             return str(value)
-        self.correct_outputs = [str_with_default_value(correct_output) for correct_output in correct_outputs]
 
+        self.correct_outputs = [str_with_default_value(correct_output) for correct_output in correct_outputs]
         self.prediction_outputs = [str_with_default_value(predicted_output) for predicted_output in predicted_outputs]
         
         self.projected_input = projected_input
@@ -683,6 +683,10 @@ class Vizualization:
 
         logging.info('borders: ready')
 
+    def get_coordinates_from_index(self, index):
+        return (self.resolution - int(((index - index % self.resolution) / self.resolution)) - 1,
+                index % self.resolution)
+
     def heatmap_proportion(self):
         """
         Prepare the patches for a 'proportion' heatmap (good predictions / total effectif)
@@ -697,21 +701,19 @@ class Vizualization:
         """
 
         all_colors = [[0 for _ in range(self.resolution)] for _ in range(self.resolution) ]
-        centroids_label = self.clusterizer.predict(self.mesh_centroids)
+        centroids_cluster_by_index = self.clusterizer.predict(self.mesh_centroids)
         logging.info('heatmap: drawing proportion heatmap')
 
-        for idx,xy in enumerate(self.mesh_centroids):
+        for index, (x, y) in enumerate(self.mesh_centroids):
 
-            current_centroid_label = centroids_label[idx]
-            x, y = xy[0], xy[1]
-            count = (
-                    self.number_good_point_by_cluster.get(current_centroid_label, 0)
-                    +self.number_bad_point_by_cluster.get(current_centroid_label, 0)
-                    )
+            current_centroid_cluster_label = centroids_cluster_by_index[index]
+            number_good_points = self.number_good_point_by_cluster.get(current_centroid_cluster_label, 0)
+            number_bad_points = self.number_bad_point_by_cluster.get(current_centroid_cluster_label, 0)
+            number_of_valid_cluster_points = number_good_points + number_bad_points
 
-            if count:
-                proportion_correct = self.number_good_point_by_cluster[current_centroid_label] / float(count)
-                proportion_null    = self.number_bad_point_by_cluster[current_centroid_label] / float(count)
+            if number_of_valid_cluster_points > 0:
+                proportion_correct = number_good_points / float(number_of_valid_cluster_points)
+                proportion_null    = number_bad_points / float(number_of_valid_cluster_points)
                 proportion_incorrect = 1 - proportion_correct
             else:
                 proportion_correct = 1
@@ -721,8 +723,9 @@ class Vizualization:
             red   = proportion_incorrect
             green = proportion_null
             blue  = proportion_correct
-
-            all_colors[self.resolution - int(((idx-idx%self.resolution)/self.resolution))-1][idx%self.resolution] = [red, green, blue]
+            
+            x_coordinate, y_coordinate = self.get_coordinates_from_index(index)
+            all_colors[x_coordinate][y_coordinate ] = [red, green, blue]
 
 
         logging.info('heatmap: proportion done')
@@ -748,45 +751,40 @@ class Vizualization:
         
         entropys = []
 
-        for idx,xy in enumerate(self.mesh_centroids):
+        for index, (x, y) in enumerate(self.mesh_centroids):
+    
+            current_centroid_label = centroids_label[index]
+            number_of_point_by_class = self.number_of_points_by_class_by_cluster.get(current_centroid_label)
 
-            current_centroid_label = centroids_label[idx]
-            x, y = xy[0], xy[1]
-            current_entropy = 0
-            
-            try:
-                if len(self.index_by_cluster_label[current_centroid_label]) == 0:
-                    current_entropy = 0
-                else:
-                    current_entropy = (
-                        cross_entropy(
-                            self.number_of_individual_by_true_output,
-                            self.cluster_by_idx[current_centroid_label]
-                            )
+            if (not number_of_point_by_class) or len(self.index_by_cluster_label[current_centroid_label]) == 0:
+                current_entropy = 0
+            else:
+                current_entropy = (
+                    cross_entropy(
+                        self.number_of_individual_by_true_output,
+                        number_of_point_by_class
                         )
-            except KeyError:
-                current_entropy = 0 # cluster does not exist -> empty dummy cluster
+                    )
+
             entropys.append(current_entropy)
 
         min_entropys = min(entropys)
         max_entropys = max(entropys)
         amplitude_entropys = max_entropys - min_entropys
+        # this exception is poorly handleded right now
+        if float(amplitude_entropys)==0.:
+            amplitude_entropys = 1
         logging.info('heatmap entropy: max cross-entropy='+str(max_entropys)+' min='+str(min_entropys))
 
-        for idx, xy in enumerate(self.mesh_centroids):
-            try:
-                current_entropy = entropys[idx]
-            except IndexError:
+        for index, (x, y) in enumerate(self.mesh_centroids):
+            if index > len(entropys):
                 current_entropy = min_entropys
+            else:
+                current_entropy = entropys[index]
 
             normalized_entropy = ((current_entropy - min_entropys) / amplitude_entropys)
-            x, y = xy[0], xy[1]
-            
-            # all_colors[idx%self.resolution].append(normalized_entropy)
-            all_colors[self.resolution - int(((idx-idx%self.resolution)/self.resolution))-1][idx%self.resolution] = normalized_entropy
-
-
-            #logging.debug('entropy here is '+str(self.entropys[idx])+' and color coef '+str(coef))
+            x_index, y_index = self.get_coordinates_from_index(index)
+            all_colors[x_index][y_index] = normalized_entropy
             
         logging.info('heatmap entropy: done')
         return all_colors
@@ -903,7 +901,7 @@ class Vizualization:
 
         :param current_cluster: cluster name selected by click
         """
-        to_include = self.class_by_cluster[current_cluster]
+        to_include = self.number_of_points_by_class_by_cluster[current_cluster]
         to_include = { k:to_include[k] for k in to_include if to_include[k]!=0 }
 
         if current_cluster in self.currently_selected_cluster:
@@ -920,38 +918,46 @@ class Vizualization:
         rows_to_update = self.local_classes.intersection(set(to_include.keys()))
         self.local_classes = self.local_classes.union(set(to_include.keys()))
         self.local_sum = sum(to_include.values()) + self.local_sum
+        
+        number_good_point_by_class = self.number_good_point_by_class_by_cluster[current_cluster]
+        number_bad_point_by_class = self.number_bad_point_by_class_by_cluster[current_cluster]
 
-        for c in new_rows:
-            self.local_effectif[c] = to_include[c]
-            self.local_proportion[c] = self.cluster_good_count_by_class[current_cluster].get(c,0) / (self.cluster_bad_count_by_class[current_cluster].get(c,0) + self.cluster_good_count_by_class[current_cluster].get(c,0))
-        for current_cluster in self.currently_selected_cluster:
-            for idx in self.index_by_label[current_cluster]:
-                if idx in self.index_bad_predicted:
-                    current_class = self.correct_outputs[idx]
-                    self.local_bad_count_by_class[current_class] += 1
-                    self.local_confusion_by_class[current_class][self.prediction_outputs[idx]]+=1
-
-        self.local_confusion_by_class_sorted = { k:[] for k in self.local_confusion_by_class.keys() }
-        for class_, errors in self.local_confusion_by_class.items():
-            self.local_confusion_by_class_sorted[class_] = Counter(errors).most_common(2)
-
-        for c in rows_to_update:
-            self.local_proportion[c] = (
-                (
-                    self.local_proportion[c] * self.local_effectif[c]
-                    + self.cluster_good_count_by_class[current_cluster].get(c,0) / (self.cluster_bad_count_by_class[current_cluster].get(c,0)+self.cluster_good_count_by_class[current_cluster].get(c,0)) * to_include.get(c, 0)
-                ) / (self.local_effectif[c] + to_include.get(c, 0))
+        for output_class in new_rows:
+            self.local_effectif[output_class] = to_include[output_class]
+            self.local_proportion[output_class] = (
+                number_good_point_by_class.get(output_class,0) /
+                (number_good_point_by_class.get(output_class,0) + number_bad_point_by_class.get(output_class,0))
             )
-            self.local_effectif[c] += self.cluster_good_count_by_class[current_cluster].get(c,0)+self.cluster_bad_count_by_class[current_cluster].get(c,0)
+        for cluster in self.currently_selected_cluster:
+            for index in self.index_by_cluster_label[cluster]:
+                if index in self.index_bad_predicted:
+                    current_class = self.correct_outputs[index]
+                    self.local_bad_count_by_class[current_class] += 1
+                    self.local_confusion_by_class[current_class][self.prediction_outputs[index]]+=1
+
+        self.local_confusion_by_class_sorted = {output_class:[] for output_class in self.local_confusion_by_class}
+        for output_class, errors in self.local_confusion_by_class.items():
+            self.local_confusion_by_class_sorted[output_class] = Counter(errors).most_common(2)
+
+        for output_class in rows_to_update:
+            self.local_proportion[output_class] = (
+                ( self.local_proportion[output_class] * self.local_effectif[output_class] +
+                  (number_good_point_by_class.get(output_class,0) /
+                   (number_good_point_by_class.get(output_class,0) + number_bad_point_by_class.get(output_class,0)
+                    ) * to_include.get(output_class, 0)
+                   )
+                ) / (self.local_effectif[output_class] + to_include.get(output_class, 0))
+            )
+            self.local_effectif[output_class] += number_good_point_by_class.get(output_class,0) + number_bad_point_by_class.get(output_class,0)
 
     def get_selected_indexes(self):
         """
         Find indexes of xs in selected clusters
         """
         indexes_selected = []
-        for label in self.currently_selected_cluster:
-            for idx in self.index_by_label[label]:
-                indexes_selected.append(idx) 
+        for cluster in self.currently_selected_cluster:
+            for index in self.index_by_cluster_label[cluster]:
+                indexes_selected.append(index)
 
         return indexes_selected
 
