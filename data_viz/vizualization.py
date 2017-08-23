@@ -477,28 +477,30 @@ class Vizualization:
             number_bad_point_by_class_by_cluster[cluster_label] = {}
 
             for point_in_cluster_index in index_by_cluster_label[cluster_label]:
+                point_correct_output = self.correct_outputs[point_in_cluster_index]
                 if point_in_cluster_index in self.index_good_predicted:
-                    number_good_point_by_cluster[cluster_label]+=1
-                    try:
-                        number_good_point_by_class_by_cluster[cluster_label][self.correct_outputs[point_in_cluster_index]]+=1
-                    except KeyError:
-                        number_good_point_by_class_by_cluster[cluster_label][self.correct_outputs[point_in_cluster_index]]=1
+                    if point_correct_output in number_good_point_by_class_by_cluster[cluster_label]:
+                        number_good_point_by_class_by_cluster[cluster_label][point_correct_output] += 1
+                    else:
+                        number_good_point_by_class_by_cluster[cluster_label][point_correct_output] = 1
+
                 else:
                     number_bad_point_by_cluster[cluster_label]+=1
-                    try:
-                        number_bad_point_by_class_by_cluster[cluster_label][self.correct_outputs[point_in_cluster_index]]+=1
-                    except KeyError:
-                        number_bad_point_by_class_by_cluster[cluster_label][self.correct_outputs[point_in_cluster_index]]=1
+                    if point_correct_output in number_bad_point_by_class_by_cluster[cluster_label]:
+                        number_bad_point_by_class_by_cluster[cluster_label][point_correct_output]+=1
+                    else:
+                        number_bad_point_by_class_by_cluster[cluster_label][point_correct_output] = 1
+                # /!\ : the sum is more than the number of points, not predicted stuff get counted more than once
                 if point_in_cluster_index in self.index_not_predicted:
                     number_null_point_by_cluster[cluster_label]+=1
         
-        self.cluster_good_count    = number_good_point_by_cluster
-        self.cluster_bad_count     = number_bad_point_by_cluster
-        self.cluster_good_count_by_class    = number_good_point_by_class_by_cluster
-        self.cluster_bad_count_by_class     = number_bad_point_by_class_by_cluster
-        self.cluster_null_count    = number_null_point_by_cluster
-        self.index_by_label        = index_by_cluster_label
-        self.class_by_cluster      = number_of_points_by_class_by_cluster
+        self.number_good_point_by_cluster = number_good_point_by_cluster
+        self.number_bad_point_by_cluster = number_bad_point_by_cluster
+        self.number_good_point_by_class_by_cluster = number_good_point_by_class_by_cluster
+        self.number_bad_point_by_class_by_cluster = number_bad_point_by_class_by_cluster
+        self.number_null_point_by_cluster = number_null_point_by_cluster
+        self.index_by_cluster_label = index_by_cluster_label
+        self.number_of_points_by_class_by_cluster = number_of_points_by_class_by_cluster
 
     def calculate_centroid_coordinates(self, x, y):
         return x + self.resolution * y
