@@ -114,8 +114,8 @@ if __name__ == '__main__':
         f = vizualization.Vizualization(
             raw_inputs=transactions_raw,
             projected_input=x_2D,
-            predicted_outputs=y_small,
-            correct_outputs=x_predicted,
+            predicted_outputs=x_predicted,
+            correct_outputs=y_small,
             resolution=200,
             class_decoder=class_decoder,
             class_encoder=class_encoder,
