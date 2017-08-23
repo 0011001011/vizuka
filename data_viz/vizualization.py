@@ -705,13 +705,13 @@ class Vizualization:
             current_centroid_label = centroids_label[idx]
             x, y = xy[0], xy[1]
             count = (
-                    self.cluster_good_count.get(current_centroid_label, 0)
-                    +self.cluster_bad_count.get(current_centroid_label, 0)
+                    self.number_good_point_by_cluster.get(current_centroid_label, 0)
+                    +self.number_bad_point_by_cluster.get(current_centroid_label, 0)
                     )
 
             if count:
-                proportion_correct = self.cluster_good_count[current_centroid_label] / float(count)
-                proportion_null    = self.cluster_null_count[current_centroid_label] / float(count)
+                proportion_correct = self.number_good_point_by_cluster[current_centroid_label] / float(count)
+                proportion_null    = self.number_bad_point_by_cluster[current_centroid_label] / float(count)
                 proportion_incorrect = 1 - proportion_correct
             else:
                 proportion_correct = 1
@@ -755,13 +755,13 @@ class Vizualization:
             current_entropy = 0
             
             try:
-                if len(self.index_by_label[current_centroid_label]) == 0:
+                if len(self.index_by_cluster_label[current_centroid_label]) == 0:
                     current_entropy = 0
                 else:
                     current_entropy = (
                         cross_entropy(
                             self.number_of_individual_by_true_output,
-                            self.class_by_cluster[current_centroid_label]
+                            self.cluster_by_idx[current_centroid_label]
                             )
                         )
             except KeyError:
