@@ -76,7 +76,7 @@ class KmeansClusterizer(Clusterizer):
         Predicts cluster label
 
         :param xs: array-like of datas
-        :return:   list of cluster labels
+        :return:   list of cluster possible_outputs_list
         """
         return self.engine.predict(xs)
 
@@ -179,7 +179,7 @@ def make_clusterizer(xs, method='kmeans', **kwargs):
     
     clusterizer = None
     if method == 'kmeans':
-        clusterizer = KmeansClusterizer(kwargs['n_clusters'])
+        clusterizer = KmeansClusterizer(kwargs['number_of_clusters'])
     elif method == 'dbscan':
         clusterizer = DBSCANClusterizer()
     else:
@@ -205,7 +205,7 @@ def plot_clusters(data, clusterizer):
     y_min, y_max = data[:, 1].min() - 1, data[:, 1].max() + 1
     xx, yy = np.meshgrid(np.arange(x_min, x_max, h), np.arange(y_min, y_max, h))
 
-    # Obtain labels
+    # Obtain possible_outputs_list
     Z = clusterizer.predict(np.c_[xx.ravel(), yy.ravel()])
     ipdb.set_trace()
 

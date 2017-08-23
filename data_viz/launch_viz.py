@@ -112,10 +112,10 @@ if __name__ == '__main__':
     if not args.no_vizualize:
 
         f = vizualization.Vizualization(
-            x_raw = transactions_raw,
-            proj=x_2D,
-            y_true=y_small,
-            y_pred=x_predicted,
+            raw_inputs=transactions_raw,
+            projected_input=x_2D,
+            predicted_outputs=x_predicted,
+            correct_outputs=y_small,
             resolution=200,
             class_decoder=class_decoder,
             class_encoder=class_encoder,
