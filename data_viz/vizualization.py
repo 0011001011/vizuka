@@ -268,20 +268,20 @@ class Vizualization:
         self.refresh_graph()
     
     def draw_scatterplot(self, well_predcited_array, badly_predicted_array, not_predicted_array):
-        if len(well_predcited_array):
+        if len(well_predcited_array) > 0:
             self.ax.scatter(
                 x=well_predcited_array[:, 0],
                 y=well_predcited_array[:, 1],
                 color='b', marker="+"
             )
-        if len(badly_predicted_array):
+        if len(badly_predicted_array) > 0:
             self.ax.scatter(
                 x=badly_predicted_array[:, 0],
                 y=badly_predicted_array[:, 1],
                 color='r',
                 marker='+'
             )
-        if len(well_predcited_array):
+        if len(not_predicted_array) > 0:
             self.ax.scatter(
                 x=not_predicted_array[:, 0],
                 y=not_predicted_array[:, 1],
