@@ -521,7 +521,7 @@ class Vizualization:
         """
         Delimits one cluster by drawing lines around it
         """
-        centroids_label = self.clusterizer.predict(self.mesh_centroids)
+        centroids_cluster_by_index = self.clusterizer.predict(self.mesh_centroids)
 
         import time
         tic = time.time()
@@ -531,7 +531,7 @@ class Vizualization:
         iter_all_coordinates = ((x, y) for x in range(0, self.resolution) for y in range(0, self.resolution))
 
         for idx, (x, y) in enumerate(iter_all_coordinates):
-            if centroids_label[idx] == cluster:
+            if centroids_cluster_by_index[idx] == cluster:
                 culster_y_list_by_x[x].append(y)
                 culster_x_list_by_y[y].append(x)
                 
@@ -603,40 +603,30 @@ class Vizualization:
         frontier = {}
         
         logging.info('borders: calculating')
-        centroids_label = self.clusterizer.predict(self.mesh_centroids)
-        for idx,xy in enumerate(self.mesh_centroids):
-
-            current_centroid_label = centroids_label[idx]
-            x, y = xy[0], xy[1]
-            try:
-                label_down_neighbor = centroids_label[idx-self.resolution]
+        centroids_cluster_by_index = self.clusterizer.predict(self.mesh_centroids)
+        for index, xy in enumerate(self.mesh_centroids):
+            current_centroid_label = centroids_cluster_by_index[index]
+            if index > self.resolution:
+                label_down_neighbor = centroids_cluster_by_index[index-self.resolution]
                 if label_down_neighbor != current_centroid_label:
-                    try:
-                        frontier[(label_down_neighbor, current_centroid_label)]
-                    except KeyError:
+                    if (label_down_neighbor, current_centroid_label) not in frontier:
                         current_frontier = frontier_builder(
-                                    self.class_by_cluster[label_down_neighbor],
-                                    self.class_by_cluster[current_centroid_label]
+                                    self.cluster_by_idx[label_down_neighbor],
+                                    self.cluster_by_idx[current_centroid_label]
                                     )
                         if current_frontier > -np.inf:
                             frontier[(label_down_neighbor, current_centroid_label)] = current_frontier
-            except KeyError:
-                pass
-            
-            try:
-                label_left_neighbor = centroids_label[idx-1]
+
+            if index % self.resolution > 0:
+                label_left_neighbor = centroids_cluster_by_index[index-1]
                 if label_left_neighbor != current_centroid_label:
-                    try:
-                        frontier[(label_left_neighbor, current_centroid_label)]
-                    except KeyError:
+                    if (label_left_neighbor, current_centroid_label) not in frontier:
                         current_frontier = frontier_builder(
-                                    self.class_by_cluster[label_left_neighbor],
-                                    self.class_by_cluster[current_centroid_label]
+                                    self.cluster_by_idx[label_left_neighbor],
+                                    self.cluster_by_idx[current_centroid_label]
                                     )
                         if current_frontier > -np.inf:
                             frontier[(label_left_neighbor, current_centroid_label)] = current_frontier
-            except KeyError:
-                pass
 
         frontier = { key:frontier[key] for key in frontier if frontier[key] != -np.inf }
         
@@ -651,54 +641,46 @@ class Vizualization:
 
         logging.info('borders: cleaning')
         for axe in axes:
-            for i in axe.get_children():
-                if isinstance(i, plt.Line2D):
-                    i.remove()
+            for child in axe.get_children():
+                if isinstance(child, plt.Line2D):
+                    child.remove()
+
+        def draw_frontier(xdata, ydata, frontier_density):
+            for axe in axes:
+                axe.add_artist(
+                    matplotlib.lines.Line2D(
+                        xdata=xdata,
+                        ydata=ydata,
+                        color='black',
+                        alpha=1 - frontier_density,
+                    )
+                )
 
         logging.info('borders: drawing')
-        for idx,xy in enumerate(self.mesh_centroids):
+        for index, (x, y) in enumerate(self.mesh_centroids):
 
-            current_centroid_label = centroids_label[idx]
-            x, y = xy[0], xy[1]
+            current_centroid_label = centroids_cluster_by_index[index]
 
-            #if x+size_rect>0>x-size_rect and y+size_rect>0>y-size_rect:ipdb.set_trace()
-            try:
-                label_down_neighbor = centroids_label[idx-self.resolution]
+            if index > self.resolution:
+                label_down_neighbor = centroids_cluster_by_index[index-self.resolution]
                 if label_down_neighbor != current_centroid_label:
-                    frontier_density = frontier[(label_down_neighbor, current_centroid_label)]
-                    for axe in axes:
-                        axe.add_artist(
-                            matplotlib.lines.Line2D(
-                                xdata = (
-                                    x-self.size_centroid/2,
-                                    x+self.size_centroid/2),
-                                ydata = (
-                                    y-self.size_centroid/2,),
-                                color='black',
-                                alpha= 1 - frontier_density,
-                                )
-                            )
-            except KeyError:
-                pass
+                    if (label_down_neighbor, current_centroid_label) in frontier:
+                        frontier_density = frontier[(label_down_neighbor, current_centroid_label)]
+                        draw_frontier(
+                            xdata = (x-self.size_centroid/2, x+self.size_centroid/2),
+                            ydata = (y-self.size_centroid/2,),
+                            frontier_density=frontier_density)
 
-            try:
-                label_left_neighbor = centroids_label[idx-1]
+            if index % self.resolution > 0:
+                label_left_neighbor = centroids_cluster_by_index[index-1]
                 if label_left_neighbor != current_centroid_label:
-                    frontier_density = frontier[(label_left_neighbor, current_centroid_label)]
-                    for axe in axes:
-                        axe.add_artist(
-                            matplotlib.lines.Line2D(
-                                ydata = (
-                                    y-self.size_centroid/2,
-                                    y+self.size_centroid/2),
-                                xdata = (
-                                    x-self.size_centroid/2,),
-                                color='black',
-                                alpha=1 - frontier_density,
-                                )
-                            )
-            except KeyError:
-                pass
+                    if (label_left_neighbor, current_centroid_label) in frontier:
+                        frontier_density = frontier[(label_left_neighbor, current_centroid_label)]
+                        draw_frontier(
+                            xdata=(x-self.size_centroid/2,),
+                            ydata=(y-self.size_centroid/2, y+self.size_centroid/2),
+                            frontier_density=frontier_density)
+
         logging.info('borders: ready')
 
     def heatmap_proportion(self):
