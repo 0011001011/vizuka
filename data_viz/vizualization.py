@@ -6,6 +6,7 @@ import matplotlib
 matplotlib.use('Qt5Agg')  # noqa
 from matplotlib.gridspec import GridSpec
 import os
+from scipy import stats
 
 from qt_handler import Viz_handler
 from ml_helpers import (
@@ -179,7 +180,7 @@ class Vizualization:
         self.shift_held = False
         self.ctrl_held = False
 
-        self.cols = ['effectif local', 'accuracy local',
+        self.cols = ['effectif local', 'accuracy local - p-value',
                      'effectif global',
                      'common mistakes']
         self.local_effectif = {}
@@ -982,7 +983,15 @@ class Vizualization:
                     + '{0:.2f}'.format(self.local_effectif[c] / self.number_of_individual_by_true_output[c] * 100) + "%)"),
                 (
                     '{0:.2f}'.format(self.local_proportion[c]*100)+"% ("+
-                    '{0:.2f}'.format((self.local_proportion[c]-self.proportion_by_class[c])*100)+"%)"
+                    '{0:.2f}'.format((self.local_proportion[c]-self.proportion_by_class[c])*100)+"%) - "+
+                    '{0:.2f}'.format(
+                        stats.binom_test(
+                            self.local_effectif[c]*self.local_proportion[c],
+                            self.local_effectif[c],
+                            self.proportion_by_class[c],
+                            alternative='two-sided'
+                            ) * 100,
+                        )
                     ),
                 (
                     '{0:.0f}'.format(self.number_of_individual_by_true_output[c]) + ' (' +
