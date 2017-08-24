@@ -1,3 +1,7 @@
 include README.md
-include data_viz/data
+include data_viz/data/
+include data_viz/data/tSNE/
+include data_viz/data/set/
+include data_viz/data/graph/
+include data_viz/data/models/
 include data_viz/requirements/requirements.txt
