@@ -20,7 +20,6 @@ from data_viz.config import (
     MODEL_PATH,
     )
 
-
 import logging
 import math
 import itertools
@@ -127,7 +126,8 @@ class Vizualization:
             number_of_clusters=120,
             class_decoder=(lambda x: x), class_encoder=(lambda x: x),
             output_path='output.csv',
-            model_path=MODEL_PATH
+            model_path=MODEL_PATH,
+            data_unique_id_string=''
             ):
         """
         Central function, draw heatmap + scatter plot + zoom + annotations on tSNE data
@@ -145,6 +145,8 @@ class Vizualization:
         self.manual_cluster_color = 'cyan'
         self.output_path = output_path
         self.predictors = os.listdir(model_path)
+        self.data_unique_id_string = data_unique_id_string
+        self.model_path = model_path
         
         def str_with_default_value(value):
             if not value:
@@ -852,6 +854,23 @@ class Vizualization:
         self.refresh_graph()
         logging.info('frontiers : applied '+method)
 
+    def get_cache_file_name(self, method):
+        base_path, data_unique_id_string, number_of_clusters, clustering_method = (
+            self.model_path, self.data_unique_id_string, self.number_of_clusters, method
+        )
+        if not os.path.exists(base_path):  # if the base path isn't valid (for whatever reason, saves into dev/null)
+            return os.devnull, False
+            
+        cache_path = os.path.join(base_path, 'cache')
+        if not os.path.exists(cache_path):
+            os.makedirs(cache_path)
+        cluster_filename = '_cachejoin_'.join([data_unique_id_string, number_of_clusters, clustering_method])
+        cluster_path = os.join(cache_path, cluster_filename)
+        if os.path.exists(cluster_path):
+            return cluster_path, True
+        
+        return cluster_path, False
+
     def clustering_fit(self, method):
         logging.info("cluster: requesting a new " + method + " engine")
         if method is None:
@@ -869,8 +888,15 @@ class Vizualization:
                 mesh=self.mesh_centroids,
             )
 
-        cache_file_name = self.get_cache_file_name()
-        
+        cache_file_path, loadable = self.get_cache_file_name(method)
+        if loadable:
+            self.clusterizer.load_cluster(cache_file_path)
+        else:
+            self.last_clusterizer_method = method
+            self.time_logging("cluster fitting: begin")
+            self.clusterizer.fit(xs=self.projected_input)
+            self.time_logging("cluster fitting: done")
+            self.clusterizer.save_cluster(cache_file_path)
 
     def request_new_clustering(self, method):
         """
@@ -881,11 +907,6 @@ class Vizualization:
         method = method.lower()
 
         self.clustering_fit(method)
-
-        self.last_clusterizer_method = method
-        self.time_logging("cluster fitting: begin")
-        self.clusterizer.fit(xs=self.projected_input)
-        self.time_logging("cluster fitting: done")
 
         self.cluster_label_mesh()
         self.update_all_heatmaps()
