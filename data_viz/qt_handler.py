@@ -24,6 +24,7 @@ from PyQt5.QtWidgets import (
 )
 
 import sys
+import logging
 
 
 # logging.basicConfig(level=logging.DEBUG)
@@ -54,7 +55,8 @@ class Viz_handler():
         """
         Shows the window you built with your tears
         """
-        self.window.show()
+        logging.info("showing")
+        self.window.showMaximized()
         # self.additional_window.show()
         self.refresh()
         sys.exit(self.app.exec_())
@@ -94,7 +96,6 @@ class Viz_handler():
         self.app = QApplication(sys.argv)
         self.window = QMainWindow()
         self.window.setWindowTitle('Data vizualization')
-        self.window.showMaximized()
 
         # add the main figure
         self.add_figure(self.figure, self.onclick, window=self.window)

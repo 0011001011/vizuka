@@ -8,24 +8,13 @@ import logging
 
 import matplotlib
 import numpy as np
+import os
 
 matplotlib.use('Qt5Agg')  # noqa
 
 from data_viz import dim_reduction
 from data_viz import labelling
 from data_viz import vizualization
-
-from data_viz.config import (
-    DATA_PATH,
-    VERSION,
-    REDUCTION_SIZE_FACTOR,
-    TSNE_DATA_PATH,
-    PARAMS_LEARNING,
-    PARAMS_VIZ,
-    MODEL_PATH,
-    INPUT_FILE_BASE_NAME,
-    OUTPUT_NAME,
-)
 
 
 import argparse
@@ -35,6 +24,19 @@ def main():
     """
     See --help if you want help
     """
+    
+    from data_viz.config import (
+        DATA_PATH,
+        VERSION,
+        REDUCTION_SIZE_FACTOR,
+        TSNE_DATA_PATH,
+        PARAMS_LEARNING,
+        PARAMS_VIZ,
+        MODEL_PATH,
+        INPUT_FILE_BASE_NAME,
+        OUTPUT_NAME,
+    )
+
 
     logging.basicConfig(level=logging.DEBUG)
 
@@ -51,13 +53,10 @@ def main():
     parser.add_argument(
         '--do_plot', action="store_false",
          help='do not show a nice data vizualization (but prepare it nonetheless)')
-    parser.set_defaults(do_plot=True, do_vizualize=True)
+    
+    parser.set_defaults(do_plot=True, do_vizualize=True, version=VERSION)
 
     args = parser.parse_args()
-
-    if args.version:
-        VERSION=args.version
-        logging.info("Overriding VERSION")
 
     reduce_      = args.reduce
     do_vizualize = args.do_vizualize
@@ -140,8 +139,8 @@ def main():
             class_encoder = class_encoder,
             special_class = '0',
             n_clusters    = 120,
-            output_path   = os.path.join(os.path.__file__, 'output.csv')
-            model_path    = MODEL_PATH
+            output_path   = os.path.join(os.path.__file__, 'output.csv'),
+            model_path    = MODEL_PATH,
         )
 
         if do_plot:
