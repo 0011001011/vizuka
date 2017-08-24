@@ -22,27 +22,43 @@ Usage
 
 ### How to run?
 
-Change the config file (currently the .py one).
-Run the main.
+Simply run
+```sh
+vizuka
+
+# Similar to :
+python3 data_viz/launch_viz.py
+```
+
+It assumes you already have your 2D data, if not you can ask for tSNE+PCA reduction :
+```sh
+vizuka --reduce
+```
+
+It will search in its \_\_package\_\_/data/ the datas but you can force your own with __--path__ argument
 
 ### How to use ?
-Navigate inside the 2D space and look at the data, selecting it in the main window (the big one). Only this one is interactive. Data is grouped by buckets ('tiles' inside 'grids' in the code), you can select buckets individually (left click) or by similarity (middle click).
+Navigate inside the 2D space and look at the data, selecting it in the main window (the big one). Only this one is interactive. Data is grouped by cluster, you can select cluster individually (left click).
 
 Main window represents all the data in 2D space. Blue are good-predicted transactions, Red are the bad ones, Green are the special class (by default the label 0).
 
 Below are three subplots :
 * a summary of the data inside the selected buckets (see navigation)
 * a heatmap of the red/blue/green representation
-* a heatmap of the entropy of the buckets (normalized with the theorical max entropy of all labels)
+* a heatmap of the cross-entropy of each bucket empirical distribution with empirical global empirical distribution.
 
 Data viz navigation :
 * left click selects a bucket of data
-* middle click selects a bunch of similar buckets according to your method (#TODO MenuList to select bunching process)
 * right click reset all in-memory buckets
 
 Other options:
-* show one label with the 'Show one label' field
-* select all buckets containing a label with 'Select all with label'
+* filter by predictions or by real class.
+* detect mouse event : if unchecked, cluster will not be selected on click (useful for zooming)
+* clusterize with an algo, Dummy is a simple grid, KMeans should be used, DBSCAN is experimental.
+* export x : export the raw inputs you selected in an output.csv 
+* cluster borders : draw borders between clusters based on bhattacharyya similarity measure, or just all
+* force number of clusters (for kmeans essentially)
+* choose a different set of predictions to display
 
 
 File structures
@@ -82,8 +98,10 @@ Your files should be structured this way :
     * path: $(DATA_PATH)
     
 * predictor:
-    * type: keras.model
-    * name $(DEFAULT_RN)$(VERSION)
+    * type: npz
+    * internal_structure:
+        * pred: predictions
+    * nam entry:e $(PREDICTOR)$(VERSION)
     * path: $(MODEL_PATH)
 
 Default parameters
@@ -125,6 +143,3 @@ All the following are relative path inside $(BASE_PATH)
     
 * OUTPUT_NAME: type of label you want to load, predict, and visualize
     * e.g: account
-
-* DO_CALCULUS: does the main should learn (if not will learn) the t-SNE representations / RN predictions
-    * e.g: True
