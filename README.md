@@ -3,20 +3,6 @@ Data vizualization
 
 This is a collection of tools to represent and navigate through the high-dimensional data. The algorithm t-SNE has been used to construct the 2D space so some choices and feature of the visualization may reflect that. The module should be agnostic of the data provided.
 
-What does it needs to be executed ?
------------------------------------
-
-data_viz needs the following files:
-* pre-processed transactions
-* predictions:
-    * predictor (currently only the keras NN are supported), the algo which will eat the pre-processed transactions
-            it should have been trained on data ordered the same way as the raw transactions array.**or** 
-    * its predictions
-* 2D-projections: (optional)
-    * a t-SNE (or another dimension-reduction nD-to-2D algorithm) output representing pre-processed data in a 2D-space **or**
-    * parameters for t-SNE (optional, default ones are provided)
-* raw transactions (optional) which will be used to display additional human-understandable info.
-
 Usage
 -----
 
@@ -59,6 +45,20 @@ Other options:
 * cluster borders : draw borders between clusters based on bhattacharyya similarity measure, or just all
 * force number of clusters (for kmeans essentially)
 * choose a different set of predictions to display
+
+What does it needs to be executed ?
+-----------------------------------
+
+data_viz needs the following files:
+* pre-processed transactions
+* predictions:
+    * predictor (currently only the keras NN are supported), the algo which will eat the pre-processed transactions
+            it should have been trained on data ordered the same way as the raw transactions array.**or** 
+    * its predictions
+* 2D-projections: (optional)
+    * a t-SNE (or another dimension-reduction nD-to-2D algorithm) output representing pre-processed data in a 2D-space **or**
+    * parameters for t-SNE (optional, default ones are provided)
+* raw transactions (optional) which will be used to display additional human-understandable info.
 
 
 File structures
