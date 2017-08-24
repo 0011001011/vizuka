@@ -30,13 +30,16 @@ def cross_entropy(dict1, dict2):
     sum_dict1, sum_dict2 = sum(dict1.values()), sum(dict2.values())
     ce = 0
 
-    for label in dict2:
-        if dict1[label]==0 and dict2[label]==0:
-            print("fuck that shit", label)
-        elif dict1[label]==0:
-            print("fuck that big shit", label)
+    for key in dict2:
+        # not sure hew exceptions case are supposed to be handled
+        dict1_value = dict1.get(key, 0)
+        dict2_value = dict2.get(key, 0)
+        if dict1_value==0 and dict2_value==0:
+            print("fuck that shit", key)
+        elif dict1_value==0:
+            print("fuck that big shit", key)
         else:
-            ce -= dict2[label]/sum_dict2*math.log(dict1[label]/float(sum_dict1))
+            ce -= dict2_value/sum_dict2 * math.log(dict1_value/float(sum_dict1))
 
     return ce
 

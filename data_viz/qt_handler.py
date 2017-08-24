@@ -115,14 +115,14 @@ class Viz_handler():
         # logging.info("textboxs=adding")
         self.add_checkboxes(
             "Filter by true class",
-            self.viz_engine.labels,
-            self.viz_engine.filter_true_class,
+            self.viz_engine.possible_outputs_list,
+            self.viz_engine.filter_by_correct_class,
             right_dock,
         )
         self.add_checkboxes(
             "Filter by predicted class",
-            self.viz_engine.labels,
-            self.viz_engine.filter_pred_class,
+            self.viz_engine.possible_outputs_list,
+            self.viz_engine.filter_by_predicted_class,
             right_dock,
         )
         self.add_checkboxes(
@@ -162,7 +162,7 @@ class Viz_handler():
             self.viz_engine.request_new_frontiers,
             right_dock,
         )
-        self.textboxs['n_clusters'] = self.add_text_panel(
+        self.textboxs['number_of_clusters'] = self.add_text_panel(
             'Number of clusters (default:120)',
             self.textbox_function_n_clusters,
             right_dock,
@@ -358,11 +358,10 @@ class Viz_handler():
 
     def textbox_function_n_clusters(self):
         """
-        Wrapper for textbox, to change n_clusters
+        Wrapper for textbox, to change number_of_clusters
         without specifying parameters
         """
-        n_str = self.textboxs['n_clusters'].text()
+        n_str = self.textboxs['number_of_clusters'].text()
         n = int(n_str)
-        self.viz_engine.n_clusters = n
-        self.viz_engine.request_new_clustering()
+        self.viz_engine.number_of_clusters = n
 

@@ -130,15 +130,15 @@ def main():
     if do_vizualize:
 
         f = vizualization.Vizualization(
-            x_raw         = transactions_raw,
-            proj          = x_2D,
-            y_true        = y_small,
-            y_pred        = x_predicted,
-            resolution    = 200,
-            class_decoder = class_decoder,
-            class_encoder = class_encoder,
-            special_class = '0',
-            n_clusters    = 120,
+            raw_inputs=transactions_raw,
+            projected_input=x_2D,
+            predicted_outputs=x_predicted,
+            correct_outputs=y_small,
+            resolution=200,
+            class_decoder=class_decoder,
+            class_encoder=class_encoder,
+            special_class='0',
+            number_of_clusters=120
             output_path   = os.path.join(os.path.__file__, 'output.csv'),
             model_path    = MODEL_PATH,
         )
