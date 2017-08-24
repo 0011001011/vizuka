@@ -42,7 +42,7 @@ def onclick_wrapper(onclick):
     return wrapper
 
 
-class Viz_handler():
+class Viz_handler(Qt_matplotlib_handler):
     """
     A Viz_handler is attached to the viz_engine defined in vizualization.py
     It basically lists lots of QWidget things and propose methods to init
@@ -50,6 +50,112 @@ class Viz_handler():
 
     Only IHM here.
     """
+    
+    def __init__(self, viz_engine, figure, onclick):
+        """
+        This object is a QtWindow (or 2-3-4...) with a mamtplotlib.Figure
+        and a onclick event handler. As you can see it is also linked to
+        a viz_engine which will do the magic.
+        
+        This instance should only do IHM stuff, nothing intellectual, everything
+        is handled by the viz_engine
+        """
+        super(Viz_handler, self).__init__(figure)
+
+        self.viz_engine = viz_engine
+        self.detect_mouse_event = False
+        self.base_onclick = onclick
+        self.window.setWindowTitle('Data vizualization')
+
+        # add the main figure
+        self.add_figure(self.figure, self.onclick, window=self.window)
+
+        # add additional window
+        class Additional_Window(QMainWindow):
+            def __init__(self, parent=None):
+                super(Additional_Window, self).__init__(parent)
+                self.setWindowTitle('Scatter Plot')
+        # self.additional_window = Additional_Window(self.window)
+        # self.add_figure(self.additional_figure, onclick=None, window=self.additional_window)
+
+        # logging.info("textboxs=adding")
+        self.add_checkboxes(
+            "Filter by true class",
+            self.viz_engine.possible_outputs_list,
+            self.viz_engine.filter_by_correct_class,
+            self.right_dock,
+        )
+        self.add_checkboxes(
+            "Filter by predicted class",
+            self.viz_engine.possible_outputs_list,
+            self.viz_engine.filter_by_predicted_class,
+            self.right_dock,
+        )
+        self.add_checkboxes(
+            "Navigation options",
+            ['detect mouse event'],
+            self.toogle_detect_mouse_event,
+            self.right_dock,
+        )
+        # logging.info("textboxs=ready")
+
+        # add button
+        # logging.info("action buttons=adding")
+        self.add_button(
+            "Export x",
+            lambda: self.viz_engine.export(self.viz_engine.output_path),
+            self.right_dock,
+        )
+        self.add_button(
+            "View_details",
+            lambda: self.viz_engine.view_details_figure(),
+            self.right_dock,
+        )
+        # logging.info("action buttons=ready")
+
+        # add menulist
+        self.menulists['clustering_method'] = self.add_menulist(
+            'Clustering method',
+            'Clusterize', ['KMeans', 'DBSCAN', 'Dummy'],
+            self.viz_engine.request_new_clustering,
+            dockarea=self.right_dock,
+        )
+        self.menulists['clustering_method'] = self.add_menulist(
+            'Clusters borders',
+            'Delimits',
+            ['Bhattacharyya', 'All', 'None'],
+            self.viz_engine.request_new_frontiers,
+            self.right_dock,
+        )
+        self.textboxs['number_of_clusters'] = self.add_text_panel(
+            'Number of clusters (default:120)',
+            self.textbox_function_n_clusters,
+            self.right_dock,
+        )
+        self.menulists['predict_set'] = self.add_menulist(
+            'Predictor set',
+            'Load',
+            self.viz_engine.predictors,
+            self.viz_engine.reload_predict,
+            self.right_dock,
+        )
+
+        # logging.info('Vizualization=ready')
+
+class Qt_matplotlib_handler():
+
+    def __init__(self, figure):
+        self.menulists = {}
+        self.right_dock = QtCore.Qt.RightDockWidgetArea
+        self.textboxs = {}
+        self.plottings = []
+
+        # configure the app + main window
+        self.app = QApplication(sys.argv)
+        self.window = QMainWindow()
+        
+        self.figure = figure
+
 
     def show(self):
         """
@@ -75,107 +181,6 @@ class Viz_handler():
         """
         self.base_onclick(*args, **kwargs)
 
-    def __init__(self, viz_engine, figure, onclick):
-        """
-        This object is a QtWindow (or 2-3-4...) with a mamtplotlib.Figure
-        and a onclick event handler. As you can see it is also linked to
-        a viz_engine which will do the magic.
-        
-        This instance should only do IHM stuff, nothing intellectual, everything
-        is handled by the viz_engine
-        """
-
-        self.viz_engine = viz_engine
-        self.figure = figure
-        self.detect_mouse_event = False
-        
-        self.base_onclick = onclick
-        self.plottings = []
-
-        # configure the app + main window
-        self.app = QApplication(sys.argv)
-        self.window = QMainWindow()
-        self.window.setWindowTitle('Data vizualization')
-
-        # add the main figure
-        self.add_figure(self.figure, self.onclick, window=self.window)
-
-        # add additional window
-        class Additional_Window(QMainWindow):
-            def __init__(self, parent=None):
-                super(Additional_Window, self).__init__(parent)
-                self.setWindowTitle('Scatter Plot')
-        # self.additional_window = Additional_Window(self.window)
-        # self.add_figure(self.additional_figure, onclick=None, window=self.additional_window)
-
-        right_dock = QtCore.Qt.RightDockWidgetArea
-
-        # add textbox
-        self.textboxs = {}
-        # logging.info("textboxs=adding")
-        self.add_checkboxes(
-            "Filter by true class",
-            self.viz_engine.possible_outputs_list,
-            self.viz_engine.filter_by_correct_class,
-            right_dock,
-        )
-        self.add_checkboxes(
-            "Filter by predicted class",
-            self.viz_engine.possible_outputs_list,
-            self.viz_engine.filter_by_predicted_class,
-            right_dock,
-        )
-        self.add_checkboxes(
-            "Navigation options",
-            ['detect mouse event'],
-            self.toogle_detect_mouse_event,
-            right_dock,
-        )
-        # logging.info("textboxs=ready")
-
-        # add button
-        # logging.info("action buttons=adding")
-        self.add_button(
-            "Export x",
-            lambda: self.viz_engine.export(self.viz_engine.output_path),
-            right_dock,
-        )
-        self.add_button(
-            "View_details",
-            lambda: self.viz_engine.view_details_figure(),
-            right_dock,
-        )
-        # logging.info("action buttons=ready")
-
-        # add menulist
-        self.menulists = {}
-        self.menulists['clustering_method'] = self.add_menulist(
-            'Clustering method',
-            'Clusterize', ['KMeans', 'DBSCAN', 'Dummy'],
-            self.viz_engine.request_new_clustering,
-            dockarea=right_dock,
-        )
-        self.menulists['clustering_method'] = self.add_menulist(
-            'Clusters borders',
-            'Delimits',
-            ['Bhattacharyya', 'All', 'None'],
-            self.viz_engine.request_new_frontiers,
-            right_dock,
-        )
-        self.textboxs['number_of_clusters'] = self.add_text_panel(
-            'Number of clusters (default:120)',
-            self.textbox_function_n_clusters,
-            right_dock,
-        )
-        self.menulists['predict_set'] = self.add_menulist(
-            'Predictor set',
-            'Load',
-            self.viz_engine.predictors,
-            self.viz_engine.reload_predict,
-            right_dock,
-        )
-
-        # logging.info('Vizualization=ready')
 
     def add_figure(self, figure, onclick, window):
         """
@@ -325,7 +330,7 @@ class Viz_handler():
         """
         self.detect_mouse_event = not self.detect_mouse_event
 
-    def add_checkboxes(self, name, items_name, action, dockarea):
+    def add_checkboxes(self, name, items_name, action, dockarea, checked_by_default=False):
         """
         Add some checkboxes, linked to some action.
 
@@ -339,11 +344,13 @@ class Viz_handler():
         my_qlist = QtWidgets.QListWidget()
         my_item_list = {}
 
+        default_state = QtCore.Qt.Checked if checked_by_default else QtCore.Qt.Unchecked
+
         for i in items_name:
             item = QtWidgets.QListWidgetItem()
             item.setText(str(i))
             item.setFlags(item.flags() | QtCore.Qt.ItemIsUserCheckable)
-            item.setCheckState(QtCore.Qt.Unchecked)
+            item.setCheckState(default_state)
             my_qlist.addItem(item)
             my_item_list[i] = item
 
