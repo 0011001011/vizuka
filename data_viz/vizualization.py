@@ -8,14 +8,14 @@ from matplotlib.gridspec import GridSpec
 import os
 from scipy import stats
 
-from qt_handler import Viz_handler
-from ml_helpers import (
+from data_viz.qt_handler import Viz_handler
+from data_viz.ml_helpers import (
         cross_entropy,
         bhattacharyya,
         )
-import clustering
+from data_viz import clustering
 
-from config import (
+from data_viz.config import (
     MODEL_PATH,
     )
 
