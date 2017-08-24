@@ -6,6 +6,7 @@ import matplotlib
 matplotlib.use('Qt5Agg')  # noqa
 from matplotlib.gridspec import GridSpec
 import os
+import time
 
 from data_viz.qt_handler import Viz_handler
 from data_viz.ml_helpers import (
@@ -28,6 +29,7 @@ import numpy as np
 
 from matplotlib import pyplot as plt
 import pandas as pd
+
 
 
 def find_grid_position(x, y, resolution, amplitude):
@@ -104,7 +106,15 @@ class Vizualization:
     Resolution is the size of the grid of the viz, used for heatmap and clustering
     Mouse control and keyboard shortcuts are used (later: QtButtons) ..seealso:: self.controls
     """
-
+    
+    def time_logging(self, message=None):
+        if not message:
+            self.last_time = time.time()
+        else:
+            new_time = time.time()
+            logging.info("time for %s : %s", message, new_time - self.last_time)
+            self.last_time = new_time
+    
     def __init__(
             self,
             raw_inputs,
@@ -129,6 +139,7 @@ class Vizualization:
         """
 
         logging.info("Vizualization=generating")
+        self.last_time = time.time()
 
         self.manual_cluster_color = 'cyan'
         self.output_path = output_path
@@ -174,6 +185,8 @@ class Vizualization:
             self.number_of_individual_by_true_output[possible_output] = len(
                 self.projection_points_list_by_correct_output[possible_output])
 
+        self.time_logging("initialazing_lists_and_dicts")
+
         self.resolution = resolution # counts of tiles per row/column
 
         self.shift_held = False
@@ -211,8 +224,12 @@ class Vizualization:
         self.size_centroid  = 2 * self.amplitude / self.resolution
         self.mesh_centroids = np.c_[mesh[0].ravel(), mesh[1].ravel()]
 
+        self.time_logging("meshs")
+
         self.calculate_prediction_projection_arrays()
-        
+
+        self.time_logging("prediction_projection")
+
         logging.info('clustering engine=fitting')
         self.clusterizer = clustering.DummyClusterizer(mesh=self.mesh_centroids)
         self.clusterizer.fit(self.projected_input)
@@ -268,6 +285,7 @@ class Vizualization:
         self.refresh_graph()
     
     def draw_scatterplot(self, well_predcited_array, badly_predicted_array, not_predicted_array):
+
         if len(well_predcited_array) > 0:
             self.ax.scatter(
                 x=well_predcited_array[:, 0],
@@ -336,12 +354,14 @@ class Vizualization:
         good_to_display_array = np.array([self.projected_input[i] for i in good_to_display])
         special_to_display_array = np.array([self.projected_input[i] for i in special_to_display])
 
-        self.draw_scatterplot(bad_to_display_array, good_to_display_array, special_to_display_array)
+        self.draw_scatterplot(well_predcited_array=good_to_display_array,
+                              badly_predicted_array=bad_to_display_array,
+                              not_predicted_array=special_to_display_array)
 
         if all_unchecked:
-            self.draw_scatterplot(self.well_predicted_projected_points_array,
-                                  self.misspredicted_projected_points_array,
-                                  self.not_predicted_projected_points_array)
+            self.draw_scatterplot(well_predcited_array=self.well_predicted_projected_points_array,
+                                  badly_predicted_array=self.misspredicted_projected_points_array,
+                                  not_predicted_array=self.not_predicted_projected_points_array)
 
         self.refresh_graph()
 
@@ -375,29 +395,43 @@ class Vizualization:
             3 : reset vizualization (graph+summary)
             
         """
-
+        tic = time.time()
+        self.time_logging()
         x = event.xdata
         y = event.ydata
         button = event.button
         left_click, right_click = ((button == 1), (button == 3))
+        self.time_logging('button_detected')
 
         self.summary_axe.clear()
         self.summary_axe.axis('off')
+        
+        self.time_logging('summary_axes cleared')
 
-        if left_click:
+        def handle_left_click(self):
+            if abs(x)==np.inf or abs(y)==np.inf:  # clicks out of the screen
+                return
             clicked_cluster = self.clusterizer.predict([(x,y)])[0]
-            
+            self.time_logging('cluster predict')
+    
             self.delimit_cluster(clicked_cluster, color=self.manual_cluster_color)
-            
+            self.time_logging('cluster delmited')
             self.update_summary(clicked_cluster)
             self.print_summary(self.summary_axe)
 
+        if left_click:
+            handle_left_click(self)
+            
         elif right_click:
             # reboot vizualization
             self.reset_summary()
             self.reset_viz()
 
+        self.time_logging()
         self.refresh_graph()
+        self.time_logging('graph_refreshed')
+        toc = time.time()
+        print("kesha onclick {}".format(toc-tic))
 
     def reset_viz(self):
         """
@@ -417,9 +451,10 @@ class Vizualization:
                     i.remove()
         
         logging.info("scatterplot: drawing observations")
-        self.draw_scatterplot(self.well_predicted_projected_points_array,
-                              self.misspredicted_projected_points_array,
-                              self.not_predicted_projected_points_array)
+        self.draw_scatterplot(well_predcited_array=self.well_predicted_projected_points_array,
+                              badly_predicted_array=self.misspredicted_projected_points_array,
+                              not_predicted_array=self.not_predicted_projected_points_array)
+
         logging.info("scatterplot: ready")
 
     def reset_summary(self):
@@ -446,10 +481,11 @@ class Vizualization:
         """
 
         self.cluster_by_idx = self.clusterizer.predict(self.projected_input)
+
         all_cluster_labels = set(self.cluster_by_idx)
         
         index_by_cluster_label = { cluster_label:[] for cluster_label in all_cluster_labels }
-
+        
         number_of_points_by_class_by_cluster = {
                 cluster_label: {
                     output_class:0 for output_class in self.projection_points_list_by_correct_output }
@@ -465,6 +501,7 @@ class Vizualization:
         for index, cluster_label in enumerate(self.cluster_by_idx):
             index_by_cluster_label[cluster_label].append(index)
             number_of_points_by_class_by_cluster[cluster_label][self.correct_outputs[index]]+=1
+
 
         logging.info('clustering: analyze each one')
         for cluster_label in all_cluster_labels:
@@ -493,7 +530,7 @@ class Vizualization:
                     number_null_point_by_cluster[cluster_label] += 1
                 else:
                     logging.error("index not in any indexes : %s", point_in_cluster_index)
-                
+
         
         self.number_good_point_by_cluster = number_good_point_by_cluster
         self.number_bad_point_by_cluster = number_bad_point_by_cluster
@@ -524,8 +561,6 @@ class Vizualization:
         """
         centroids_cluster_by_index = self.clusterizer.predict(self.mesh_centroids)
 
-        import time
-        tic = time.time()
         culster_y_list_by_x = [[] for x in range(self.resolution)]
         culster_x_list_by_y = [[] for y in range(self.resolution)]
 
@@ -580,9 +615,6 @@ class Vizualization:
                             
         draw_all_lines(self, culster_y_list_by_x, swapped_coordinates=True)
         draw_all_lines(self, culster_x_list_by_y, swapped_coordinates=False)
-
-        toc2 = time.time()
-        logging.info("delimit_cluster %s", (toc2 - tic) )
 
         # self.refresh_graph()
         # looks like he disn't worked
@@ -833,9 +865,11 @@ class Vizualization:
         if method is None:
             method=self.last_clusterizer_method
         if method=='kmeans':
+            self.time_logging('kmeans_beggning')
             self.clusterizer = clustering.KmeansClusterizer(
                     n_clusters=self.number_of_clusters,
                     )
+            self.time_logging('kmeans_cluster')
         elif method=='dbscan':
             self.clusterizer = clustering.DBSCANClusterizer()
         else:
@@ -844,12 +878,13 @@ class Vizualization:
                     )
 
         self.last_clusterizer_method = method
+        self.time_logging("cluster fitting: begin")
         self.clusterizer.fit(xs=self.projected_input)
-        logging.info("cluster: done")
+        self.time_logging("cluster fitting: done")
 
         self.cluster_label_mesh()
         self.update_all_heatmaps()
-
+        
         self.apply_borders(
                 self.normalize_frontier,
                 self.similarity_measure,
@@ -913,9 +948,9 @@ class Vizualization:
 
         new_rows = set(to_include.keys()) - self.local_classes
 
-        logging.info("Classes already detected :" + str(self.local_classes))
-        logging.info("Classes detected on new click :" + str(set(to_include.keys())))
-        logging.info("Classes to add to summary :" + str(set(new_rows)))
+        logging.debug("Classes already detected :" + str(self.local_classes))
+        logging.debug("Classes detected on new click :" + str(set(to_include.keys())))
+        logging.debug("Classes to add to summary :" + str(set(new_rows)))
 
         rows_to_update = self.local_classes.intersection(set(to_include.keys()))
         self.local_classes = self.local_classes.union(set(to_include.keys()))
@@ -1009,7 +1044,6 @@ class Vizualization:
 
         values = [values[i] for i in arg_sort[::-1]]
         row_labels = [row_labels[i][:6] for i in arg_sort[::-1]]
-
         # add row "all" for recap :
 
         max_row    = min(max_row, min(len(values), len(row_labels)))-1
@@ -1027,13 +1061,10 @@ class Vizualization:
             colLabels=self.cols,
             loc='center',
         )
-
         summary.auto_set_font_size(False)
         summary.set_fontsize(8)
         logging.info("Details=loaded")
-
-        self.refresh_graph()
-
+        
     def print_global_summary(self, ax, max_row=9):
         
         cols = ['accuracy', 'effectif']
@@ -1099,18 +1130,25 @@ class Vizualization:
         Plot the Vizualization, define axes, add scatterplot, buttons, etc..
         """
 
+        self.time_logging()
         
         self.main_fig = matplotlib.figure.Figure()
 
         gs=GridSpec(3,4)
+
+        self.time_logging("main_fig")
         
         #self.view_details = View_details(self.x_raw)
         self.viz_handler = Viz_handler(self, self.main_fig, self.onclick)
+
+        self.time_logging("viz_handler")
         
         # main subplot with the scatter plot
         self.ax = self.main_fig.add_subplot(gs[:2,:3])
         self.ax_base_title = 'Correct VS incorrect predictions'
         self.ax.set_title(self.ax_base_title)
+
+        self.time_logging("scatter")
 
         # summary_subplot with table of local stats
         self.summary_axe = self.main_fig.add_subplot(gs[2,:3])
@@ -1120,6 +1158,8 @@ class Vizualization:
         self.global_summary_axe.axis('off')
         self.print_global_summary(self.global_summary_axe)
 
+        self.time_logging("summary")
+        
         # heatmap subplots
         # contain proportion of correct prediction and entropy
         self.heat_proportion = self.main_fig.add_subplot(gs[1,3], sharex=self.ax, sharey=self.ax)
@@ -1129,6 +1169,8 @@ class Vizualization:
         self.heat_entropy.axis('off')
 
         self.axes_needing_borders = (self.ax, self.heat_proportion, self.heat_entropy)
+
+        self.time_logging("heat_subplots")
 
         # draw heatmap
         logging.info("heatmap=calculating")
@@ -1142,18 +1184,30 @@ class Vizualization:
                 self.heatmap_proportion,
                 self.heat_proportion,
                 title='Heatmap: proportion correct predictions')
+
+        self.time_logging("prop correct prediction")
+        
         self.add_heatmap(
                 self.heatmap_entropy,
                 self.heat_entropy,
                 title='Heatmap: cross-entropy Cluster-All')
-       
-        self.cluster_label_mesh()
+
+        self.time_logging("cross_entropy")
         
+        self.cluster_label_mesh()
+
+        self.time_logging("cluster_mesh")
+
         self.update_all_heatmaps()
         logging.info("heatmap=ready")
 
+        self.time_logging("update_heatmaps")
+
         # draw scatter plot
         self.reset_viz()
+
+        self.time_logging("reset_viz")
+
         self.request_new_frontiers('none')
 
         logging.info('Vizualization=ready')

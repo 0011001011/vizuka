@@ -13,7 +13,7 @@ on qt_handler, to be able to select on the IHM
 import numpy as np
 from matplotlib import pyplot as plt
 from sklearn.cluster import KMeans, DBSCAN
-from scipy.spatial import KDTree
+from scipy.spatial import cKDTree
 import ipdb
 
 from . import vizualization
@@ -107,7 +107,7 @@ class DBSCANClusterizer(Clusterizer):
         xs_tuple = [ tuple(x) for x in xs ]
         tmp = self.engine.fit_predict(xs_tuple)
         self.predictions = {xs_tuple[idx]: predict for idx, predict in enumerate(tmp)}
-        self.kdtree = KDTree(xs)
+        self.kdtree = cKDTree(xs)
         self.xs = xs
 
     def predict(self, xs):
@@ -146,7 +146,7 @@ class DummyClusterizer(Clusterizer):
         number of clusters.
         """
         self.mesh   = mesh
-        self.kdtree = KDTree(self.mesh)
+        self.kdtree = cKDTree(self.mesh)
 
     def fit(self, xs):
         """
@@ -162,7 +162,9 @@ class DummyClusterizer(Clusterizer):
         Simply give you the index of the mesh in which the
         data is, it is considered as a cluster label
         """
-        return [self.kdtree.query(x)[1] for x in xs]
+        return self.kdtree.query(xs)[1]
+
+        # return [self.kdtree.query(x)[1] for x in xs]
 
 
 def make_clusterizer(xs, method='kmeans', **kwargs):
