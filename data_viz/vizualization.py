@@ -864,8 +864,9 @@ class Vizualization:
         cache_path = os.path.join(base_path, 'cache')
         if not os.path.exists(cache_path):
             os.makedirs(cache_path)
-        cluster_filename = '_cachejoin_'.join([data_unique_id_string, number_of_clusters, clustering_method])
-        cluster_path = os.join(cache_path, cluster_filename)
+        cluster_filename = '_cachejoin_'.join([str(x) for x in
+                                               [data_unique_id_string, number_of_clusters, clustering_method]])
+        cluster_path = os.path.join(cache_path, cluster_filename)
         if os.path.exists(cluster_path):
             return cluster_path, True
         
