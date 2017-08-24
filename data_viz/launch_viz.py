@@ -12,9 +12,9 @@ import os
 
 matplotlib.use('Qt5Agg')  # noqa
 
-from data_viz import dim_reduction
-from data_viz import labelling
-from data_viz import vizualization
+import dim_reduction
+import labelling
+import vizualization
 
 
 import argparse
