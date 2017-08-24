@@ -7,14 +7,14 @@ matplotlib.use('Qt5Agg')  # noqa
 from matplotlib.gridspec import GridSpec
 import os
 
-from data_viz.qt_handler import Viz_handler
-from data_viz.ml_helpers import (
+from qt_handler import Viz_handler
+from ml_helpers import (
         cross_entropy,
         bhattacharyya,
         )
-from data_viz import clustering
+import clustering
 
-from data_viz.config import (
+from config import (
     MODEL_PATH,
     )
 

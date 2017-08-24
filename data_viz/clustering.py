@@ -16,7 +16,7 @@ from sklearn.cluster import KMeans, DBSCAN
 from scipy.spatial import KDTree
 import ipdb
 
-from . import vizualization
+import vizualization
 
 
 class Clusterizer():
