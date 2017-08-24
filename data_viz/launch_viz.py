@@ -138,7 +138,7 @@ def main():
             class_decoder=class_decoder,
             class_encoder=class_encoder,
             special_class='0',
-            number_of_clusters=120
+            number_of_clusters=120,
             output_path   = os.path.join(os.path.__file__, 'output.csv'),
             model_path    = MODEL_PATH,
         )
