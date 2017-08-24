@@ -46,31 +46,45 @@ def main():
          help='launch a full dimension reduction')
     parser.add_argument(
         '--version', type=str,
-        help='specify a version of the files to load/generate, currently: '+VERSION)
+        help='(optional) specify a version of the files to load/generate, currently: '+VERSION)
     parser.add_argument(
-        '--do_vizualize', action="store_false",
+        '--no_vizualize', action="store_true",
          help='do not prepare a nice data vizualization')
     parser.add_argument(
-        '--do_plot', action="store_false",
+        '--no_plot', action="store_true",
          help='do not show a nice data vizualization (but prepare it nonetheless)')
+    parser.add_argument(
+        '--path',
+         help='(optional) location of your data/ folder, containing set/ tSNE/ graph/ models/')
     
-    parser.set_defaults(do_plot=True, do_vizualize=True, version=VERSION)
+    parser.set_defaults(
+            no_plot=False, 
+            no_vizualize=False,
+            version=VERSION,
+            path=os.path.dirname(__file__),
+            )
 
     args = parser.parse_args()
 
+    MODEL_PATH = os.path.join(args.path, MODEL_PATH)
+    INPUT_FILE_BASE_NAME = os.path.join(args.path, INPUT_FILE_BASE_NAME)
+    TSNE_DATA_PATH = os.path.join(args.path, TSNE_DATA_PATH)
+    DATA_PATH = os.path.join(args.path, DATA_PATH)
+
+
     reduce_      = args.reduce
-    do_vizualize = args.do_vizualize
-    do_plot      = args.do_plot
+    no_vizualize = args.no_vizualize
+    no_plot      = args.no_plot
     version      = args.version
 
     logging.info("Starting script")
     logging.info("raw_data=loading")
+
     (
         x_small,
         y_small,
         class_encoder,
         class_decoder,
-
     ) = dim_reduction.load_raw_data(
             file_base_name   = INPUT_FILE_BASE_NAME,
             output_name      = OUTPUT_NAME,
@@ -127,7 +141,7 @@ def main():
         DATA_PATH + 'originals' + VERSION + '.npz'
     )['originals']
 
-    if do_vizualize:
+    if not no_vizualize:
 
         f = vizualization.Vizualization(
             raw_inputs=transactions_raw,
@@ -143,7 +157,7 @@ def main():
             model_path    = MODEL_PATH,
         )
 
-        if do_plot:
+        if not no_plot:
             f.plot()
             f.show()
 

@@ -257,9 +257,9 @@ class Vizualization:
             [self.projected_input[i] for i in self.index_not_predicted])
         logging.info("projections=ready")
         
-    def reload_predict(self, filename, model_path=MODEL_PATH):
+    def reload_predict(self, filename):
         
-        prediction_output = np.load(os.path.join(model_path, filename))['pred']
+        prediction_output = np.load(os.path.join(self.model_path, filename))['pred']
 
         self.prediction_outputs = prediction_output
 
