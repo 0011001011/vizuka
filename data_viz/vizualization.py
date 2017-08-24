@@ -409,7 +409,7 @@ class Vizualization:
         self.time_logging('summary_axes cleared')
 
         def handle_left_click(self):
-            if abs(x)==np.inf or abs(y)==np.inf:  # clicks out of the screen
+            if (x is None) or (y is None):  # clicks out of the screen
                 return
             clicked_cluster = self.clusterizer.predict([(x,y)])[0]
             self.time_logging('cluster predict')
@@ -786,7 +786,7 @@ class Vizualization:
         for index, (x, y) in enumerate(self.mesh_centroids):
     
             current_centroid_label = centroids_label[index]
-            number_of_point_by_class = self.number_of_points_by_class_by_cluster.get(current_centroid_label)
+            number_of_point_by_class = self.number_of_points_by_class_by_cluster.get(current_centroid_label, {})
 
             if (not number_of_point_by_class) or len(self.index_by_cluster_label[current_centroid_label]) == 0:
                 current_entropy = 0
@@ -936,7 +936,7 @@ class Vizualization:
 
         :param current_cluster: cluster name selected by click
         """
-        to_include = self.number_of_points_by_class_by_cluster[current_cluster]
+        to_include = self.number_of_points_by_class_by_cluster.get(current_cluster, {})
         to_include = { k:to_include[k] for k in to_include if to_include[k]!=0 }
 
         if current_cluster in self.currently_selected_cluster:
