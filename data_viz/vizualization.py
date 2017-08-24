@@ -395,7 +395,6 @@ class Vizualization:
             3 : reset vizualization (graph+summary)
             
         """
-        tic = time.time()
         self.time_logging()
         x = event.xdata
         y = event.ydata
@@ -430,8 +429,6 @@ class Vizualization:
         self.time_logging()
         self.refresh_graph()
         self.time_logging('graph_refreshed')
-        toc = time.time()
-        print("kesha onclick {}".format(toc-tic))
 
     def reset_viz(self):
         """
