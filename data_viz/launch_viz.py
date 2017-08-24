@@ -8,6 +8,7 @@ import logging
 
 import matplotlib
 import numpy as np
+import os
 
 matplotlib.use('Qt5Agg')  # noqa
 
@@ -15,23 +16,28 @@ import dim_reduction
 import labelling
 import vizualization
 
-from config import (
-    DATA_PATH,
-    VERSION,
-    REDUCTION_SIZE_FACTOR,
-    TSNE_DATA_PATH,
-    PARAMS_LEARNING,
-    PARAMS_VIZ,
-    MODEL_PATH,
-)
 
 import argparse
 
-if __name__ == '__main__':
+def main():
+
     """
     See --help if you want help
     """
     
+    from data_viz.config import (
+        DATA_PATH,
+        VERSION,
+        REDUCTION_SIZE_FACTOR,
+        TSNE_DATA_PATH,
+        PARAMS_LEARNING,
+        PARAMS_VIZ,
+        MODEL_PATH,
+        INPUT_FILE_BASE_NAME,
+        OUTPUT_NAME,
+    )
+
+
     logging.basicConfig(level=logging.DEBUG)
 
     parser = argparse.ArgumentParser()
@@ -42,18 +48,21 @@ if __name__ == '__main__':
         '--version', type=str,
         help='specify a version of the files to load/generate, currently: '+VERSION)
     parser.add_argument(
-        '--no_vizualize', action="store_true",
+        '--do_vizualize', action="store_false",
          help='do not prepare a nice data vizualization')
     parser.add_argument(
-        '--no_plot', action="store_true",
+        '--do_plot', action="store_false",
          help='do not show a nice data vizualization (but prepare it nonetheless)')
+    
+    parser.set_defaults(do_plot=True, do_vizualize=True, version=VERSION)
 
     args = parser.parse_args()
 
-    if args.version:
-        VERSION=args.version
-        logging.info("Overriding VERSION")
-    
+    reduce_      = args.reduce
+    do_vizualize = args.do_vizualize
+    do_plot      = args.do_plot
+    version      = args.version
+
     logging.info("Starting script")
     logging.info("raw_data=loading")
     (
@@ -62,30 +71,39 @@ if __name__ == '__main__':
         class_encoder,
         class_decoder,
 
-    ) = dim_reduction.load_raw_data()
+    ) = dim_reduction.load_raw_data(
+            file_base_name   = INPUT_FILE_BASE_NAME,
+            output_name      = OUTPUT_NAME,
+            path             = DATA_PATH,
+            version          = VERSION,
+            reduction_factor = REDUCTION_SIZE_FACTOR
+            )
 
     logging.info('raw_data=loaded')
 
-    if args.reduce:
+    if reduce_:
         logging.info("t-sne=learning")
 
         x_transformed, models = dim_reduction.learn_tSNE(
-            x = x_small,
-            params = PARAMS_LEARNING,
-            version = VERSION,
-            path = TSNE_DATA_PATH,
-            reduction_size_factor = REDUCTION_SIZE_FACTOR,
+            x                       = x_small,
+            params                  = PARAMS_LEARNING,
+            version                 = VERSION,
+            path                    = TSNE_DATA_PATH,
+            reduction_size_factor   = REDUCTION_SIZE_FACTOR,
+            pca_components          = None,
         )
+
         logging.info('t-sne=ready')
     else:
         logging.info("t-sne=loading")
 
         x_transformed, models = dim_reduction.load_tSNE(
-            PARAMS_LEARNING,
-            VERSION,
-            TSNE_DATA_PATH,
-            REDUCTION_SIZE_FACTOR,
+            params                = PARAMS_LEARNING,
+            version               = VERSION,
+            path                  = TSNE_DATA_PATH,
+            reduction_size_factor = REDUCTION_SIZE_FACTOR,
         )
+
         logging.info('t-sne=ready')
 
     x_2D = x_transformed[
@@ -109,7 +127,7 @@ if __name__ == '__main__':
         DATA_PATH + 'originals' + VERSION + '.npz'
     )['originals']
 
-    if not args.no_vizualize:
+    if do_vizualize:
 
         f = vizualization.Vizualization(
             raw_inputs=transactions_raw,
@@ -119,8 +137,15 @@ if __name__ == '__main__':
             resolution=200,
             class_decoder=class_decoder,
             class_encoder=class_encoder,
+            special_class='0',
+            number_of_clusters=120,
+            output_path   = os.path.join(os.path.__file__, 'output.csv'),
+            model_path    = MODEL_PATH,
         )
 
-        if not args.no_plot:
+        if do_plot:
             f.plot()
             f.show()
+
+if __name__ == '__main__':
+    main()
