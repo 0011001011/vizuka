@@ -108,12 +108,20 @@ class Vizualization:
     """
     
     def time_logging(self, message=None):
+        """Silly module to do manual profiling"""
+        import inspect
+        caller_method_name = inspect.stack()[1][0].f_code.co_name
+
         if not message:
-            self.last_time = time.time()
+            self.last_time[caller_method_name] = time.time()
         else:
             new_time = time.time()
-            logging.info("time for %s : %s", message, new_time - self.last_time)
-            self.last_time = new_time
+            previous_time = self.last_time.get(caller_method_name, None)
+            if previous_time:
+                logging.info("time for %s : %s", message, new_time - previous_time)
+            else:
+                logging.info("time for %s : error, no previous time registered", message)
+            self.last_time[caller_method_name] = new_time
     
     def __init__(
             self,
@@ -142,7 +150,7 @@ class Vizualization:
         """
 
         logging.info("Vizualization=generating")
-        self.last_time = time.time()
+        self.last_time = {}
 
         self.manual_cluster_color = 'cyan'
         self.output_path = output_path
@@ -663,7 +671,9 @@ class Vizualization:
         """
         axes = args[0]
         frontier = {}
-        
+
+        self.time_logging('')
+
         logging.info('borders: calculating')
         centroids_cluster_by_index = self.clusterizer.predict(self.mesh_centroids)
         for index, xy in enumerate(self.mesh_centroids):
@@ -690,6 +700,9 @@ class Vizualization:
                         if current_frontier > -np.inf:
                             frontier[(label_left_neighbor, current_centroid_label)] = current_frontier
 
+        self.time_logging('apply_borders : first loop')
+
+
         frontier = { key:frontier[key] for key in frontier if frontier[key] != -np.inf }
         
         if normalize_frontier:
@@ -701,22 +714,23 @@ class Vizualization:
             if frontier_amplitude:
                 frontier = { key:frontier[key]-min_frontier / frontier_amplitude for key in frontier }
 
+        self.time_logging('apply_borders : stuff')
+
         logging.info('borders: cleaning')
         for axe in axes:
             for child in axe.get_children():
                 if isinstance(child, plt.Line2D):
                     child.remove()
 
-        def draw_frontier(xdata, ydata, frontier_density):
-            for axe in axes:
-                axe.add_artist(
-                    matplotlib.lines.Line2D(
-                        xdata=xdata,
-                        ydata=ydata,
-                        color='black',
-                        alpha=1 - frontier_density,
-                    )
-                )
+        def line_dict_maker(xdata, ydata, frontier_density):
+            black = (0, 0, 0)
+            return {'xdata': xdata,
+                    'ydata': ydata,
+                    'color': black,
+                    'alpha': 1 - frontier_density
+                    }
+
+        lines = []
 
         logging.info('borders: drawing')
         for index, (x, y) in enumerate(self.mesh_centroids):
@@ -728,26 +742,37 @@ class Vizualization:
                 if label_down_neighbor != current_centroid_label:
                     if (label_down_neighbor, current_centroid_label) in frontier:
                         frontier_density = frontier[(label_down_neighbor, current_centroid_label)]
-                        draw_frontier(
+                        lines.append(line_dict_maker(
                             xdata = (x-self.size_centroid/2, x+self.size_centroid/2),
-                            ydata = (y-self.size_centroid/2,),
-                            frontier_density=frontier_density)
+                            ydata = (y-self.size_centroid/2, y-self.size_centroid/2),
+                            frontier_density=frontier_density))
 
             if index % self.resolution > 0:
                 label_left_neighbor = centroids_cluster_by_index[index-1]
                 if label_left_neighbor != current_centroid_label:
                     if (label_left_neighbor, current_centroid_label) in frontier:
                         frontier_density = frontier[(label_left_neighbor, current_centroid_label)]
-                        draw_frontier(
-                            xdata=(x-self.size_centroid/2,),
+                        lines.append(line_dict_maker(
+                            xdata=(x-self.size_centroid/2, x-self.size_centroid/2),
                             ydata=(y-self.size_centroid/2, y+self.size_centroid/2),
-                            frontier_density=frontier_density)
+                            frontier_density=frontier_density))
+        self.time_logging('apply_borders : second loop')
 
+        line_collection_lines = [[elt['xdata'], elt['ydata']] for elt in lines]
+        line_collection_colors = [(*elt['color'], elt['alpha']) for elt in lines]
+        
+        for axe in axes:  # This loop takes 6 fucking seconds goddamit !
+            axe.add_artist(
+                    matplotlib.collections.LineCollection(line_collection_lines, colors=line_collection_colors)
+                )
+        self.time_logging('apply_borders : add_artists')
         logging.info('borders: ready')
 
     def get_coordinates_from_index(self, index):
-        return (self.resolution - int(((index - index % self.resolution) / self.resolution)) - 1,
-                index % self.resolution)
+        return (self.resolution - index // self.resolution -1, index % self.resolution)
+        # check it's the same
+        # return (self.resolution - int(((index - index % self.resolution) / self.resolution)) - 1,
+        #         index % self.resolution)
 
     def heatmap_proportion(self):
         """
@@ -807,6 +832,7 @@ class Vizualization:
         ..seealso:: add_heatmap
 
         """
+        self.time_logging('')
 
         all_colors = [[0 for _ in range(self.resolution)] for _ in range(self.resolution) ]
         logging.info('heatmap entropy: drawing')
@@ -814,18 +840,31 @@ class Vizualization:
         
         entropys = []
 
+        self.time_logging('heatmap init')
+
+        ordered_class_list = list(self.number_of_individual_by_true_output.keys())
+        ordered_class_list.sort()
+        global_list = []
+        for class_ in ordered_class_list:
+            global_list.append(self.number_of_individual_by_true_output.get(class_))
+        global_array = np.array(global_list)
+        global_entropy = np.log(global_array / np.sum(global_array))
+
         for index, (x, y) in enumerate(self.mesh_centroids):
     
             current_centroid_label = centroids_label[index]
-            number_of_point_by_class = self.number_of_points_by_class_by_cluster.get(current_centroid_label, {})
 
+            number_of_point_by_class = self.number_of_points_by_class_by_cluster.get(current_centroid_label, {})
+            number_of_point_by_class_list = [number_of_point_by_class.get(class_, 0) for class_ in ordered_class_list]
+            
             if (not number_of_point_by_class) or len(self.index_by_cluster_label[current_centroid_label]) == 0:
                 current_entropy = 0
             else:
                 current_entropy = (
                     cross_entropy(
-                        self.number_of_individual_by_true_output,
-                        number_of_point_by_class
+                        global_array,
+                        number_of_point_by_class_list,
+                        global_entropy=global_entropy
                         )
                     )
 
@@ -839,6 +878,8 @@ class Vizualization:
             amplitude_entropys = 1
         logging.info('heatmap entropy: max cross-entropy='+str(max_entropys)+' min='+str(min_entropys))
 
+        self.time_logging('heatmap entropy first loop')
+
         for index, (x, y) in enumerate(self.mesh_centroids):
             if index > len(entropys):
                 current_entropy = min_entropys
@@ -846,10 +887,12 @@ class Vizualization:
                 current_entropy = entropys[index]
 
             normalized_entropy = ((current_entropy - min_entropys) / amplitude_entropys)
+
             x_index, y_index = self.get_coordinates_from_index(index)
             all_colors[x_index][y_index] = normalized_entropy
-            
+
         logging.info('heatmap entropy: done')
+        self.time_logging('heatmap entropy second loop')
         return all_colors
 
 
@@ -907,27 +950,27 @@ class Vizualization:
         if method is None:
             method = self.last_clusterizer_method
         if method == 'kmeans':
-            self.time_logging('kmeans_beggning')
             self.clusterizer = clustering.KmeansClusterizer(
                 n_clusters=self.number_of_clusters,
             )
-            self.time_logging('kmeans_cluster')
         elif method == 'dbscan':
             self.clusterizer = clustering.DBSCANClusterizer()
         else:
             self.clusterizer = clustering.DummyClusterizer(
                 mesh=self.mesh_centroids,
             )
-
+        self.time_logging()
         cache_file_path, loadable = self.get_cache_file_name(method)
         if loadable:
-            self.time_logging("cached cluster fit: found : loading")
+            self.time_logging("cached cluster fit for {} with {} cluster found : loading".format(
+                self.number_of_clusters, method))
             self.clusterizer.load_cluster(cache_file_path)
         else:
             self.last_clusterizer_method = method
             self.time_logging("cluster fitting: begin")
             self.clusterizer.fit(xs=self.projected_input)
-            self.time_logging("cluster fitting: done")
+            self.time_logging("cluster fit for {} with {} cluster found : done".format(
+                self.number_of_clusters, method))
             self.clusterizer.save_cluster(cache_file_path)
 
     def request_new_clustering(self, method):
@@ -940,18 +983,27 @@ class Vizualization:
 
         self.clustering_fit(method)
 
+        self.time_logging()
+
         self.cluster_label_mesh()
+        self.time_logging('cluster_label_mesh')
         self.update_all_heatmaps()
-        
+        self.time_logging('update_all_hitmaps')
+
         self.apply_borders(
                 self.normalize_frontier,
                 self.similarity_measure,
-                self.axes_needing_borders) 
+                self.axes_needing_borders)
         logging.info('borders: done')
 
+        self.time_logging('apply_borders')
+
         self.reset_summary()
+        self.time_logging('reset_summary')
         self.reset_viz()
+        self.time_logging('reset_viz')
         self.refresh_graph()
+        self.time_logging('refresh_graph')
 
     def update_all_heatmaps(self):
         """
@@ -959,7 +1011,7 @@ class Vizualization:
         """
         for (heatmap_builder, axe, title) in self.heatmaps:
             axe.clear()
-            
+            self.time_logging()
             heatmap_color = heatmap_builder()
             logging.info("heatmaps: drawing in "+str(axe))
             im = axe.imshow(
@@ -980,7 +1032,8 @@ class Vizualization:
             axe.set_ylim(-self.amplitude / 2, self.amplitude / 2)
             axe.axis('off')
             axe.set_title(title)
-        
+            self.time_logging('heatmap, axe, title {} {} {}'.format(heatmap_builder, axe, title))
+
         self.refresh_graph()
 
     def update_summary(self, current_cluster):
