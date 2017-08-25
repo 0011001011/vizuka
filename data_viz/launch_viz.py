@@ -140,6 +140,14 @@ def main():
     transactions_raw = np.load(
         DATA_PATH + 'originals' + VERSION + '.npz'
     )['originals']
+    
+    data_unique_id_string = '_filesep_'.join([str(PARAMS_VIZ['perplexity']),
+                                              str(PARAMS_VIZ['learning_rate']),
+                                              str(PARAMS_VIZ['init']),
+                                              str(PARAMS_VIZ['n_iter']),
+                                              str(VERSION),
+                                              str(TSNE_DATA_PATH).replace('/', '_')
+                                             ])
 
     if not no_vizualize:
 
@@ -153,8 +161,9 @@ def main():
             class_encoder=class_encoder,
             special_class='0',
             number_of_clusters=120,
-            output_path   = os.path.join(os.path.__file__, 'output.csv'),
-            model_path    = MODEL_PATH,
+            output_path=os.path.join(os.path.__file__, 'output.csv'),
+            model_path=MODEL_PATH,
+            data_unique_id_string=data_unique_id_string
         )
 
         if not no_plot:

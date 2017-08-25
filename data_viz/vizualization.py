@@ -20,7 +20,6 @@ from data_viz.config import (
     MODEL_PATH,
     )
 
-
 import logging
 import math
 import itertools
@@ -127,7 +126,8 @@ class Vizualization:
             number_of_clusters=120,
             class_decoder=(lambda x: x), class_encoder=(lambda x: x),
             output_path='output.csv',
-            model_path=MODEL_PATH
+            model_path=MODEL_PATH,
+            data_unique_id_string=''
             ):
         """
         Central function, draw heatmap + scatter plot + zoom + annotations on tSNE data
@@ -145,6 +145,8 @@ class Vizualization:
         self.manual_cluster_color = 'cyan'
         self.output_path = output_path
         self.predictors = os.listdir(model_path)
+        self.data_unique_id_string = data_unique_id_string
+        self.model_path = model_path
         
         def str_with_default_value(value):
             if not value:
@@ -409,7 +411,7 @@ class Vizualization:
         self.time_logging('summary_axes cleared')
 
         def handle_left_click(self):
-            if abs(x)==np.inf or abs(y)==np.inf:  # clicks out of the screen
+            if (x is None) or (y is None):  # clicks out of the screen
                 return
             clicked_cluster = self.clusterizer.predict([(x,y)])[0]
             self.time_logging('cluster predict')
@@ -541,9 +543,9 @@ class Vizualization:
     def calculate_centroid_coordinates(self, x, y):
         return x + self.resolution * y
 
-    def draw_the_line(self, x_list, y_list):
+    def draw_the_line(self, x_list, y_list, color='b'):
         for axe in self.axes_needing_borders:
-            axe.add_artist(matplotlib.lines.Line2D(xdata=x_list, ydata=y_list))
+            axe.add_artist(matplotlib.lines.Line2D(xdata=x_list, ydata=y_list, color=color))
 
     def line(self, float_point):
         return (float_point - self.size_centroid / 2, float_point + self.size_centroid / 2)
@@ -553,7 +555,7 @@ class Vizualization:
             return (float_point + self.size_centroid / 2,)
         return (float_point - self.size_centroid / 2,)
 
-    def delimit_cluster(self, cluster, **kwargs):
+    def delimit_cluster(self, cluster, color='b', **kwargs):
         """
         Delimits one cluster by drawing lines around it
         """
@@ -582,34 +584,34 @@ class Vizualization:
                 if no_hole:
                     if swapped_coordinates:  # swaped if a is y and b is x, not swapt if a is  and b is y
                         b_float_position, a_float_position= self.mesh_centroids[calculate_coordinates(min_b, a)]
-                        self.draw_the_line(self.lower_bound(b_float_position), self.line(a_float_position))
+                        self.draw_the_line(self.lower_bound(b_float_position), self.line(a_float_position), color=color)
                         b_float_position, a_float_position = self.mesh_centroids[calculate_coordinates(max_b, a)]
                         self.draw_the_line(
-                            self.lower_bound(b_float_position, plus_one=True), self.line(a_float_position))
+                            self.lower_bound(b_float_position, plus_one=True), self.line(a_float_position), color=color)
                     else:
                         a_float_position, b_float_position= self.mesh_centroids[calculate_coordinates(a, min_b)]
-                        self.draw_the_line(self.line(a_float_position), self.lower_bound(b_float_position))
+                        self.draw_the_line(self.line(a_float_position), self.lower_bound(b_float_position), color=color)
                         a_float_position, b_float_position = self.mesh_centroids[calculate_coordinates(a, max_b)]
                         self.draw_the_line(
-                            self.line(a_float_position), self.lower_bound(b_float_position, plus_one=True))
+                            self.line(a_float_position), self.lower_bound(b_float_position, plus_one=True), color=color)
                 else:  # case not convex, which is not often so it's gonna be dirty
                     for b in a_line_b_list:
                         if swapped_coordinates:
                             if (b - 1) not in a_line_b_list:
                                 b_float_position, a_float_position = self.mesh_centroids[calculate_coordinates(b, a)]
-                                self.draw_the_line(self.lower_bound(b_float_position), self.line(a_float_position))
+                                self.draw_the_line(self.lower_bound(b_float_position), self.line(a_float_position), color=color)
                             if (b + 1) not in a_line_b_list:
                                 b_float_position, a_float_position = self.mesh_centroids[calculate_coordinates(b, a)]
                                 self.draw_the_line(
-                                    self.lower_bound(b_float_position, plus_one=True), self.line(a_float_position))
+                                    self.lower_bound(b_float_position, plus_one=True), self.line(a_float_position), color=color)
                         else:
                             if (b - 1) not in a_line_b_list:
                                 a_float_position, b_float_position = self.mesh_centroids[calculate_coordinates(a, b)]
-                                self.draw_the_line(self.line(a_float_position), self.lower_bound(b_float_position))
+                                self.draw_the_line(self.line(a_float_position), self.lower_bound(b_float_position), color=color)
                             if (b + 1) not in a_line_b_list:
                                 a_float_position, b_float_position = self.mesh_centroids[calculate_coordinates(a, b)]
                                 self.draw_the_line(
-                                    self.line(a_float_position), self.lower_bound(b_float_position, plus_one=True))
+                                    self.line(a_float_position), self.lower_bound(b_float_position, plus_one=True), color=color)
                             
         draw_all_lines(self, culster_y_list_by_x, swapped_coordinates=True)
         draw_all_lines(self, culster_x_list_by_y, swapped_coordinates=False)
@@ -786,7 +788,7 @@ class Vizualization:
         for index, (x, y) in enumerate(self.mesh_centroids):
     
             current_centroid_label = centroids_label[index]
-            number_of_point_by_class = self.number_of_points_by_class_by_cluster.get(current_centroid_label)
+            number_of_point_by_class = self.number_of_points_by_class_by_cluster.get(current_centroid_label, {})
 
             if (not number_of_point_by_class) or len(self.index_by_cluster_label[current_centroid_label]) == 0:
                 current_entropy = 0
@@ -852,6 +854,53 @@ class Vizualization:
         self.refresh_graph()
         logging.info('frontiers : applied '+method)
 
+    def get_cache_file_name(self, method):
+        base_path, data_unique_id_string, number_of_clusters, clustering_method = (
+            self.model_path, self.data_unique_id_string, self.number_of_clusters, method
+        )
+        if not os.path.exists(base_path):  # if the base path isn't valid (for whatever reason, saves into dev/null)
+            return os.devnull, False
+            
+        cache_path = os.path.join(base_path, 'cache')
+        if not os.path.exists(cache_path):
+            os.makedirs(cache_path)
+        cluster_filename = '_cachejoin_'.join([str(x) for x in
+                                               [data_unique_id_string, number_of_clusters, clustering_method]])
+        cluster_path = os.path.join(cache_path, cluster_filename)
+        np_extension_name = '.npz'
+        if os.path.exists(cluster_path + np_extension_name):
+            return (cluster_path + np_extension_name), True
+        
+        return cluster_path, False
+
+    def clustering_fit(self, method):
+        logging.info("cluster: requesting a new " + method + " engine")
+        if method is None:
+            method = self.last_clusterizer_method
+        if method == 'kmeans':
+            self.time_logging('kmeans_beggning')
+            self.clusterizer = clustering.KmeansClusterizer(
+                n_clusters=self.number_of_clusters,
+            )
+            self.time_logging('kmeans_cluster')
+        elif method == 'dbscan':
+            self.clusterizer = clustering.DBSCANClusterizer()
+        else:
+            self.clusterizer = clustering.DummyClusterizer(
+                mesh=self.mesh_centroids,
+            )
+
+        cache_file_path, loadable = self.get_cache_file_name(method)
+        if loadable:
+            self.time_logging("cached cluster fit: found : loading")
+            self.clusterizer.load_cluster(cache_file_path)
+        else:
+            self.last_clusterizer_method = method
+            self.time_logging("cluster fitting: begin")
+            self.clusterizer.fit(xs=self.projected_input)
+            self.time_logging("cluster fitting: done")
+            self.clusterizer.save_cluster(cache_file_path)
+
     def request_new_clustering(self, method):
         """
         Init and fit a new clustering engin, then update the heatmaps
@@ -859,26 +908,8 @@ class Vizualization:
         :param method: clustering engine to use ..seealso:clustering module
         """
         method = method.lower()
-        logging.info("cluster: requesting a new "+method+" engine")
-        if method is None:
-            method=self.last_clusterizer_method
-        if method=='kmeans':
-            self.time_logging('kmeans_beggning')
-            self.clusterizer = clustering.KmeansClusterizer(
-                    n_clusters=self.number_of_clusters,
-                    )
-            self.time_logging('kmeans_cluster')
-        elif method=='dbscan':
-            self.clusterizer = clustering.DBSCANClusterizer()
-        else:
-            self.clusterizer = clustering.DummyClusterizer(
-                    mesh=self.mesh_centroids,
-                    )
 
-        self.last_clusterizer_method = method
-        self.time_logging("cluster fitting: begin")
-        self.clusterizer.fit(xs=self.projected_input)
-        self.time_logging("cluster fitting: done")
+        self.clustering_fit(method)
 
         self.cluster_label_mesh()
         self.update_all_heatmaps()
@@ -936,7 +967,7 @@ class Vizualization:
 
         :param current_cluster: cluster name selected by click
         """
-        to_include = self.number_of_points_by_class_by_cluster[current_cluster]
+        to_include = self.number_of_points_by_class_by_cluster.get(current_cluster, {})
         to_include = { k:to_include[k] for k in to_include if to_include[k]!=0 }
 
         if current_cluster in self.currently_selected_cluster:

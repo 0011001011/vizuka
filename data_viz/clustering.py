@@ -52,6 +52,14 @@ class Clusterizer():
             :return: array-like of cluster id
             """
             return (0, ) * len(xs)
+        
+
+        def load_cluster(self, path):
+            pass
+        
+
+        def save_cluster(self, path):
+            pass
 
 
 class KmeansClusterizer(Clusterizer):
@@ -79,6 +87,25 @@ class KmeansClusterizer(Clusterizer):
         :return:   list of cluster possible_outputs_list
         """
         return self.engine.predict(xs)
+
+    def load_cluster(self, path):
+        data_dict = np.load(path)
+        self.engine.cluster_centers_, self.engine.labels_, self.engine.inertia_, self.engine.n_iter_ = (
+            data_dict['cluster_centers_'], data_dict['labels_'], data_dict['inertia_'], data_dict['n_iter_']
+        )
+
+    def save_cluster(self, path):
+
+        cluster_centers_, labels_, inertia_, n_iter_ = (
+            self.engine.cluster_centers_, self.engine.labels_, self.engine.inertia_, self.engine.n_iter_
+        )  # all internals changed by fit
+        data_dict = {}
+        data_dict['cluster_centers_'] = cluster_centers_
+        data_dict['labels_'] = labels_
+        data_dict['inertia_'] = inertia_
+        data_dict['n_iter_'] = n_iter_
+        np.savez(path, **data_dict)
+
 
 
 class DBSCANClusterizer(Clusterizer):
@@ -127,6 +154,12 @@ class DBSCANClusterizer(Clusterizer):
                 )
         return current_predicts
 
+    def load_cluster(self, path):
+        pass
+
+    def save_cluster(self, path):
+        pass
+
 
 class DummyClusterizer(Clusterizer):
     """
@@ -165,6 +198,12 @@ class DummyClusterizer(Clusterizer):
         return self.kdtree.query(xs)[1]
 
         # return [self.kdtree.query(x)[1] for x in xs]
+
+    def load_cluster(self, path):
+        pass
+
+    def save_cluster(self, path):
+        pass
 
 
 def make_clusterizer(xs, method='kmeans', **kwargs):
