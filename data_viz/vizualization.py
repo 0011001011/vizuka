@@ -683,8 +683,8 @@ class Vizualization:
                 if label_down_neighbor != current_centroid_label:
                     if (label_down_neighbor, current_centroid_label) not in frontier:
                         current_frontier = frontier_builder(
-                                    self.cluster_by_idx[label_down_neighbor],
-                                    self.cluster_by_idx[current_centroid_label]
+                                    self.number_of_points_by_class_by_cluster[label_down_neighbor],
+                                    self.number_of_points_by_class_by_cluster[current_centroid_label]
                                     )
                         if current_frontier > -np.inf:
                             frontier[(label_down_neighbor, current_centroid_label)] = current_frontier
@@ -694,8 +694,8 @@ class Vizualization:
                 if label_left_neighbor != current_centroid_label:
                     if (label_left_neighbor, current_centroid_label) not in frontier:
                         current_frontier = frontier_builder(
-                                    self.cluster_by_idx[label_left_neighbor],
-                                    self.cluster_by_idx[current_centroid_label]
+                                    self.number_of_points_by_class_by_cluster[label_left_neighbor],
+                                    self.number_of_points_by_class_by_cluster[current_centroid_label]
                                     )
                         if current_frontier > -np.inf:
                             frontier[(label_left_neighbor, current_centroid_label)] = current_frontier
