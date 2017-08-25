@@ -1,6 +1,7 @@
 import qt_handler
 import matplotlib
 from matplotlib import pyplot as plt
+import logging
 '''
 from qt_handler import Qt_matplotlib_handler
 class Cluster_diver(Qt_matplotlib_handler):
@@ -65,6 +66,7 @@ def moar_filters(
     features_name = features_to_filter
     
     def get_feature_col(feature_name):
+        print('so({})={}'.format(feature_name, list(raw_inputs_columns).index(feature_name)))
         return list(raw_inputs_columns).index(feature_name)
 
     features = {
@@ -87,13 +89,16 @@ def moar_filters(
             else:
                 self.indexes_by_feature_by_feature_name[feature_name][feature].add(idx)
             """
-
+    action = {}
     for feature_name in features:
+        feature_col = get_feature_col(feature_name)
+        action[feature_name] = lambda x:viz_engine.filter_by_feature(feature_col, x)
+        logging.info('registering filter {} ({})'.format(feature_name, feature_col))
         qt_handler.add_checkboxes(
                 window,
                 feature_name,
                 features[feature_name],
-                lambda x:viz_engine.filter_by_feature(get_feature_col(feature_name), x),
+                action[feature_name],
                 right_dock,
                 checked_by_default=True,
                 )

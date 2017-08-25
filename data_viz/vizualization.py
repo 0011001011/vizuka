@@ -133,7 +133,7 @@ class Vizualization:
             resolution=100,
             special_class='0',
             number_of_clusters=120,
-            features_to_filter=[],
+            features_name_to_filter=[],
             class_decoder=(lambda x: x), class_encoder=(lambda x: x),
             output_path='output.csv',
             model_path=MODEL_PATH,
@@ -173,7 +173,7 @@ class Vizualization:
         self.class_decoder = class_decoder
         self.special_class = str(special_class)
         
-        self.features_to_filter = features_to_filter
+        self.features_name_to_filter = features_name_to_filter
         self.correct_class_to_display = {}
         self.predicted_class_to_display = {}
         self.feature_to_display_by_col = {}
@@ -341,7 +341,9 @@ class Vizualization:
         self.display_by_filter()
 
     def display_by_filter(self):
-        all_unchecked = (not self.predicted_class_to_display) and (not self.correct_class_to_display)
+        all_unchecked = (
+                (not self.predicted_class_to_display) and (not self.correct_class_to_display)
+                )
         index_inputs_to_display = set()
 
         for output_class in self.predicted_class_to_display:
@@ -1252,6 +1254,7 @@ class Vizualization:
         self.time_logging()
         
         self.main_fig = matplotlib.figure.Figure()
+        self.cluster_view = matplotlib.figure.Figure()
 
         gs=GridSpec(3,4)
 
@@ -1261,7 +1264,7 @@ class Vizualization:
         self.viz_handler = Viz_handler(self,
                 self.main_fig,
                 self.onclick,
-                self.features_to_filter,
+                self.features_name_to_filter,
                 )
 
         self.time_logging("viz_handler")
