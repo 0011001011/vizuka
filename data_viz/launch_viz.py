@@ -51,8 +51,8 @@ def main():
         '--no_vizualize', action="store_true",
          help='do not prepare a nice data vizualization')
     parser.add_argument(
-        '--feature_to_filter',
-         help='Adds a feature listed in originals.npz["columns"]')
+        '-f', '--feature_to_filter', action='append',
+         help='Adds a feature listed in originals.npz["columns"] to the filters list')
     parser.add_argument(
         '--no_plot', action="store_true",
          help='do not show a nice data vizualization (but prepare it nonetheless)')
@@ -65,6 +65,7 @@ def main():
             no_vizualize=False,
             version=VERSION,
             path=os.path.dirname(__file__),
+            feature_to_filter=[]
             )
 
     args = parser.parse_args()
@@ -79,6 +80,7 @@ def main():
     no_vizualize = args.no_vizualize
     no_plot      = args.no_plot
     version      = args.version
+    features_to_filter = args.feature_to_filter
 
     logging.info("Starting script")
     logging.info("raw_data=loading")
@@ -167,7 +169,7 @@ def main():
             class_encoder=class_encoder,
             special_class='0',
             number_of_clusters=120,
-            features_to_filter=['ape_code'],
+            features_to_filter=features_to_filter,
             output_path=os.path.join(os.path.__file__, 'output.csv'),
             model_path=MODEL_PATH,
             data_unique_id_string=data_unique_id_string
