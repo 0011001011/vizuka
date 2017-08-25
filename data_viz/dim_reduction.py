@@ -11,6 +11,7 @@ However this needs extra-install steps :
 """
 
 import itertools
+import os
 
 import numpy as np
 import logging
@@ -212,34 +213,31 @@ def load_tSNE(params=PARAMS_LEARNING, version=VERSION, path=TSNE_DATA_PATH,
     for perplexity, learning_rate, init, n_iter in itertools.product(
             perplexities, learning_rates, inits, n_iters):
 
-        logging.info("RNmodel=loadin %s %s %s %s",
+        logging.info("RNmodel=trying to load %s %s %s %s",
                      str(perplexity),
                      str(learning_rate),
                      str(init),
                      str(n_iter),
                      )
-        try:
-            param = (perplexity, learning_rate, init, n_iter)
-            name = ''.join('_' + str(p) for p in param)
-            full_path = ''.join([
-                path,
-                'embedded_x_1-',
-                str(reduction_size_factor),
-                name,
-                version,
-                '.npz',
-            ])
-
+        param = (perplexity, learning_rate, init, n_iter)
+        name = ''.join('_' + str(p) for p in param)
+        full_path = ''.join([
+            path,
+            'embedded_x_1-',
+            str(reduction_size_factor),
+            name,
+            version,
+            '.npz',
+        ])
+        if os.path.exists(full_path):
             x_transformed[param] = np.load(full_path)['x_2D']
-
+        
             try:
                 models[param] = np.load(full_path)['model']
             except KeyError:
                 logging.info("old version, model not found, only embedded data")
             logging.info("RNmodel=ready")
 
-        except FileNotFoundError as e:
-            logging.info("not found %s", str(e))
 
     return x_transformed, models
 
