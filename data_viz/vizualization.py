@@ -1,7 +1,7 @@
 """
 Module built around the class Vizualization
 """
-
+import sys
 import matplotlib
 matplotlib.use('Qt5Agg')  # noqa
 from matplotlib.gridspec import GridSpec
@@ -9,14 +9,14 @@ import os
 from scipy import stats
 import time
 
-from data_viz.qt_handler import Viz_handler
-from data_viz.ml_helpers import (
+from qt_handler import Viz_handler
+from ml_helpers import (
         cross_entropy,
         bhattacharyya,
         )
-from data_viz import clustering
+import clustering
 
-from data_viz.config import (
+from config import (
     MODEL_PATH,
     )
 
@@ -118,6 +118,7 @@ class Vizualization:
     def __init__(
             self,
             raw_inputs,
+            raw_inputs_columns,
             projected_input,
             predicted_outputs,
             correct_outputs,
@@ -158,12 +159,14 @@ class Vizualization:
         
         self.projected_input = projected_input
         self.x_raw = raw_inputs
+        self.x_raw_columns = raw_inputs_columns
         self.number_of_clusters = number_of_clusters
         self.class_decoder = class_decoder
         self.special_class = str(special_class)
 
         self.correct_class_to_display = {}
         self.predicted_class_to_display = {}
+        self.feature_to_display_by_col = {}
 
         self.last_clusterizer_method = None
         
@@ -287,12 +290,11 @@ class Vizualization:
         self.reset_viz()
         self.refresh_graph()
     
-    def draw_scatterplot(self, well_predcited_array, badly_predicted_array, not_predicted_array):
-
-        if len(well_predcited_array) > 0:
+    def draw_scatterplot(self, well_predicted_array, badly_predicted_array, not_predicted_array):
+        if len(well_predicted_array) > 0:
             self.ax.scatter(
-                x=well_predcited_array[:, 0],
-                y=well_predcited_array[:, 1],
+                x=well_predicted_array[:, 0],
+                y=well_predicted_array[:, 1],
                 color='b', marker="+"
             )
         if len(badly_predicted_array) > 0:
@@ -310,8 +312,11 @@ class Vizualization:
                 color='g'
             )
 
-    #######################################
-    # Similarity functions to draw clusters
+    def filter_by_feature(self, feature_col, selected_feature_list):
+        self.feature_to_display_by_col[feature_col] = [
+                item for item, selected in selected_feature_list.items() if selected
+                ]
+        self.display_by_filter()
 
     def filter_by_correct_class(self, selected_outputs_class_list):
         self.correct_class_to_display = {
@@ -346,28 +351,49 @@ class Vizualization:
         bad_to_display, good_to_display, special_to_display = set(), set(), set()
 
         for index in index_inputs_to_display:
-            if index in self.index_bad_predicted:
-                bad_to_display.add(index)
-            elif index in self.index_good_predicted:
-                good_to_display.add(index)
-            else:
-                special_to_display.add(index)
+            for col in self.feature_to_display_by_col.keys():
+                if self.x_raw[index][col] in self.feature_to_display_by_col[col]:
+                    if index in self.index_bad_predicted:
+                        bad_to_display.add(index)
+                    elif index in self.index_good_predicted:
+                        good_to_display.add(index)
+                    else:
+                        special_to_display.add(index)
 
         bad_to_display_array = np.array([self.projected_input[i] for i in bad_to_display])
         good_to_display_array = np.array([self.projected_input[i] for i in good_to_display])
         special_to_display_array = np.array([self.projected_input[i] for i in special_to_display])
 
-        self.draw_scatterplot(well_predcited_array=good_to_display_array,
-                              badly_predicted_array=bad_to_display_array,
-                              not_predicted_array=special_to_display_array)
+        self.draw_scatterplot(
+                good_to_display_array,
+                bad_to_display_array,
+                special_to_display_array
+                )
 
         if all_unchecked:
-            self.draw_scatterplot(well_predcited_array=self.well_predicted_projected_points_array,
-                                  badly_predicted_array=self.misspredicted_projected_points_array,
-                                  not_predicted_array=self.not_predicted_projected_points_array)
+
+            well_predicted = self.filter_indexes_list_by_features(self.index_good_predicted)
+            miss_predicted = self.filter_indexes_list_by_features(self.index_bad_predicted)
+            not_predicted = self.filter_indexes_list_by_features(self.index_not_predicted)
+
+            self.draw_scatterplot(
+                well_predicted,
+                miss_predicted,
+                not_predicted,
+                )
 
         self.refresh_graph()
 
+    def filter_indexes_list_by_features(self, indexes_set):
+        logging.info("Filtering by feature")
+        to_display = indexes_set.copy()
+        for col in self.feature_to_display_by_col:
+            logging.info("filtering by: {}".format(col))
+            for index in indexes_set:
+                if self.x_raw[index][col] not in self.feature_to_display_by_col[col]:
+                    to_display.discard(index)
+        points_to_display = np.array([self.projected_input[i] for i in to_display])
+        return points_to_display
 
     def onmodifier_press(self, event):
         if event.key == 'shift':
@@ -451,10 +477,11 @@ class Vizualization:
                     i.remove()
         
         logging.info("scatterplot: drawing observations")
-        self.draw_scatterplot(well_predcited_array=self.well_predicted_projected_points_array,
-                              badly_predicted_array=self.misspredicted_projected_points_array,
-                              not_predicted_array=self.not_predicted_projected_points_array)
-
+        self.draw_scatterplot(
+                self.well_predicted_projected_points_array,
+                self.misspredicted_projected_points_array,
+                self.not_predicted_projected_points_array
+                )
         logging.info("scatterplot: ready")
 
     def reset_summary(self):
@@ -1247,10 +1274,19 @@ class Vizualization:
 
         self.request_new_frontiers('none')
 
-        logging.info('Vizualization=ready')
+        logging.info('Vizualization=readyy')
 
     def show(self):
+        logging.info('showing main window')
         self.viz_handler.show()
+        logging.info('showing cluster diving window')
+        #self.cluster_diver.show()
+        logging.info("showing done")
+        sys.exit(self.viz_handler.app.exec_())
 
     def refresh_graph(self):
+        logging.info('refreshing main window')
         self.viz_handler.refresh()
+        logging.info('refreshing cluster diving')
+        #self.cluster_diver.refresh()
+        logging.info("refreshing done")
