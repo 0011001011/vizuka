@@ -125,6 +125,7 @@ class Vizualization:
             resolution=100,
             special_class='0',
             number_of_clusters=120,
+            features_to_filter=[],
             class_decoder=(lambda x: x), class_encoder=(lambda x: x),
             output_path='output.csv',
             model_path=MODEL_PATH,
@@ -1203,7 +1204,11 @@ class Vizualization:
         self.time_logging("main_fig")
         
         #self.view_details = View_details(self.x_raw)
-        self.viz_handler = Viz_handler(self, self.main_fig, self.onclick)
+        self.viz_handler = Viz_handler(self,
+                self.main_fig,
+                self.onclick,
+                self.features_to_filter,
+                )
 
         self.time_logging("viz_handler")
         

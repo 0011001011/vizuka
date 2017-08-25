@@ -51,6 +51,9 @@ def main():
         '--no_vizualize', action="store_true",
          help='do not prepare a nice data vizualization')
     parser.add_argument(
+        '--feature_to_filter',
+         help='Adds a feature listed in originals.npz["columns"]')
+    parser.add_argument(
         '--no_plot', action="store_true",
          help='do not show a nice data vizualization (but prepare it nonetheless)')
     parser.add_argument(
