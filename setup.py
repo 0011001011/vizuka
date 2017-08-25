@@ -3,7 +3,7 @@ import os
 
 setup(
         name='Data-viz',
-        version='0.12',
+        version='0.13',
         packages=['data_viz/'],
         entry_points = {
             'console_scripts':['vizuka=data_viz.launch_viz:main'],
