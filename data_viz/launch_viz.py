@@ -12,9 +12,9 @@ import os
 
 matplotlib.use('Qt5Agg')  # noqa
 
-from data_viz import dim_reduction
-from data_viz import labelling
-from data_viz import vizualization
+import dim_reduction
+import labelling
+import vizualization
 
 
 import argparse
@@ -25,7 +25,7 @@ def main():
     See --help if you want help
     """
     
-    from data_viz.config import (
+    from config import (
         DATA_PATH,
         VERSION,
         REDUCTION_SIZE_FACTOR,
@@ -137,14 +137,17 @@ def main():
     logging.info('RNpredictions=ready')
     
     logging.info("loading raw transactions for analysis..")
-    transactions_raw = np.load(
+    transactions_raw_ = np.load(
         DATA_PATH + 'originals' + VERSION + '.npz'
-    )['originals']
+    )
+    transactions_raw = transactions_raw_['originals']
+    transactions_columns = transactions_raw_['columns']
 
     if not no_vizualize:
 
         f = vizualization.Vizualization(
             raw_inputs=transactions_raw,
+            raw_inputs_columns=transactions_columns,
             projected_input=x_2D,
             predicted_outputs=x_predicted,
             correct_outputs=y_small,
