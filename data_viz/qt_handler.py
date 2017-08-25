@@ -282,7 +282,7 @@ class Viz_handler(Qt_matplotlib_handler):
     Only IHM here.
     """
     
-    def __init__(self, viz_engine, figure, onclick):
+    def __init__(self, viz_engine, figure, onclick, features_to_filter=[]):
         """
         This object is a QtWindow (or 2-3-4...) with a mamtplotlib.Figure
         and a onclick event handler. As you can see it is also linked to
@@ -303,15 +303,16 @@ class Viz_handler(Qt_matplotlib_handler):
         #self.cluster_diver = Cluster_diver(self.x_raw, self.x_raw_columns, ['ape_code'])
 
         # add additional window
-        self.additional_window = add_window(self.window, 'moar filters')
-        moar_filters(
-                self.additional_window,
-                QtCore.Qt.RightDockWidgetArea,
-                self.viz_engine.x_raw,
-                self.viz_engine.x_raw_columns,
-                features_to_filter,
-                self.viz_engine,
-                )
+        if features_to_filter:
+            self.additional_window = add_window(self.window, 'moar filters')
+            moar_filters(
+                    self.additional_window,
+                    QtCore.Qt.RightDockWidgetArea,
+                    self.viz_engine.x_raw,
+                    self.viz_engine.x_raw_columns,
+                    features_to_filter,
+                    self.viz_engine,
+                    )
 
         # self.add_figure(self.additional_figure, onclick=None, window=self.additional_window)
 

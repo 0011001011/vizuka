@@ -164,7 +164,8 @@ class Vizualization:
         self.number_of_clusters = number_of_clusters
         self.class_decoder = class_decoder
         self.special_class = str(special_class)
-
+        
+        self.features_to_filter = features_to_filter
         self.correct_class_to_display = {}
         self.predicted_class_to_display = {}
         self.feature_to_display_by_col = {}

@@ -167,6 +167,7 @@ def main():
             class_encoder=class_encoder,
             special_class='0',
             number_of_clusters=120,
+            features_to_filter=['ape_code'],
             output_path=os.path.join(os.path.__file__, 'output.csv'),
             model_path=MODEL_PATH,
             data_unique_id_string=data_unique_id_string
