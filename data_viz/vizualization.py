@@ -867,8 +867,9 @@ class Vizualization:
         cluster_filename = '_cachejoin_'.join([str(x) for x in
                                                [data_unique_id_string, number_of_clusters, clustering_method]])
         cluster_path = os.path.join(cache_path, cluster_filename)
-        if os.path.exists(cluster_path):
-            return cluster_path, True
+        np_extension_name = '.npz'
+        if os.path.exists(cluster_path + np_extension_name):
+            return (cluster_path + np_extension_name), True
         
         return cluster_path, False
 
@@ -891,6 +892,7 @@ class Vizualization:
 
         cache_file_path, loadable = self.get_cache_file_name(method)
         if loadable:
+            self.time_logging("cached cluster fit: found : loading")
             self.clusterizer.load_cluster(cache_file_path)
         else:
             self.last_clusterizer_method = method

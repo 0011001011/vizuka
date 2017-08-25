@@ -91,7 +91,7 @@ class KmeansClusterizer(Clusterizer):
     def load_cluster(self, path):
         data_dict = np.load(path)
         self.engine.cluster_centers_, self.engine.labels_, self.engine.inertia_, self.engine.n_iter_ = (
-            data_dict['cluster_centers_'], data_dict['labels_'], data_dict['inertia_'], data_dict['n_iter_ ']
+            data_dict['cluster_centers_'], data_dict['labels_'], data_dict['inertia_'], data_dict['n_iter_']
         )
 
     def save_cluster(self, path):
