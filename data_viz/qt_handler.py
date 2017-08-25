@@ -237,7 +237,7 @@ class Qt_matplotlib_handler():
         # configure the app + main window
         self.app = QApplication(sys.argv)
         self.window = QMainWindow()
-        
+        self.features_to_filter=None
         self.figure = figure
 
 
@@ -246,7 +246,8 @@ class Qt_matplotlib_handler():
         Shows the window you built with your tears
         """
         self.window.showMaximized()
-        self.additional_window.show()
+        if self.features_to_filter:
+            self.additional_window.show()
         self.refresh()
         logging.info("refreshed")
         logging.info("showed")
@@ -282,7 +283,7 @@ class Viz_handler(Qt_matplotlib_handler):
     Only IHM here.
     """
     
-    def __init__(self, viz_engine, figure, onclick, features_to_filter=[]):
+    def __init__(self, viz_engine, figure, onclick, features_to_filter=None):
         """
         This object is a QtWindow (or 2-3-4...) with a mamtplotlib.Figure
         and a onclick event handler. As you can see it is also linked to
@@ -297,6 +298,7 @@ class Viz_handler(Qt_matplotlib_handler):
         self.detect_mouse_event = False
         self.base_onclick = onclick
         self.window.setWindowTitle('Data vizualization')
+        self.features_to_filter = features_to_filter
 
         # add the main figure
         add_figure(self.figure, window=self.window, plottings=self.plottings, onclick=self.onclick)
