@@ -710,11 +710,14 @@ class Vizualization:
             min_frontier = frontier[min(frontier, key=frontier.get)]
 
             frontier_amplitude = max_frontier - min_frontier
-            
-            if frontier_amplitude:
-                frontier = { key:frontier[key]-min_frontier / frontier_amplitude for key in frontier }
 
-        self.time_logging('apply_borders : stuff')
+            if frontier_amplitude:
+                normalized_frontier = { key:(frontier[key]-min_frontier) / frontier_amplitude for key in frontier }
+            else:
+                normalized_frontier = frontier
+        else:
+            normalized_frontier = frontier
+
 
         logging.info('borders: cleaning')
         for axe in axes:
@@ -741,7 +744,7 @@ class Vizualization:
                 label_down_neighbor = centroids_cluster_by_index[index-self.resolution]
                 if label_down_neighbor != current_centroid_label:
                     if (label_down_neighbor, current_centroid_label) in frontier:
-                        frontier_density = frontier[(label_down_neighbor, current_centroid_label)]
+                        frontier_density = normalized_frontier[(label_down_neighbor, current_centroid_label)]
                         lines.append(line_dict_maker(
                             xdata = (x-self.size_centroid/2, x+self.size_centroid/2),
                             ydata = (y-self.size_centroid/2, y-self.size_centroid/2),
@@ -750,8 +753,8 @@ class Vizualization:
             if index % self.resolution > 0:
                 label_left_neighbor = centroids_cluster_by_index[index-1]
                 if label_left_neighbor != current_centroid_label:
-                    if (label_left_neighbor, current_centroid_label) in frontier:
-                        frontier_density = frontier[(label_left_neighbor, current_centroid_label)]
+                    if (label_left_neighbor, current_centroid_label) in normalized_frontier:
+                        frontier_density = normalized_frontier[(label_left_neighbor, current_centroid_label)]
                         lines.append(line_dict_maker(
                             xdata=(x-self.size_centroid/2, x-self.size_centroid/2),
                             ydata=(y-self.size_centroid/2, y+self.size_centroid/2),
