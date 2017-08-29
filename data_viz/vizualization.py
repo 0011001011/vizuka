@@ -8,6 +8,7 @@ from matplotlib.gridspec import GridSpec
 import os
 from scipy import stats
 import time
+import wordcloud
 
 from qt_handler import Viz_handler
 from ml_helpers import (
@@ -15,7 +16,7 @@ from ml_helpers import (
         bhattacharyya,
         )
 import clustering
-
+from cluster_diving import Cluster_viewer
 from config import (
     MODEL_PATH,
     )
@@ -134,6 +135,7 @@ class Vizualization:
             special_class='0',
             number_of_clusters=120,
             features_name_to_filter=[],
+            features_name_to_display={},
             class_decoder=(lambda x: x), class_encoder=(lambda x: x),
             output_path='output.csv',
             model_path=MODEL_PATH,
@@ -177,6 +179,8 @@ class Vizualization:
         self.correct_class_to_display = {}
         self.predicted_class_to_display = {}
         self.feature_to_display_by_col = {}
+        self.features_to_display = features_name_to_display
+        self.cluster_view_selected_indexes = []
 
         self.last_clusterizer_method = None
         
@@ -455,9 +459,10 @@ class Vizualization:
             self.time_logging('cluster predict')
     
             self.delimit_cluster(clicked_cluster, color=self.manual_cluster_color)
-            self.time_logging('cluster delmited')
+            self.time_logging('cluster delimited')
             self.update_summary(clicked_cluster)
             self.print_summary(self.summary_axe)
+            self.update_cluster_view(clicked_cluster=clicked_cluster)
 
         if left_click:
             handle_left_click(self)
@@ -479,8 +484,8 @@ class Vizualization:
         logging.info("scatterplot: removing specific objects")
         for i in [
                 *self.ax.get_children(),
-                *self.heat_entropy.get_children(),
-                *self.heat_proportion.get_children(),
+                *[heatmap[1].get_children() for heatmap in self.heatmaps],
+                # self.heatmaps contains [(heatmap_builder, axe, title)]
                 ]:
             if isinstance(i, matplotlib.collections.PathCollection):
                 i.remove()
@@ -489,6 +494,8 @@ class Vizualization:
                     i.remove()
         
         logging.info("scatterplot: drawing observations")
+        self.reset_cluster_view()
+
         self.draw_scatterplot(
                 self.well_predicted_projected_points_array,
                 self.misspredicted_projected_points_array,
@@ -593,6 +600,67 @@ class Vizualization:
         if plus_one:
             return (float_point + self.size_centroid / 2,)
         return (float_point - self.size_centroid / 2,)
+
+    def update_cluster_view(self, clicked_cluster):
+        """
+        Updates the axes with the data of the clicked cluster
+        """
+        self.cluster_view_selected_indexes += self.index_by_cluster_label[clicked_cluster]
+        selected_xs_raw  = [self.x_raw[idx] for idx in self.cluster_view_selected_indexes]
+        
+        columns_to_display = [list(self.x_raw_columns).index(i) for i in self.features_to_display]
+        data_to_display = {
+                self.x_raw_columns[i]:[x[i] for x in selected_xs_raw]
+                for i in columns_to_display
+                }
+
+        def plot_density(data, axe, scale='linear'):
+
+            data = [float(d) for d in data]
+            bins = 100 # int(len(data)/10)
+            hist, bins = np.histogram(data, bins=bins)
+            width = .7 *(bins[1] - bins[0])
+            center = (bins[:-1] + bins[1:])/2
+            
+            axe.set_yscale('log')
+            axe.bar(center, hist, align='center', width=width)
+
+        def plot_logdensity(data, axe):
+            plot_density(data, axe, scale='log')
+
+        def word_cloud(data, axe):
+            # ok fuck let's be stupid for testing purpose
+            data = [str(d) for d in data]
+            words_freq = Counter(sum([phrase.split(' ') for phrase in data], []))
+            wc = wordcloud.WordCloud()
+            
+            wc.fit_words(words_freq)
+            axe.imshow(wc.to_array())
+            
+        
+        cluster_plotter = {
+                'logdensity': plot_logdensity,
+                'density': plot_density,
+                'wordcloud': word_cloud,
+                }
+            
+        for data_name in data_to_display:
+            plotter = cluster_plotter[self.features_to_display[data_name]]
+            axe_to_update = self.cluster_view.subplot_by_name[data_name]
+            axe_to_update.clear()
+            plotter(data_to_display[data_name], axe_to_update)
+            if 'log' in data_to_display[data_name]:
+                data_name += ' - log'
+            axe_to_update.set_title(data_name)
+
+    def reset_cluster_view(self):
+        self.cluster_view.clear()
+        self.cluster_view_selected_indexes = []
+        # for ax in self.cluster_view.axes:
+        #    ax.clear()
+
+
+
 
     def delimit_cluster(self, cluster, color='b', **kwargs):
         """
@@ -1254,17 +1322,20 @@ class Vizualization:
         self.time_logging()
         
         self.main_fig = matplotlib.figure.Figure()
-        self.cluster_view = matplotlib.figure.Figure()
+        #self.cluster_view = matplotlib.figure.Figure()
 
         gs=GridSpec(3,4)
 
         self.time_logging("main_fig")
+        self.cluster_view = Cluster_viewer(self.features_to_display)
         
         #self.view_details = View_details(self.x_raw)
-        self.viz_handler = Viz_handler(self,
-                self.main_fig,
-                self.onclick,
-                self.features_name_to_filter,
+        self.viz_handler = Viz_handler(
+                viz_engine         = self,
+                figure             = self.main_fig,
+                onclick            = self.onclick,
+                additional_filters = self.features_name_to_filter,
+                additional_figures = [self.cluster_view],
                 )
 
         self.time_logging("viz_handler")
@@ -1288,36 +1359,38 @@ class Vizualization:
         
         # heatmap subplots
         # contain proportion of correct prediction and entropy
-        self.heat_proportion = self.main_fig.add_subplot(gs[1,3], sharex=self.ax, sharey=self.ax)
 
-        self.heat_entropy = self.main_fig.add_subplot(gs[0,3], sharex=self.ax, sharey=self.ax)
-        self.heat_entropy.set_title('\nHeatmap: cross-entropy cluster/all')
-        self.heat_entropy.axis('off')
-
-        self.axes_needing_borders = (self.ax, self.heat_proportion, self.heat_entropy)
+        self.axes_needing_borders = [self.ax]
 
         self.time_logging("heat_subplots")
 
         # draw heatmap
         logging.info("heatmap=calculating")
-        '''
+        # self.cluster_view = self.main_fig.add_subplot(gs[1,3])
+
         self.heatmaps = []
-        self.add_heatmap(self.heatmap_proportion, self.heat_proportion)
-        self.add_heatmap(self.heatmap_entropy, self.heat_entropy)
-        '''
-        self.heatmaps = []
+        
+        self.heat_proportion = self.main_fig.add_subplot(
+                gs[1,3],
+                sharex=self.ax,
+                sharey=self.ax)
         self.add_heatmap(
                 self.heatmap_proportion,
                 self.heat_proportion,
                 title='Heatmap: proportion correct predictions')
-
+        self.axes_needing_borders.append(self.heat_proportion)
         self.time_logging("prop correct prediction")
         
+
+        self.heat_entropy = self.main_fig.add_subplot(
+                gs[0,3],
+                sharex=self.ax,
+                sharey=self.ax)
         self.add_heatmap(
                 self.heatmap_entropy,
                 self.heat_entropy,
                 title='Heatmap: cross-entropy Cluster-All')
-
+        self.axes_needing_borders.append(self.heat_entropy)
         self.time_logging("cross_entropy")
         
         self.cluster_label_mesh()
@@ -1327,15 +1400,11 @@ class Vizualization:
         self.update_all_heatmaps()
         logging.info("heatmap=ready")
 
-        self.time_logging("update_heatmaps")
-
         # draw scatter plot
         self.reset_viz()
-
         self.time_logging("reset_viz")
 
         self.request_new_frontiers('none')
-
         logging.info('Vizualization=readyy')
 
     def show(self):

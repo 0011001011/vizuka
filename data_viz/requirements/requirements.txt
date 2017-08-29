@@ -6,3 +6,4 @@ keras
 ipdb
 seaborn
 pyqt5==5.9
+wordcloud
