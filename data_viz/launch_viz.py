@@ -42,6 +42,12 @@ def main():
 
     parser = argparse.ArgumentParser()
     parser.add_argument(
+        '-f', '--feature_to_filter', action='append',
+         help='Adds a feature listed in originals.npz["columns"] to the filters list')
+    parser.add_argument(
+        '-s', '--feature_to_show', action='append',
+         help='Adds a feature listed in originals.npz["columns"] to the cluster view')
+    parser.add_argument(
         '--reduce', action="store_true",
          help='launch a full dimension reduction')
     parser.add_argument(
@@ -50,9 +56,6 @@ def main():
     parser.add_argument(
         '--no_vizualize', action="store_true",
          help='do not prepare a nice data vizualization')
-    parser.add_argument(
-        '-f', '--feature_to_filter', action='append',
-         help='Adds a feature listed in originals.npz["columns"] to the filters list')
     parser.add_argument(
         '--no_plot', action="store_true",
          help='do not show a nice data vizualization (but prepare it nonetheless)')
@@ -65,7 +68,8 @@ def main():
             no_vizualize=False,
             version=VERSION,
             path=os.path.dirname(__file__),
-            feature_to_filter=[]
+            feature_to_filter=[],
+            feature_to_show=[],
             )
 
     args = parser.parse_args()
@@ -80,7 +84,23 @@ def main():
     no_vizualize = args.no_vizualize
     no_plot      = args.no_plot
     version      = args.version
-    features_to_filter = args.feature_to_filter
+    features_name_to_filter  = args.feature_to_filter
+    features_name_to_display = args.feature_to_show
+    
+    new_fntd = {}
+    error_msg  = 'Argument should be feature_name:plotter with plotter'
+    error_msg += '\nin (logdensity, density, wordcloud, counter)'
+    e = Exception(error_msg)
+    for feature_name in features_name_to_display:
+        if ':' not in feature_name:
+            raise e
+        k,v = feature_name.split(':')
+        # TODO if v not in cluster_diving.plotter.keys():
+        #    raise e
+        plotters = new_fntd.get(k, [])
+        plotters.append(v)
+        new_fntd[k] = plotters
+    features_name_to_display = new_fntd
 
     logging.info("Starting script")
     logging.info("raw_data=loading")
@@ -169,7 +189,8 @@ def main():
             class_encoder=class_encoder,
             special_class='0',
             number_of_clusters=120,
-            features_to_filter=features_to_filter,
+            features_name_to_filter  = features_name_to_filter,
+            features_name_to_display = features_name_to_display,
             output_path=os.path.join(os.path.__file__, 'output.csv'),
             model_path=MODEL_PATH,
             data_unique_id_string=data_unique_id_string

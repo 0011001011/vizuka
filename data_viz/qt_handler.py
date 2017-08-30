@@ -108,7 +108,7 @@ def add_button(window, name, action, dockarea):
     dock.setWidget(panel)
 
 
-def add_figure(figure, window, plottings, onclick=None):
+def add_figure(figure, window, plottings=[], onclick=None):
     """
     Easy method for adding a matplotlib figure to the Qt window
 
@@ -246,8 +246,8 @@ class Qt_matplotlib_handler():
         Shows the window you built with your tears
         """
         self.window.showMaximized()
-        if self.features_to_filter:
-            self.additional_window.show()
+        for win in self.additional_windows:
+            win.show()
         self.refresh()
         logging.info("refreshed")
         logging.info("showed")
@@ -258,6 +258,7 @@ class Qt_matplotlib_handler():
         """
         for p in self.plottings:
             p.canvas.draw()
+                
     
     @onclick_wrapper
     def onclick(self, *args, **kwargs):
@@ -283,7 +284,14 @@ class Viz_handler(Qt_matplotlib_handler):
     Only IHM here.
     """
     
-    def __init__(self, viz_engine, figure, onclick, features_to_filter=None):
+    def __init__(
+            self,
+            viz_engine,
+            figure,
+            onclick,
+            additional_filters=[],
+            additional_figures=[],
+            ):
         """
         This object is a QtWindow (or 2-3-4...) with a mamtplotlib.Figure
         and a onclick event handler. As you can see it is also linked to
@@ -298,23 +306,44 @@ class Viz_handler(Qt_matplotlib_handler):
         self.detect_mouse_event = False
         self.base_onclick = onclick
         self.window.setWindowTitle('Data vizualization')
-        self.features_to_filter = features_to_filter
+        self.additional_filters = additional_filters
+        self.additional_figures = additional_figures
+
+        self.additional_windows = []
 
         # add the main figure
         add_figure(self.figure, window=self.window, plottings=self.plottings, onclick=self.onclick)
         #self.cluster_diver = Cluster_diver(self.x_raw, self.x_raw_columns, ['ape_code'])
 
         # add additional window
-        if features_to_filter:
-            self.additional_window = add_window(self.window, 'moar filters')
+        if self.additional_filters:
+            self.additional_windows.append(add_window(self.window, 'moar filters'))
             moar_filters(
-                    self.additional_window,
-                    QtCore.Qt.RightDockWidgetArea,
-                    self.viz_engine.x_raw,
-                    self.viz_engine.x_raw_columns,
-                    features_to_filter,
-                    self.viz_engine,
+                    window=self.additional_windows[-1],
+                    right_dock=QtCore.Qt.RightDockWidgetArea,
+                    features = self.viz_engine.x_raw,
+                    all_features_categories = self.viz_engine.x_raw_columns,
+                    features_to_filter=additional_filters,
+                    viz_engine=self.viz_engine,
                     )
+
+        for fig in self.additional_figures:
+            self.additional_windows.append(add_window(self.window, 'Cluster viewer'))
+            add_figure(fig, self.additional_windows[-1], plottings=self.plottings)
+
+
+        """
+        if self.features_to_display:        
+            self.cluster_window = add_window(self.window, 'Cluster view')
+            add_cluster_view(
+                    window=self.cluster_window,
+                    right_dock = QtCore.Qt.RightDockWidgetArea,
+                    features = self.viz_engine.x_raw,
+                    all_features_categories = self.viz_engine.x_raw_columns,
+                    features_to_diplay=features_to_display,
+                    viz_engine=self.viz_engine,
+        """
+
 
         # self.add_figure(self.additional_figure, onclick=None, window=self.additional_window)
 
