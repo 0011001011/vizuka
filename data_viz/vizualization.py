@@ -462,7 +462,7 @@ class Vizualization:
             self.time_logging('cluster delimited')
             self.update_summary(clicked_cluster)
             self.print_summary(self.summary_axe)
-            self.update_cluster_view(clicked_cluster=clicked_cluster)
+            self.cluster_view.update_cluster_view(clicked_cluster, self.index_by_cluster_label)
 
         if left_click:
             handle_left_click(self)
@@ -494,7 +494,7 @@ class Vizualization:
                     i.remove()
         
         logging.info("scatterplot: drawing observations")
-        self.reset_cluster_view()
+        self.cluster_view.clear()
 
         self.draw_scatterplot(
                 self.well_predicted_projected_points_array,
@@ -600,83 +600,6 @@ class Vizualization:
         if plus_one:
             return (float_point + self.size_centroid / 2,)
         return (float_point - self.size_centroid / 2,)
-
-    def update_cluster_view(self, clicked_cluster):
-        """
-        Updates the axes with the data of the clicked cluster
-        """
-        self.cluster_view_selected_indexes += self.index_by_cluster_label[clicked_cluster]
-        selected_xs_raw  = [self.x_raw[idx] for idx in self.cluster_view_selected_indexes]
-        
-        columns_to_display = [list(self.x_raw_columns).index(i) for i in self.features_to_display]
-        data_to_display = {
-                self.x_raw_columns[i]:[x[i] for x in selected_xs_raw]
-                for i in columns_to_display
-                }
-
-        def plot_density(data, axe, scale='linear'):
-
-            data = [float(d) for d in data]
-            bins = 100 # int(len(data)/10)
-            hist, bins = np.histogram(data, bins=bins)
-            width = .7 *(bins[1] - bins[0])
-            center = (bins[:-1] + bins[1:])/2
-            
-            axe.set_yscale(scale)
-            axe.bar(center, hist, align='center', width=width)
-
-        def plot_logdensity(data, axe):
-            plot_density(data, axe, scale='log')
-
-        def plot_wordcloud(data, axe):
-            # ok fuck let's be stupid for testing purpose
-            data = [str(d) for d in data]
-            words_freq = Counter(sum([phrase.split(' ') for phrase in data], []))
-            wc = wordcloud.WordCloud()
-            
-            wc.fit_words(words_freq)
-            wc.background_color = 'white'
-            wc.scale=10 # for better resolution
-            wc.relative_scaling = .5 # for sizing words not only on ranks but also reative freq
-            axe.axis('off')
-            axe.imshow(wc.to_array())
-
-        def plot_counter(data, axe):
-            c = Counter(data)
-            x = [l for l in c.keys()]
-            y = [c[l] for l in x]
-
-            graduation = np.linspace(0, len(y), len(y))
-            axe.bar(height=y, left=graduation)
-            axe.set_xticks(graduation)
-            axe.set_xticklabels([str(i) for i in x])
-
-            
-        
-        cluster_plotter = {
-                'logdensity': plot_logdensity,
-                'density': plot_density,
-                'wordcloud': plot_wordcloud,
-                'counter': plot_counter,
-                }
-            
-        for data_name in data_to_display:
-            for plotter_name in self.features_to_display[data_name]:
-                plotter = cluster_plotter[plotter_name]
-                axe_to_update = self.cluster_view.subplot_by_name[data_name+plotter_name]
-                axe_to_update.clear()
-                plotter(data_to_display[data_name], axe_to_update)
-                if 'log' in data_to_display[data_name]:
-                    data_name += ' - log'
-                axe_to_update.set_title(data_name)
-
-    def reset_cluster_view(self):
-        self.cluster_view.clear()
-        self.cluster_view_selected_indexes = []
-        # for ax in self.cluster_view.axes:
-        #    ax.clear()
-
-
 
 
     def delimit_cluster(self, cluster, color='b', **kwargs):
@@ -1347,7 +1270,7 @@ class Vizualization:
         gs=GridSpec(3,4)
 
         self.time_logging("main_fig")
-        self.cluster_view = Cluster_viewer(self.features_to_display)
+        self.cluster_view = Cluster_viewer(self.features_to_display, self.x_raw, self.x_raw_columns)
         
         #self.view_details = View_details(self.x_raw)
         self.viz_handler = Viz_handler(

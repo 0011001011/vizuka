@@ -56,7 +56,7 @@ PARAMS_VIZ = { 'perplexity'  : 80,
            'n_iter'       : 15000,
            }
 
-PCA_DIMS = 42  # ~90% of explained_variance
+PCA_DIMS = 42  # ~90% of explained_variance in test case
 
 # 30 for OVH, 50 for local, 15 for epinal
 REDUCTION_SIZE_FACTOR = 1
