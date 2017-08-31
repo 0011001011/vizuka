@@ -40,6 +40,11 @@ def plot_counter(data, axe):
     x = [l for l in c.keys()]
     y = [c[l] for l in x]
 
+    
+    order = np.argsort(y)
+    y = [y[i] for i in order]
+    x = [x[i] for i in order]
+
     graduation = np.linspace(0, len(y), len(y))
     axe.bar(height=y, left=graduation)
     axe.set_xticks(graduation)

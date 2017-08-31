@@ -373,18 +373,21 @@ class Viz_handler(Qt_matplotlib_handler):
 
         # add button
         # logging.info("action buttons=adding")
+        #if self.viz_engine.x_raw:
         add_button(
             self.window,
             "Export x",
             lambda: self.viz_engine.export(self.viz_engine.output_path),
             self.right_dock,
         )
+        '''
         add_button(
             self.window,
             "View_details",
             lambda: self.viz_engine.view_details_figure(),
             self.right_dock,
         )
+        '''
         # logging.info("action buttons=ready")
 
         # add menulist

@@ -179,10 +179,10 @@ def main():
     if not no_vizualize:
 
         f = vizualization.Vizualization(
-            raw_inputs=transactions_raw,
-            raw_inputs_columns=transactions_columns,
             projected_input=x_2D,
             predicted_outputs=x_predicted,
+            raw_inputs=transactions_raw,
+            raw_inputs_columns=transactions_columns,
             correct_outputs=y_small,
             resolution=200,
             class_decoder=class_decoder,
@@ -191,7 +191,7 @@ def main():
             number_of_clusters=120,
             features_name_to_filter  = features_name_to_filter,
             features_name_to_display = features_name_to_display,
-            output_path=os.path.join(os.path.__file__, 'output.csv'),
+            output_path=os.path.join('output.csv'),
             model_path=MODEL_PATH,
             data_unique_id_string=data_unique_id_string
         )
