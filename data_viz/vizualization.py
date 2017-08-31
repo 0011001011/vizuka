@@ -331,17 +331,20 @@ class Vizualization:
                 item for item, selected in selected_feature_list.items() if selected
                 ]
         self.display_by_filter()
+        print('filtering only ::', self.feature_to_display_by_col[feature_col])
 
     def filter_by_correct_class(self, selected_outputs_class_list):
         self.correct_class_to_display = {
                 output_class for output_class, selected in selected_outputs_class_list.items() if selected
                 }
+        print('filtering only ::', self.correct_class_to_display)
         self.display_by_filter()
 
     def filter_by_predicted_class(self, selected_outputs_class_list):
         self.predicted_class_to_display = {
                 output_class for output_class, selected in selected_outputs_class_list.items() if selected
                 }
+        print('filtering only ::', self.predicted_class_to_display)
         self.display_by_filter()
 
     def display_by_filter(self):
@@ -351,11 +354,13 @@ class Vizualization:
         index_inputs_to_display = set()
 
         for output_class in self.predicted_class_to_display:
-            for index, predited_class in enumerate(self.prediction_outputs):
-                if predited_class == output_class:
+            print('looking for ', output_class)
+            for index, predicted_class in enumerate(self.prediction_outputs):
+                if predicted_class == output_class:
                     index_inputs_to_display.add(index)
         
         for output_class in self.correct_class_to_display:
+            print('looking for ', output_class)
             for index, true_class in enumerate(self.correct_outputs) :
                 if true_class == output_class:
                     index_inputs_to_display.add(index)
@@ -367,14 +372,21 @@ class Vizualization:
         bad_to_display, good_to_display, special_to_display = set(), set(), set()
 
         for index in index_inputs_to_display:
+            print('display index ', index)
+            print('features columns to check ', self.feature_to_display_by_col)
+            index_pass_feature_check = True
             for col in self.feature_to_display_by_col.keys():
-                if self.x_raw[index][col] in self.feature_to_display_by_col[col]:
-                    if index in self.index_bad_predicted:
-                        bad_to_display.add(index)
-                    elif index in self.index_good_predicted:
-                        good_to_display.add(index)
-                    else:
-                        special_to_display.add(index)
+                # check if there is a feature check
+                if self.x_raw[index][col] not in self.feature_to_display_by_col[col]:
+                    index_pass_feature_check = False
+                    continue
+            if index_pass_feature_check:
+                if index in self.index_bad_predicted:
+                    bad_to_display.add(index)
+                elif index in self.index_good_predicted:
+                    good_to_display.add(index)
+                else:
+                    special_to_display.add(index)
 
         bad_to_display_array = np.array([self.projected_input[i] for i in bad_to_display])
         good_to_display_array = np.array([self.projected_input[i] for i in good_to_display])
