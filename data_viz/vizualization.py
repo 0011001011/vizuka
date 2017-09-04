@@ -212,9 +212,6 @@ class Vizualization:
         self.shift_held = False
         self.ctrl_held = False
 
-        self.cols = ['effectif local', 'accuracy local - p-value',
-                     'effectif global',
-                     'common mistakes']
         self.local_effectif = {}
         self.local_proportion = {}
         self.local_confusion_by_class = {class_:{class__:0 for class__ in self.possible_outputs_list} for class_ in self.possible_outputs_list}
@@ -270,7 +267,6 @@ class Vizualization:
     
         # Sort good/bad/not predictions in t-SNE space
         logging.info("projections=listing")
-        logging.info("projections= %s", {key: len(output) for key, output in self.index_by_true_output.items()})
         
         self.proportion_by_class = {}
         for possible_output in self.possible_outputs_list:
@@ -474,7 +470,12 @@ class Vizualization:
             self.time_logging('cluster delimited')
             self.update_summary(clicked_cluster)
             self.print_summary(self.summary_axe)
-            self.cluster_view.update_cluster_view(clicked_cluster, self.index_by_cluster_label)
+            self.cluster_view.update_cluster_view(
+                    clicked_cluster,
+                    self.index_by_cluster_label,
+                    indexes_good = self.index_good_predicted,
+                    indexes_bad = self.index_bad_predicted,
+                    )
 
         if left_click:
             handle_left_click(self)
@@ -1199,10 +1200,14 @@ class Vizualization:
 
         self.rows = row_labels
 
+        cols = ['#class_local (#class_local/#class)', 'accuracy local (accuracy global) - p-value',
+                     '#class (#class/#all_class)',
+                     'common mistakes']
+
         summary = axe.table(
             cellText=values,
             rowLabels=row_labels,
-            colLabels=self.cols,
+            colLabels=cols,
             loc='center',
         )
         summary.auto_set_font_size(False)
@@ -1282,7 +1287,7 @@ class Vizualization:
         gs=GridSpec(3,4)
 
         self.time_logging("main_fig")
-        self.cluster_view = Cluster_viewer(self.features_to_display, self.x_raw, self.x_raw_columns)
+        self.cluster_view = Cluster_viewer(self.features_to_display, self.x_raw, self.x_raw_columns, show_dichotomy=True)
         
         #self.view_details = View_details(self.x_raw)
         self.viz_handler = Viz_handler(

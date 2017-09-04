@@ -9,6 +9,8 @@ from collections import Counter
 
 
 def plot_density(data, axe, scale='linear'):
+    if not data:
+        return
 
     data = [float(d) for d in data]
     bins = 100 # int(len(data)/10)
@@ -20,9 +22,13 @@ def plot_density(data, axe, scale='linear'):
     axe.bar(center, hist, align='center', width=width)
 
 def plot_logdensity(data, axe):
+    if not data:
+        return
     plot_density(data, axe, scale='log')
 
 def plot_wordcloud(data, axe):
+    if not data:
+        return
     # ok fuck let's be stupid for testing purpose
     data = [str(d) for d in data]
     words_freq = Counter(sum([phrase.split(' ') for phrase in data], []))
@@ -36,6 +42,8 @@ def plot_wordcloud(data, axe):
     axe.imshow(wc.to_array())
 
 def plot_counter(data, axe):
+    if not data:
+        return
     c = Counter(data)
     x = [l for l in c.keys()]
     y = [c[l] for l in x]
@@ -60,10 +68,11 @@ CLUSTER_PLOTTER = {
             
 class Cluster_viewer(matplotlib.figure.Figure):
 
-    def __init__(self, features_to_display, x_raw, x_raw_columns):
+    def __init__(self, features_to_display, x_raw, x_raw_columns, show_dichotomy=True):
         super().__init__()
         self.x_raw = x_raw
         self.x_raw_columns = x_raw_columns
+        self.show_dichotomy = show_dichotomy
 
         self.features_to_display = features_to_display
         self.subplot_by_name = {}
@@ -71,35 +80,76 @@ class Cluster_viewer(matplotlib.figure.Figure):
 
         for feature_name in features_to_display.keys():
             for plotter in features_to_display[feature_name]:
-                self.subplot_by_name[feature_name+plotter] = add_subplot(self)
+                self.subplot_by_name[feature_name+plotter] = {}
+                if self.show_dichotomy:
+                    self.subplot_by_name[feature_name+plotter]['good'] = add_subplot(self)
+                    self.subplot_by_name[feature_name+plotter]['bad' ] = add_subplot(self)
+                else:
+                    self.subplot_by_name[feature_name+plotter]['all']  = add_subplot(self)
+
 
     def clear(self):
-        for subplot in self.subplot_by_name.values():
-            subplot.clear()
+        for subplots in self.subplot_by_name.values():
+            for subplot in subplots.values():
+                subplot.clear()
         self.cluster_view_selected_indexes = []
 
-    def update_cluster_view(self, clicked_cluster, index_by_cluster_label):
+    def update_cluster_view(self, clicked_cluster, index_by_cluster_label, indexes_good, indexes_bad):
         """
         Updates the axes with the data of the clicked cluster
+
+        clicked cluster: the label of the cluster you clicked
+        index_by_cluster_label: indexs of datas indexed by cluster label (set containing int)
+        indexes_good: indexes of all good predictions
+        indexes_bad: indexes of all bad predicitons
         """
         self.cluster_view_selected_indexes += index_by_cluster_label[clicked_cluster]
-        selected_xs_raw  = [self.x_raw[idx] for idx in self.cluster_view_selected_indexes]
+        selected_xs_raw  ={'all': [self.x_raw[idx] for idx in self.cluster_view_selected_indexes]}
+        if self.show_dichotomy:
+            selected_xs_raw['good'] = [self.x_raw[idx] for idx in self.cluster_view_selected_indexes if idx in indexes_good]
+            selected_xs_raw['bad' ] = [self.x_raw[idx] for idx in self.cluster_view_selected_indexes if idx in indexes_bad ]
         
         columns_to_display = [list(self.x_raw_columns).index(i) for i in self.features_to_display]
         data_to_display = {
-                self.x_raw_columns[i]:[x[i] for x in selected_xs_raw]
+                'all':
+                        {
+                        self.x_raw_columns[i]:[x[i] for x in selected_xs_raw['all']]
+                        for i in columns_to_display
+                        }
+                    }
+        if self.show_dichotomy:
+            data_to_display['good'] = {
+                self.x_raw_columns[i]:[x[i] for x in selected_xs_raw['good']]
+                for i in columns_to_display
+                }
+            data_to_display['bad'] = {
+                self.x_raw_columns[i]:[x[i] for x in selected_xs_raw['bad']]
                 for i in columns_to_display
                 }
 
-        for data_name in data_to_display:
-            for plotter_name in self.features_to_display[data_name]:
-                plotter = CLUSTER_PLOTTER[plotter_name]
-                axe_to_update = self.subplot_by_name[data_name+plotter_name]
-                axe_to_update.clear()
-                plotter(data_to_display[data_name], axe_to_update)
-                if 'log' in data_to_display[data_name]:
-                    data_name += ' - log'
-                axe_to_update.set_title(data_name)
+        def plot_it(data_name, axe_to_update_, key):
+            axe_to_update = axe_to_update_[key]
+            axe_to_update.clear()
+            data = data_to_display[key][data_name]
+            plotter(data, axe_to_update)
+            if 'log' in data_to_display[key][data_name]:
+                data_name += ' - log'
+            data_name +=  ' - {} predictions'.format(key)
+            axe_to_update.set_title(data_name)
+
+        if self.show_dichotomy:
+            for key in ['good', 'bad']:
+                for data_name in self.features_to_display:
+                    for plotter_name in self.features_to_display[data_name]:
+                        plotter = CLUSTER_PLOTTER[plotter_name]
+                        axe_to_update = self.subplot_by_name[data_name+plotter_name]
+                        plot_it(data_name, axe_to_update, key) 
+        else:
+            for data_name in data_to_display:
+                for plotter_name in self.features_to_display[data_name]:
+                    plotter = CLUSTER_PLOTTER[plotter_name]
+                    axe_to_update = self.subplot_by_name[data_name+plotter_name]
+                    plot_it(data_name, axe_to_update ,'all')
 
 
 def moar_filters(
