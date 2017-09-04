@@ -1,3 +1,0 @@
-apt-get install cmake
-cd Multicore-TSNE/  		# git clone https://github.com/DmitryUlyanov/Multicore-TSNE.git
-pip install --no-cache-dir .
