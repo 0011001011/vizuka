@@ -13,7 +13,7 @@ Simply run
 vizuka
 
 # Similar to :
-python3 data_viz/launch_viz.py
+python3 vizuka/launch_viz.py
 ```
 
 It assumes you already have your 2D data, if not you can ask for tSNE+PCA reduction :
@@ -49,7 +49,7 @@ Other options:
 What does it needs to be executed ?
 -----------------------------------
 
-data_viz needs the following files:
+vizuka needs the following files:
 * pre-processed transactions
 * predictions:
     * predictor (currently only the keras NN are supported), the algo which will eat the pre-processed transactions
