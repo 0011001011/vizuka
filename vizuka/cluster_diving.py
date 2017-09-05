@@ -32,6 +32,7 @@ def plot_wordcloud(data, axe):
     # ok fuck let's be stupid for testing purpose
     data = [str(d) for d in data]
     words_freq = Counter(sum([phrase.split(' ') for phrase in data], []))
+    del words_freq['']
     wc = wordcloud.WordCloud()
     
     wc.fit_words(words_freq)
