@@ -13,6 +13,8 @@ import numpy as np
 from matplotlib import pyplot as plt
 from sklearn.cluster import KMeans, DBSCAN
 from scipy.spatial import cKDTree
+import ipdb
+import logging
 
 from vizuka import vizualization
 
@@ -113,7 +115,7 @@ class DBSCANClusterizer(Clusterizer):
         Inits a DBSCAN clustering engine from sklearn
         Accepts the same arguments
         """
-        self.engine = DBSCAN(n_jobs=4, *args, **kwargs)
+        self.engine = DBSCAN(n_jobs=4, eps=1.6, min_samples=30, *args, **kwargs)
 
     def fit(self, xs):
         """
@@ -131,19 +133,45 @@ class DBSCANClusterizer(Clusterizer):
         """
         xs_tuple = [ tuple(x) for x in xs ]
         tmp = self.engine.fit_predict(xs_tuple)
+        
         self.predictions = {xs_tuple[idx]: predict for idx, predict in enumerate(tmp)}
-
         labels = set(tmp)
-        f = plt.figure()
-        s = f.add_subplot(111)
 
-        for i in labels:
-            to_display = np.array([x for idx,x in enumerate(xs) if i == tmp[idx]])
-            s.scatter(to_display[:,0], to_display[:,1])
+        def do(xs_tuple):
+            tmp = self.engine.fit_predict(xs_tuple)
+            self.predictions = {xs_tuple[idx]: predict for idx, predict in enumerate(tmp)}
+            labels = set(tmp)
 
-        plt.show()
+            f = plt.figure()
+            s = f.add_subplot(111)
+            s.set_title(str(len(labels))+" class")
+
+            for i in labels:
+                to_display = np.array([x for idx,x in enumerate(xs_tuple) if i == tmp[idx]])
+                s.scatter(to_display[:,0], to_display[:,1])
+
+            plt.show()
+        
+        # do(xs_tuple)
+
         self.kdtree = cKDTree(xs)
         self.xs = xs
+        logging.info("DBSCAN found {} labels".format(len(labels)))
+
+        # There is a problm here : all isolated points are classified -1
+        # in DBSCAN, which is a problem for our interactive cluster selection
+        # as selecting a title (labelled as the label of nearest point to its
+        # "centroid") may lead to select all tiles labelled as -1 : this would
+        # be very ugly
+
+        class_min = min(labels)
+        for key, class_ in self.predictions.items():
+            if class_ <= -1:
+                class_min-=1
+                self.predictions[key] = class_min
+        labels = set(self.predictions.values())
+        
+        logging.info("DBSCAN found {} labels after correction".format(len(labels)))
 
     def predict(self, xs):
         """
