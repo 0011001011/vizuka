@@ -4,14 +4,14 @@ Data vizualization
 This is a collection of tools to represent and navigate through the high-dimensional data. The algorithm t-SNE has been used to construct the 2D space so some choices and feature of the visualization may reflect that. The module should be agnostic of the data provided.
 
 Default view looks like this:
-![alt mainview](docs/main_view.png')
+![alt mainview](docs/main_view.png)
 
 You can draw clusters details and zoom in:
-![alt zoomview](docs/zoom_view.png')
+![alt zoomview](docs/zoom_view.png)
 
 And if you specify a set of non-preprocessed inputs to associate with your training data you can also view them in details in a per-cluster view :
 
-![alt clusterview](docs/cluster_view.png')
+![alt clusterview](docs/cluster_view.png)
 
 
 Usage
