@@ -35,7 +35,7 @@ from vizuka.config import (
 def find_grid_position(x, y, resolution, amplitude):
     """
     Gives the int indexes of (x,y) inside the grid matrix
-    :param resolution: size of grid (number of square by row/column)
+    :param resolution: size of grid (nb of square by row/column)
     :param amplitude:  size of embedded space, as max of axis (rounded as an int)
                        e.g: [[-1,1],[.1,.1] as an amplitude of 2
     """
@@ -112,7 +112,7 @@ class Vizualization:
             correct_outputs,
             resolution=100,
             special_class='0',
-            number_of_clusters=120,
+            nb_of_clusters=120,
             features_name_to_filter=[],
             features_name_to_display={},
             class_decoder=(lambda x: x), class_encoder=(lambda x: x),
@@ -150,7 +150,7 @@ class Vizualization:
         self.projected_input = projected_input
         self.x_raw = raw_inputs
         self.x_raw_columns = raw_inputs_columns
-        self.number_of_clusters = number_of_clusters
+        self.nb_of_clusters = nb_of_clusters
         self.class_decoder = class_decoder
         self.special_class = str(special_class)
         
@@ -170,7 +170,7 @@ class Vizualization:
         self.possible_outputs_list.sort()
         # logging.info("correct outputs : %", self.correct_outputs)
         self.projection_points_list_by_correct_output = {y: [] for y in self.correct_outputs}
-        self.number_of_individual_by_true_output = {}
+        self.nb_of_individual_by_true_output = {}
         self.index_by_true_output = {class_:[] for class_ in self.possible_outputs_list}
 
         for index, projected_input in enumerate(self.projected_input):
@@ -181,7 +181,7 @@ class Vizualization:
         for possible_output in self.projection_points_list_by_correct_output:
             self.projection_points_list_by_correct_output[possible_output] = np.array(
                 self.projection_points_list_by_correct_output[possible_output])
-            self.number_of_individual_by_true_output[possible_output] = len(
+            self.nb_of_individual_by_true_output[possible_output] = len(
                 self.projection_points_list_by_correct_output[possible_output])
 
         self.resolution = resolution # counts of tiles per row/column
@@ -543,59 +543,59 @@ class Vizualization:
         
         index_by_cluster_label = { cluster_label:[] for cluster_label in all_cluster_labels }
         
-        number_of_points_by_class_by_cluster = {
+        nb_of_points_by_class_by_cluster = {
                 cluster_label: {
                     output_class:0 for output_class in self.projection_points_list_by_correct_output }
                 for cluster_label in all_cluster_labels
                 }
         
-        number_null_point_by_cluster = dict()
-        number_good_point_by_cluster = dict()
-        number_bad_point_by_cluster  = dict()
-        number_good_point_by_class_by_cluster = dict()
-        number_bad_point_by_class_by_cluster  = dict()
+        nb_null_point_by_cluster = dict()
+        nb_good_point_by_cluster = dict()
+        nb_bad_point_by_cluster  = dict()
+        nb_good_point_by_class_by_cluster = dict()
+        nb_bad_point_by_class_by_cluster  = dict()
         
         for index, cluster_label in enumerate(self.cluster_by_idx):
             index_by_cluster_label[cluster_label].append(index)
-            number_of_points_by_class_by_cluster[cluster_label][self.correct_outputs[index]]+=1
+            nb_of_points_by_class_by_cluster[cluster_label][self.correct_outputs[index]]+=1
 
 
         logging.info('clustering: analyze each one')
         for cluster_label in all_cluster_labels:
-            number_good_point_by_cluster[cluster_label] = 0
-            number_bad_point_by_cluster[cluster_label]  = 0
-            number_null_point_by_cluster[cluster_label] = 0
-            number_good_point_by_class_by_cluster[cluster_label] = {}
-            number_bad_point_by_class_by_cluster[cluster_label] = {}
+            nb_good_point_by_cluster[cluster_label] = 0
+            nb_bad_point_by_cluster[cluster_label]  = 0
+            nb_null_point_by_cluster[cluster_label] = 0
+            nb_good_point_by_class_by_cluster[cluster_label] = {}
+            nb_bad_point_by_class_by_cluster[cluster_label] = {}
 
             for point_in_cluster_index in index_by_cluster_label[cluster_label]:
                 point_correct_output = self.correct_outputs[point_in_cluster_index]
                 if point_in_cluster_index in self.index_good_predicted:
-                    number_good_point_by_cluster[cluster_label] += 1
-                    if point_correct_output in number_good_point_by_class_by_cluster[cluster_label]:
-                        number_good_point_by_class_by_cluster[cluster_label][point_correct_output] += 1
+                    nb_good_point_by_cluster[cluster_label] += 1
+                    if point_correct_output in nb_good_point_by_class_by_cluster[cluster_label]:
+                        nb_good_point_by_class_by_cluster[cluster_label][point_correct_output] += 1
                     else:
-                        number_good_point_by_class_by_cluster[cluster_label][point_correct_output] = 1
+                        nb_good_point_by_class_by_cluster[cluster_label][point_correct_output] = 1
 
                 elif point_in_cluster_index in self.index_bad_predicted:
-                    number_bad_point_by_cluster[cluster_label] += 1
-                    if point_correct_output in number_bad_point_by_class_by_cluster[cluster_label]:
-                        number_bad_point_by_class_by_cluster[cluster_label][point_correct_output] += 1
+                    nb_bad_point_by_cluster[cluster_label] += 1
+                    if point_correct_output in nb_bad_point_by_class_by_cluster[cluster_label]:
+                        nb_bad_point_by_class_by_cluster[cluster_label][point_correct_output] += 1
                     else:
-                        number_bad_point_by_class_by_cluster[cluster_label][point_correct_output] = 1
+                        nb_bad_point_by_class_by_cluster[cluster_label][point_correct_output] = 1
                 elif point_in_cluster_index in self.index_not_predicted:
-                    number_null_point_by_cluster[cluster_label] += 1
+                    nb_null_point_by_cluster[cluster_label] += 1
                 else:
                     logging.error("index not in any indexes : %s", point_in_cluster_index)
 
         
-        self.number_good_point_by_cluster = number_good_point_by_cluster
-        self.number_bad_point_by_cluster = number_bad_point_by_cluster
-        self.number_good_point_by_class_by_cluster = number_good_point_by_class_by_cluster
-        self.number_bad_point_by_class_by_cluster = number_bad_point_by_class_by_cluster
-        self.number_null_point_by_cluster = number_null_point_by_cluster
+        self.nb_good_point_by_cluster = nb_good_point_by_cluster
+        self.nb_bad_point_by_cluster = nb_bad_point_by_cluster
+        self.nb_good_point_by_class_by_cluster = nb_good_point_by_class_by_cluster
+        self.nb_bad_point_by_class_by_cluster = nb_bad_point_by_class_by_cluster
+        self.nb_null_point_by_cluster = nb_null_point_by_cluster
         self.index_by_cluster_label = index_by_cluster_label
-        self.number_of_points_by_class_by_cluster = number_of_points_by_class_by_cluster
+        self.nb_of_points_by_class_by_cluster = nb_of_points_by_class_by_cluster
 
     def calculate_centroid_coordinates(self, x, y):
         return x + self.resolution * y
@@ -719,8 +719,8 @@ class Vizualization:
                 if label_down_neighbor != current_centroid_label:
                     if (label_down_neighbor, current_centroid_label) not in frontier:
                         current_frontier = frontier_builder(
-                                    self.number_of_points_by_class_by_cluster[label_down_neighbor],
-                                    self.number_of_points_by_class_by_cluster[current_centroid_label]
+                                    self.nb_of_points_by_class_by_cluster[label_down_neighbor],
+                                    self.nb_of_points_by_class_by_cluster[current_centroid_label]
                                     )
                         if current_frontier > -np.inf:
                             frontier[(label_down_neighbor, current_centroid_label)] = current_frontier
@@ -730,8 +730,8 @@ class Vizualization:
                 if label_left_neighbor != current_centroid_label:
                     if (label_left_neighbor, current_centroid_label) not in frontier:
                         current_frontier = frontier_builder(
-                                    self.number_of_points_by_class_by_cluster[label_left_neighbor],
-                                    self.number_of_points_by_class_by_cluster[current_centroid_label]
+                                    self.nb_of_points_by_class_by_cluster[label_left_neighbor],
+                                    self.nb_of_points_by_class_by_cluster[current_centroid_label]
                                     )
                         if current_frontier > -np.inf:
                             frontier[(label_left_neighbor, current_centroid_label)] = current_frontier
@@ -834,15 +834,15 @@ class Vizualization:
 
             current_centroid_cluster_label = centroids_cluster_by_index[index]
 
-            number_good_points = self.number_good_point_by_cluster.get(current_centroid_cluster_label, 0)
-            number_bad_points  = self.number_bad_point_by_cluster.get (current_centroid_cluster_label, 0)
-            number_null_points = self.number_null_point_by_cluster.get(current_centroid_cluster_label, 0)
+            nb_good_points = self.nb_good_point_by_cluster.get(current_centroid_cluster_label, 0)
+            nb_bad_points  = self.nb_bad_point_by_cluster.get (current_centroid_cluster_label, 0)
+            nb_null_points = self.nb_null_point_by_cluster.get(current_centroid_cluster_label, 0)
 
-            number_of_valid_cluster_points = number_good_points + number_bad_points
+            nb_of_valid_cluster_points = nb_good_points + nb_bad_points
 
-            if number_of_valid_cluster_points > 0:
-                proportion_correct   = number_good_points / float(number_of_valid_cluster_points)
-                proportion_null      = number_null_points / float(number_of_valid_cluster_points)
+            if nb_of_valid_cluster_points > 0:
+                proportion_correct   = nb_good_points / float(nb_of_valid_cluster_points)
+                proportion_null      = nb_null_points / float(nb_of_valid_cluster_points)
                 proportion_incorrect = 1 - proportion_correct
             else:
                 proportion_correct = 1
@@ -879,11 +879,11 @@ class Vizualization:
         
         entropys = []
 
-        ordered_class_list = list(self.number_of_individual_by_true_output.keys())
+        ordered_class_list = list(self.nb_of_individual_by_true_output.keys())
         ordered_class_list.sort()
         global_list = []
         for class_ in ordered_class_list:
-            global_list.append(self.number_of_individual_by_true_output.get(class_))
+            global_list.append(self.nb_of_individual_by_true_output.get(class_))
         global_array = np.array(global_list)
         global_entropy = np.log(global_array / np.sum(global_array))
 
@@ -891,21 +891,21 @@ class Vizualization:
     
             current_centroid_label = centroids_label[index]
 
-            number_of_point_by_class      = self.number_of_points_by_class_by_cluster.get(current_centroid_label, {})
-            number_of_point_by_class_list = [number_of_point_by_class.get(class_, 0) for class_ in ordered_class_list]
+            nb_of_point_by_class      = self.nb_of_points_by_class_by_cluster.get(current_centroid_label, {})
+            nb_of_point_by_class_list = [nb_of_point_by_class.get(class_, 0) for class_ in ordered_class_list]
            
             try:
-                cluster_is_empty = bool(self.index_by_cluster_label[current_centroid_label])
+                cluster_is_empty = not bool(self.index_by_cluster_label[current_centroid_label])
             except KeyError:
                 cluster_is_empty=True
 
-            if (not number_of_point_by_class) or cluster_is_empty:
+            if (not nb_of_point_by_class) or cluster_is_empty:
                 current_entropy = 0
             else:
                 current_entropy = (
                     cross_entropy(
                         global_array,
-                        number_of_point_by_class_list,
+                        nb_of_point_by_class_list,
                         global_entropy=global_entropy
                         )
                     )
@@ -973,10 +973,10 @@ class Vizualization:
         """
         Makes a filename for the pickled object of your clusterizer
         """
-        base_path, data_unique_id_string, number_of_clusters, clustering_method = (
+        base_path, data_unique_id_string, nb_of_clusters, clustering_method = (
             self.model_path,
             self.data_unique_id_string,
-            self.number_of_clusters,
+            self.nb_of_clusters,
             method,
         )
         if not os.path.exists(base_path):
@@ -989,7 +989,7 @@ class Vizualization:
         cluster_filename = '_cachejoin_'.join(
                 [str(x) for x in [
                     data_unique_id_string,
-                    number_of_clusters,
+                    nb_of_clusters,
                     clustering_method
                     ]])
 
@@ -1012,7 +1012,7 @@ class Vizualization:
             method = self.last_clusterizer_method
         if method == 'kmeans':
             self.clusterizer = clustering.KmeansClusterizer(
-                n_clusters=self.number_of_clusters,
+                n_clusters=self.nb_of_clusters,
             )
         elif method == 'dbscan':
             self.clusterizer = clustering.DBSCANClusterizer()
@@ -1098,7 +1098,7 @@ class Vizualization:
 
         :param current_cluster: cluster name selected by click
         """
-        to_include = self.number_of_points_by_class_by_cluster.get(current_cluster, {})
+        to_include = self.nb_of_points_by_class_by_cluster.get(current_cluster, {})
         to_include = { k:to_include[k] for k in to_include if to_include[k]!=0 }
 
         if current_cluster in self.currently_selected_cluster:
@@ -1116,17 +1116,17 @@ class Vizualization:
         self.local_classes = self.local_classes.union(set(to_include.keys()))
         self.local_sum = sum(to_include.values()) + self.local_sum
         
-        number_good_point_by_class = self.number_good_point_by_class_by_cluster[current_cluster]
-        number_bad_point_by_class = self.number_bad_point_by_class_by_cluster[current_cluster]
+        nb_good_point_by_class = self.nb_good_point_by_class_by_cluster[current_cluster]
+        nb_bad_point_by_class = self.nb_bad_point_by_class_by_cluster[current_cluster]
 
         for output_class in new_rows:
             self.local_effectif[output_class] = to_include[output_class]
 
             self.local_proportion[output_class] = (
-                number_good_point_by_class.get(output_class,0) /
+                nb_good_point_by_class.get(output_class,0) /
                 (
-                    number_good_point_by_class.get(output_class,0)
-                    + number_bad_point_by_class.get(output_class,0)
+                    nb_good_point_by_class.get(output_class,0)
+                    + nb_bad_point_by_class.get(output_class,0)
                     )
             )
         for cluster in self.currently_selected_cluster:
@@ -1144,10 +1144,10 @@ class Vizualization:
             self.local_proportion[output_class] = ((
                     self.local_proportion[output_class] * self.local_effectif[output_class]
                     + (
-                        number_good_point_by_class.get(output_class,0)
+                        nb_good_point_by_class.get(output_class,0)
                         / (
-                            number_good_point_by_class.get(output_class,0)
-                            + number_bad_point_by_class.get(output_class,0)
+                            nb_good_point_by_class.get(output_class,0)
+                            + nb_bad_point_by_class.get(output_class,0)
                             )
                         * to_include.get(output_class, 0)
                    )
@@ -1155,8 +1155,8 @@ class Vizualization:
             )
 
             self.local_effectif[output_class] += (
-                    number_good_point_by_class.get(output_class,0)
-                    + number_bad_point_by_class.get(output_class,0)
+                    nb_good_point_by_class.get(output_class,0)
+                    + nb_bad_point_by_class.get(output_class,0)
                     )
 
     def get_selected_indexes(self):
@@ -1177,7 +1177,7 @@ class Vizualization:
         This method gets its data mainly from self.local_proportion and self.local_effectif,
         these objects are self-updated when needed and contain the data of the user-selected clusters
         
-        :param max_row: max number of row to add in table summary
+        :param max_row: max nb of row to add in table summary
         :param axe: the matplotlib axe in which the stats will be plotted
         """
 
@@ -1188,8 +1188,8 @@ class Vizualization:
                 (
                     '{0:.0f} ({1:.1f}%)'.format(
                         self.local_effectif[c],
-                        self.local_effectif[c] / self.number_of_individual_by_true_output[c] * 100),
-                    )
+                        self.local_effectif[c] / self.nb_of_individual_by_true_output[c] * 100),
+                    ),
                 (
                     '{0:.2f}% ({1:.1f}%) - {0:.2f}'.format(
                         self.local_proportion[c]*100,
@@ -1200,19 +1200,19 @@ class Vizualization:
                             self.proportion_by_class[c],
                             alternative='two-sided'
                             ) * 100,
-                        )
+                        ),
                     ),
                 (
                     '{0:.0f} ({1:.2f}%)'.format(
-                        self.number_of_individual_by_true_output[c],
-                        self.number_of_individual_by_true_output[c] / float(len(self.projected_input)) * 100,
-                        )
+                        self.nb_of_individual_by_true_output[c],
+                        self.nb_of_individual_by_true_output[c] / float(len(self.projected_input)) * 100,
+                        ),
                     ),
                 (
                     ' '.join([
-                        '{}'.format(class_mistaken[:6])+ '({0:.0f}%)'.format(error_count/float(self.local_bad_count_by_class[c])*100)
+                        '{:.6}'.format(class_mistaken)+ '({0:.1f}%)'.format(error_count/float(self.local_bad_count_by_class[c])*100)
                         for class_mistaken, error_count in self.local_confusion_by_class_sorted[c] if self.local_bad_count_by_class[c]!=0
-                        ])
+                        ]),
                     ),
             ]
             for c in row_labels
@@ -1224,7 +1224,7 @@ class Vizualization:
         row_labels = [row_labels[i][:6] for i in arg_sort[::-1]]
         # add row "all" for recap :
 
-        max_row    = min(max_row, min(len(values), len(row_labels)))-1
+        max_row    = min(max_row, min(len(values), len(row_labels)))
         values     = values[:max_row]
         row_labels = row_labels[:max_row]
         
@@ -1251,6 +1251,10 @@ class Vizualization:
         logging.info("Details=loaded")
         
     def print_global_summary(self, ax, max_row=9):
+        """
+        Prints a global summary with the most frequent class and
+        their classification accuracy
+        """
         
         cols = ['accuracy', 'effectif']
         most_common_classes = Counter(
@@ -1265,8 +1269,8 @@ class Vizualization:
                 '{0:.2f}'.format(self.proportion_by_class[c]*100)+"%",
                 (
                     '{0:.0f} ({0:.2f}%)'.format(
-                        self.number_of_individual_by_true_output[c],
-                        self.number_of_individual_by_true_output[c] / float(len(self.projected_input)) * 100
+                        self.nb_of_individual_by_true_output[c],
+                        self.nb_of_individual_by_true_output[c] / float(len(self.projected_input)) * 100
                         )
                     ),
             ]
