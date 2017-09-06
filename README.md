@@ -3,17 +3,6 @@ Data vizualization
 
 This is a collection of tools to represent and navigate through the high-dimensional data. The algorithm t-SNE has been used to construct the 2D space so some choices and feature of the visualization may reflect that. The module should be agnostic of the data provided.
 
-Working examples : draw clusters, find details about inside distribution and zoom in:
-![alt zoomview](docs/zoom_view.png)
-
-Here is the view you get when you launch it :
-![alt mainview](docs/main_view.png)
-
-And if you specify a set of non-preprocessed inputs to associate with your training data you can also view them in details in a per-cluster view :
-
-![alt clusterview](docs/cluster_view.png)
-
-
 Usage
 -----
 
@@ -33,6 +22,20 @@ vizuka --reduce
 ```
 
 It will search in its \_\_package\_\_/data/ the datas but you can force your own with __--path__ argument
+
+What will I get ?
+-----------------
+
+Working examples : draw clusters, find details about inside distribution and zoom in:
+![alt zoomview](docs/zoom_view.png)
+
+Here is the view you get when you launch it :
+![alt mainview](docs/main_view.png)
+
+And if you specify a set of non-preprocessed inputs to associate with your training data you can also view them in details in a per-cluster view :
+
+![alt clusterview](docs/cluster_view.png)
+
 
 ### How to use ?
 Navigate inside the 2D space and look at the data, selecting it in the main window (the big one). Only this one is interactive. Data is grouped by cluster, you can select cluster individually (left click).

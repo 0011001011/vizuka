@@ -394,7 +394,7 @@ class Viz_handler(Qt_matplotlib_handler):
         add_menulist(
             self.window,
             'Clustering method',
-            'Clusterize', ['KMeans', 'DBSCAN', 'Dummy'],
+            'Clusterize', ['KMeans', 'DBSCAN', 'Loader', 'Dummy'],
             self.viz_engine.request_new_clustering,
             dockarea=self.right_dock,
         )

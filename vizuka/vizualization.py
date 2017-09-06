@@ -107,22 +107,6 @@ class Vizualization:
     Mouse control and keyboard shortcuts are used (later: QtButtons) ..seealso:: self.controls
     """
     
-    def time_logging(self, message=None):
-        """Silly module to do manual profiling"""
-        import inspect
-        caller_method_name = inspect.stack()[1][0].f_code.co_name
-
-        if not message:
-            self.last_time[caller_method_name] = time.time()
-        else:
-            new_time = time.time()
-            previous_time = self.last_time.get(caller_method_name, None)
-            if previous_time:
-                logging.info("time for %s : %s", message, new_time - previous_time)
-            else:
-                logging.info("time for %s : error, no previous time registered", message)
-            self.last_time[caller_method_name] = new_time
-    
     def __init__(
             self,
             raw_inputs,
@@ -204,8 +188,6 @@ class Vizualization:
             self.number_of_individual_by_true_output[possible_output] = len(
                 self.projection_points_list_by_correct_output[possible_output])
 
-        self.time_logging("initialazing_lists_and_dicts")
-
         self.resolution = resolution # counts of tiles per row/column
 
         self.shift_held = False
@@ -240,11 +222,7 @@ class Vizualization:
         self.size_centroid  = 2 * self.amplitude / self.resolution
         self.mesh_centroids = np.c_[mesh[0].ravel(), mesh[1].ravel()]
 
-        self.time_logging("meshs")
-
         self.calculate_prediction_projection_arrays()
-
-        self.time_logging("prediction_projection")
 
         logging.info('clustering engine=fitting')
         self.clusterizer = clustering.DummyClusterizer(mesh=self.mesh_centroids)
@@ -447,26 +425,21 @@ class Vizualization:
             3 : reset vizualization (graph+summary)
             
         """
-        self.time_logging()
         x = event.xdata
         y = event.ydata
         button = event.button
         left_click, right_click = ((button == 1), (button == 3))
-        self.time_logging('button_detected')
 
         self.summary_axe.clear()
         self.summary_axe.axis('off')
         
-        self.time_logging('summary_axes cleared')
 
         def handle_left_click(self):
             if (x is None) or (y is None):  # clicks out of the screen
                 return
             clicked_cluster = self.clusterizer.predict([(x,y)])[0]
-            self.time_logging('cluster predict')
     
             self.delimit_cluster(clicked_cluster, color=self.manual_cluster_color)
-            self.time_logging('cluster delimited')
             self.update_summary(clicked_cluster)
             self.print_summary(self.summary_axe)
             self.cluster_view.update_cluster_view(
@@ -484,9 +457,7 @@ class Vizualization:
             self.reset_summary()
             self.reset_viz()
 
-        self.time_logging()
         self.refresh_graph()
-        self.time_logging('graph_refreshed')
 
     def reset_viz(self):
         """
@@ -603,6 +574,7 @@ class Vizualization:
 
     def draw_the_line(self, x_list, y_list, color='b'):
         for axe in self.axes_needing_borders:
+            print("#"*30+"drawing lines")
             axe.add_artist(matplotlib.lines.Line2D(xdata=x_list, ydata=y_list, color=color))
 
     def line(self, float_point):
@@ -620,15 +592,15 @@ class Vizualization:
         """
         centroids_cluster_by_index = self.clusterizer.predict(self.mesh_centroids)
 
-        culster_y_list_by_x = [[] for x in range(self.resolution)]
-        culster_x_list_by_y = [[] for y in range(self.resolution)]
+        cluster_y_list_by_x = [[] for x in range(self.resolution)]
+        cluster_x_list_by_y = [[] for y in range(self.resolution)]
 
         iter_all_coordinates = ((x, y) for x in range(0, self.resolution) for y in range(0, self.resolution))
 
         for idx, (x, y) in enumerate(iter_all_coordinates):
             if centroids_cluster_by_index[idx] == cluster:
-                culster_y_list_by_x[x].append(y)
-                culster_x_list_by_y[y].append(x)
+                cluster_y_list_by_x[x].append(y)
+                cluster_x_list_by_y[y].append(x)
                 
         calculate_coordinates = self.calculate_centroid_coordinates
 
@@ -672,8 +644,8 @@ class Vizualization:
                                 self.draw_the_line(
                                     self.line(a_float_position), self.lower_bound(b_float_position, plus_one=True), color=color)
                             
-        draw_all_lines(self, culster_y_list_by_x, swapped_coordinates=True)
-        draw_all_lines(self, culster_x_list_by_y, swapped_coordinates=False)
+        draw_all_lines(self, cluster_y_list_by_x, swapped_coordinates=True)
+        draw_all_lines(self, cluster_x_list_by_y, swapped_coordinates=False)
 
         # self.refresh_graph()
         # looks like he disn't worked
@@ -693,8 +665,6 @@ class Vizualization:
         """
         axes = args[0]
         frontier = {}
-
-        self.time_logging('')
 
         logging.info('borders: calculating')
         centroids_cluster_by_index = self.clusterizer.predict(self.mesh_centroids)
@@ -721,9 +691,6 @@ class Vizualization:
                                     )
                         if current_frontier > -np.inf:
                             frontier[(label_left_neighbor, current_centroid_label)] = current_frontier
-
-        self.time_logging('apply_borders : first loop')
-
 
         frontier = { key:frontier[key] for key in frontier if frontier[key] != -np.inf }
         
@@ -781,16 +748,17 @@ class Vizualization:
                             xdata=(x-self.size_centroid/2, x-self.size_centroid/2),
                             ydata=(y-self.size_centroid/2, y+self.size_centroid/2),
                             frontier_density=frontier_density))
-        self.time_logging('apply_borders : second loop')
 
         line_collection_lines = [[elt['xdata'], elt['ydata']] for elt in lines]
         line_collection_colors = [(*elt['color'], elt['alpha']) for elt in lines]
         
-        for axe in axes:  # This loop takes 6 fucking seconds goddamit !
+        for axe in axes:
             axe.add_artist(
-                    matplotlib.collections.LineCollection(line_collection_lines, colors=line_collection_colors)
-                )
-        self.time_logging('apply_borders : add_artists')
+                    matplotlib.collections.LineCollection(
+                        line_collection_lines,
+                        colors=line_collection_colors
+                        )
+                    )
         logging.info('borders: ready')
 
     def get_coordinates_from_index(self, index):
@@ -857,15 +825,11 @@ class Vizualization:
         ..seealso:: add_heatmap
 
         """
-        self.time_logging('')
-
         all_colors = [[0 for _ in range(self.resolution)] for _ in range(self.resolution) ]
         logging.info('heatmap entropy: drawing')
         centroids_label = self.clusterizer.predict(self.mesh_centroids)
         
         entropys = []
-
-        self.time_logging('heatmap init')
 
         ordered_class_list = list(self.number_of_individual_by_true_output.keys())
         ordered_class_list.sort()
@@ -903,8 +867,6 @@ class Vizualization:
             amplitude_entropys = 1
         logging.info('heatmap entropy: max cross-entropy='+str(max_entropys)+' min='+str(min_entropys))
 
-        self.time_logging('heatmap entropy first loop')
-
         for index, (x, y) in enumerate(self.mesh_centroids):
             if index > len(entropys):
                 current_entropy = min_entropys
@@ -917,7 +879,6 @@ class Vizualization:
             all_colors[x_index][y_index] = normalized_entropy
 
         logging.info('heatmap entropy: done')
-        self.time_logging('heatmap entropy second loop')
         return all_colors
 
 
@@ -980,22 +941,20 @@ class Vizualization:
             )
         elif method == 'dbscan':
             self.clusterizer = clustering.DBSCANClusterizer()
+        elif method == 'loader':
+            self.clusterizer = clustering.LoaderClusterizer()
         else:
             self.clusterizer = clustering.DummyClusterizer(
                 mesh=self.mesh_centroids,
             )
-        self.time_logging()
+
         cache_file_path, loadable = self.get_cache_file_name(method)
+
         if loadable:
-            self.time_logging("cached cluster fit for {} with {} cluster found : loading".format(
-                self.number_of_clusters, method))
             self.clusterizer.load_cluster(cache_file_path)
         else:
             self.last_clusterizer_method = method
-            self.time_logging("cluster fitting: begin")
             self.clusterizer.fit(xs=self.projected_input)
-            self.time_logging("cluster fit for {} with {} cluster found : done".format(
-                self.number_of_clusters, method))
             self.clusterizer.save_cluster(cache_file_path)
 
     def request_new_clustering(self, method):
@@ -1005,15 +964,10 @@ class Vizualization:
         :param method: clustering engine to use ..seealso:clustering module
         """
         method = method.lower()
-
         self.clustering_fit(method)
 
-        self.time_logging()
-
         self.cluster_label_mesh()
-        self.time_logging('cluster_label_mesh')
         self.update_all_heatmaps()
-        self.time_logging('update_all_hitmaps')
 
         self.apply_borders(
                 self.normalize_frontier,
@@ -1021,14 +975,10 @@ class Vizualization:
                 self.axes_needing_borders)
         logging.info('borders: done')
 
-        self.time_logging('apply_borders')
 
         self.reset_summary()
-        self.time_logging('reset_summary')
         self.reset_viz()
-        self.time_logging('reset_viz')
         self.refresh_graph()
-        self.time_logging('refresh_graph')
 
     def update_all_heatmaps(self):
         """
@@ -1036,7 +986,6 @@ class Vizualization:
         """
         for (heatmap_builder, axe, title) in self.heatmaps:
             axe.clear()
-            self.time_logging()
             heatmap_color = heatmap_builder()
             logging.info("heatmaps: drawing in "+str(axe))
             im = axe.imshow(
@@ -1057,7 +1006,7 @@ class Vizualization:
             axe.set_ylim(-self.amplitude / 2, self.amplitude / 2)
             axe.axis('off')
             axe.set_title(title)
-            self.time_logging('heatmap, axe, title {} {} {}'.format(heatmap_builder, axe, title))
+            logging.info('heatmap, axe, title {} {} {}'.format(heatmap_builder, axe, title))
 
         self.refresh_graph()
 
@@ -1277,15 +1226,11 @@ class Vizualization:
         """
         Plot the Vizualization, define axes, add scatterplot, buttons, etc..
         """
-
-        self.time_logging()
-        
         self.main_fig = matplotlib.figure.Figure()
         #self.cluster_view = matplotlib.figure.Figure()
 
         gs=GridSpec(3,4)
 
-        self.time_logging("main_fig")
         self.cluster_view = Cluster_viewer(self.features_to_display, self.x_raw, self.x_raw_columns, show_dichotomy=True)
         
         #self.view_details = View_details(self.x_raw)
@@ -1297,14 +1242,10 @@ class Vizualization:
                 additional_figures = [self.cluster_view],
                 )
 
-        self.time_logging("viz_handler")
-        
         # main subplot with the scatter plot
         self.ax = self.main_fig.add_subplot(gs[:2,:3])
         self.ax_base_title = 'Correct VS incorrect predictions'
         self.ax.set_title(self.ax_base_title)
-
-        self.time_logging("scatter")
 
         # summary_subplot with table of local stats
         self.summary_axe = self.main_fig.add_subplot(gs[2,:3])
@@ -1314,14 +1255,10 @@ class Vizualization:
         self.global_summary_axe.axis('off')
         self.print_global_summary(self.global_summary_axe)
 
-        self.time_logging("summary")
-        
         # heatmap subplots
         # contain proportion of correct prediction and entropy
 
         self.axes_needing_borders = [self.ax]
-
-        self.time_logging("heat_subplots")
 
         # draw heatmap
         logging.info("heatmap=calculating")
@@ -1338,7 +1275,6 @@ class Vizualization:
                 self.heat_proportion,
                 title='Heatmap: proportion correct predictions')
         self.axes_needing_borders.append(self.heat_proportion)
-        self.time_logging("prop correct prediction")
         
 
         self.heat_entropy = self.main_fig.add_subplot(
@@ -1350,18 +1286,14 @@ class Vizualization:
                 self.heat_entropy,
                 title='Heatmap: cross-entropy Cluster-All')
         self.axes_needing_borders.append(self.heat_entropy)
-        self.time_logging("cross_entropy")
         
         self.cluster_label_mesh()
-
-        self.time_logging("cluster_mesh")
 
         self.update_all_heatmaps()
         logging.info("heatmap=ready")
 
         # draw scatter plot
         self.reset_viz()
-        self.time_logging("reset_viz")
 
         self.request_new_frontiers('none')
         logging.info('Vizualization=readyy')
@@ -1380,3 +1312,20 @@ class Vizualization:
         logging.info('refreshing cluster diving')
         #self.cluster_diver.refresh()
         logging.info("refreshing done")
+
+    def time_logging(self, message=None):
+        """Silly module to do manual profiling"""
+        import inspect
+        caller_method_name = inspect.stack()[1][0].f_code.co_name
+
+        if not message:
+            self.last_time[caller_method_name] = time.time()
+        else:
+            new_time = time.time()
+            previous_time = self.last_time.get(caller_method_name, None)
+            if previous_time:
+                logging.info("time for %s : %s", message, new_time - previous_time)
+            else:
+                logging.info("time for %s : error, no previous time registered", message)
+            self.last_time[caller_method_name] = new_time
+    

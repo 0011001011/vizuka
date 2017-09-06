@@ -9,6 +9,8 @@ on qt_handler, to be able to select on the IHM
     fit     - to prepare the algo for the data
     predict - to find out the cluster of a (x,y)
 '''
+import pickle
+
 import numpy as np
 from matplotlib import pyplot as plt
 from sklearn.cluster import KMeans, DBSCAN
@@ -55,11 +57,13 @@ class Clusterizer():
         
 
         def load_cluster(self, path):
-            pass
+            with open(path, 'rb') as f:
+                self.engine = pickle.load(f)
         
 
         def save_cluster(self, path):
-            pass
+            with open(path, 'wb') as f:
+                pickle.dump(self.engine, f)
 
 
 class KmeansClusterizer(Clusterizer):
@@ -88,24 +92,36 @@ class KmeansClusterizer(Clusterizer):
         """
         return self.engine.predict(xs)
 
-    def load_cluster(self, path):
-        data_dict = np.load(path)
-        self.engine.cluster_centers_, self.engine.labels_, self.engine.inertia_, self.engine.n_iter_ = (
-            data_dict['cluster_centers_'], data_dict['labels_'], data_dict['inertia_'], data_dict['n_iter_']
-        )
+class LoaderClusterizer(Clusterizer):
 
-    def save_cluster(self, path):
+    def __init__(self):
+        """
+        Simply loads a npz with all labels
+        """
+        data = pickle.load(open('vizuka/data/models/clusterizer.pkl', 'rb'))
+        self.xs, self.engine = data # self.engine is here a collection of labels
+        self.kdtree = cKDTree(self.xs)
 
-        cluster_centers_, labels_, inertia_, n_iter_ = (
-            self.engine.cluster_centers_, self.engine.labels_, self.engine.inertia_, self.engine.n_iter_
-        )  # all internals changed by fit
-        data_dict = {}
-        data_dict['cluster_centers_'] = cluster_centers_
-        data_dict['labels_'] = labels_
-        data_dict['inertia_'] = inertia_
-        data_dict['n_iter_'] = n_iter_
-        np.savez(path, **data_dict)
+    def fit(self, xs):
+        pass
 
+    def predict(self, xs):
+        """
+        Return the predictions found in the predictions .pkl
+        """
+        return self.kdtree.query(xs)[1]
+        """
+        current_predicts = []
+        for x in xs:
+            x_tuple = tuple(x)
+            if x_tuple in self.predictions:
+                current_predicts.append(self.predictions[x_tuple])
+            else:
+                current_predicts.append(
+                    self.predictions[tuple(self.xs[self.kdtree.query(x)[1]])]
+                )
+        return current_predicts
+        """
 
 
 class DBSCANClusterizer(Clusterizer):
@@ -190,12 +206,6 @@ class DBSCANClusterizer(Clusterizer):
                 )
         return current_predicts
 
-    def load_cluster(self, path):
-        pass
-
-    def save_cluster(self, path):
-        pass
-
 
 class DummyClusterizer(Clusterizer):
     """
@@ -232,14 +242,7 @@ class DummyClusterizer(Clusterizer):
         data is, it is considered as a cluster label
         """
         return self.kdtree.query(xs)[1]
-
         # return [self.kdtree.query(x)[1] for x in xs]
-
-    def load_cluster(self, path):
-        pass
-
-    def save_cluster(self, path):
-        pass
 
 
 def make_clusterizer(xs, method='kmeans', **kwargs):
