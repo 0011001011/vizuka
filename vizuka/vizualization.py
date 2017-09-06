@@ -66,14 +66,14 @@ def find_amplitude(projection):
         return 2 * max(x_proj_amplitude, y_proj_amplitude)
 
 
-def separate_prediction(predicted_outputs, true_outputs, name_of_void):
+def separate_prediction(predicted_outputs, true_outputs, special_class):
     """
     Gives the index of good/bad/not predicted
     :param predicted_outputs: possible_outputs_list predicted, decoded (human-readable)
     :param true_outputs: true possible_outputs_list, decoded  (human-readable)
-    :param name_of_void: label (decoded) of special class (typically 0 hence void)
+    :param special_class: label (decoded) of special class (typically 0)
 
-    :return: indexes of (bad predictions, good prediction, name_of_void predictions)
+    :return: indexes of (bad predictions, good prediction, special_class predictions)
     :rtype: array(int), array(int), array(int)
     """
 
@@ -83,11 +83,7 @@ def separate_prediction(predicted_outputs, true_outputs, name_of_void):
     
     # Sort good / bad / not predictions
     for index, prediction in enumerate(predicted_outputs):
-        """
-        logging.info(name_of_void)
-        logging.info(y_true[i])
-        """
-        if name_of_void == true_outputs[index]:
+        if special_class == true_outputs[index]:
             index_not_predicted.add(index)
         if prediction == true_outputs[index]:
             index_well_predicted.add(index)
@@ -195,7 +191,11 @@ class Vizualization:
 
         self.local_effectif = {}
         self.local_proportion = {}
-        self.local_confusion_by_class = {class_:{class__:0 for class__ in self.possible_outputs_list} for class_ in self.possible_outputs_list}
+        self.local_confusion_by_class = {
+                class_:
+                {
+                    class__:0 for class__ in self.possible_outputs_list} for class_ in self.possible_outputs_list
+                }
         self.local_bad_count_by_class = {class_:0 for class_ in self.possible_outputs_list}
         self.local_classes = set()
         self.local_sum = 0
@@ -231,6 +231,10 @@ class Vizualization:
         self.normalize_frontier = True
         
     def calculate_prediction_projection_arrays(self):
+        """
+        Update all the sets which use true/false flags from predictions
+        When to use ? -> if you change (or first load) your predictor
+        """
 
         (
             self.index_bad_predicted,
@@ -260,24 +264,32 @@ class Vizualization:
         logging.info("projections=sorting")
         self.well_predicted_projected_points_array = np.array(
             [self.projected_input[i] for i in self.index_good_predicted])
+
         self.misspredicted_projected_points_array = np.array(
             [self.projected_input[i] for i in self.index_bad_predicted])
+
         self.not_predicted_projected_points_array = np.array(
             [self.projected_input[i] for i in self.index_not_predicted])
+
         logging.info("projections=ready")
         
     def reload_predict(self, filename):
-        
-        prediction_output = np.load(os.path.join(self.model_path, filename))['pred']
+        """
+        Call this function if the predictor set has changed
+        filename: the name of the predictions file to load, should
+        be located in the self.model_path folder
+        """
 
-        self.prediction_outputs = prediction_output
-
-        self.calculate_prediction_projection_arrays()
+        self.prediction_outputs = np.load(os.path.join(self.model_path, filename))['pred']
+        self.calculate_prediction_projection_arrays() # us
 
         self.reset_viz()
         self.refresh_graph()
     
-    def draw_scatterplot(self, well_predicted_array, badly_predicted_array, not_predicted_array):
+    def draw_scatterplot(self, well_predicted_array, badly_predicted_array, special_class_array):
+        """
+        Draw the datas on the main 2D map
+        """
         if len(well_predicted_array) > 0:
             self.ax.scatter(
                 x=well_predicted_array[:, 0],
@@ -291,49 +303,61 @@ class Vizualization:
                 color='r',
                 marker='+'
             )
-        if len(not_predicted_array) > 0:
+        if len(special_class_array) > 0:
             self.ax.scatter(
-                x=not_predicted_array[:, 0],
-                y=not_predicted_array[:, 1],
+                x=special_class_array[:, 0],
+                y=special_class_array[:, 1],
                 marker='x',
                 color='g'
             )
 
     def filter_by_feature(self, feature_col, selected_feature_list):
+        """
+        Updates the list of index to display, filter with :
+
+        feature_col: the column of the feature in "originals"
+        selected_feature_list: list of checked/unchecked feature to display
+        """
+
         self.feature_to_display_by_col[feature_col] = [
                 item for item, selected in selected_feature_list.items() if selected
                 ]
         self.display_by_filter()
-        print('filtering only ::', self.feature_to_display_by_col[feature_col])
 
     def filter_by_correct_class(self, selected_outputs_class_list):
+        """
+        Filter by class, on the TRUE class of each point
+        """
         self.correct_class_to_display = {
                 output_class for output_class, selected in selected_outputs_class_list.items() if selected
                 }
-        print('filtering only ::', self.correct_class_to_display)
         self.display_by_filter()
 
     def filter_by_predicted_class(self, selected_outputs_class_list):
+        """
+        Filter by class, on the PREDICTED class of each point
+        """
         self.predicted_class_to_display = {
                 output_class for output_class, selected in selected_outputs_class_list.items() if selected
                 }
-        print('filtering only ::', self.predicted_class_to_display)
         self.display_by_filter()
 
     def display_by_filter(self):
+        """
+        Sum up all the filters and display accordingly
+        If none are set to be display in one of the sets, it displays all
+        """
         all_unchecked = (
                 (not self.predicted_class_to_display) and (not self.correct_class_to_display)
                 )
         index_inputs_to_display = set()
 
         for output_class in self.predicted_class_to_display:
-            print('looking for ', output_class)
             for index, predicted_class in enumerate(self.prediction_outputs):
                 if predicted_class == output_class:
                     index_inputs_to_display.add(index)
         
         for output_class in self.correct_class_to_display:
-            print('looking for ', output_class)
             for index, true_class in enumerate(self.correct_outputs) :
                 if true_class == output_class:
                     index_inputs_to_display.add(index)
@@ -345,8 +369,6 @@ class Vizualization:
         bad_to_display, good_to_display, special_to_display = set(), set(), set()
 
         for index in index_inputs_to_display:
-            print('display index ', index)
-            print('features columns to check ', self.feature_to_display_by_col)
             index_pass_feature_check = True
             for col in self.feature_to_display_by_col.keys():
                 # check if there is a feature check
@@ -372,6 +394,7 @@ class Vizualization:
                 )
 
         if all_unchecked:
+            # display nothing ? gross
 
             well_predicted = self.filter_indexes_list_by_features(self.index_good_predicted)
             miss_predicted = self.filter_indexes_list_by_features(self.index_bad_predicted)
@@ -492,10 +515,15 @@ class Vizualization:
         """
         self.local_effectif = {}
         self.local_proportion = {}
-        self.local_confusion_by_class = {output_class: {other_output_class:0
-                                                  for other_output_class in self.possible_outputs_list}
-                                            for output_class in self.possible_outputs_list}
-        self.local_bad_count_by_class = {output_class:0 for output_class in self.possible_outputs_list}
+        self.local_confusion_by_class = {
+                output_class: {
+                    other_output_class:0 for other_output_class in self.possible_outputs_list
+                    }
+                for output_class in self.possible_outputs_list
+                }
+        self.local_bad_count_by_class = {
+                output_class:0 for output_class in self.possible_outputs_list
+                }
         self.local_classes = set()
         self.local_sum = 0
         self.currently_selected_cluster = []
@@ -574,7 +602,6 @@ class Vizualization:
 
     def draw_the_line(self, x_list, y_list, color='b'):
         for axe in self.axes_needing_borders:
-            print("#"*30+"drawing lines")
             axe.add_artist(matplotlib.lines.Line2D(xdata=x_list, ydata=y_list, color=color))
 
     def line(self, float_point):
@@ -615,40 +642,57 @@ class Vizualization:
                 if no_hole:
                     if swapped_coordinates:  # swaped if a is y and b is x, not swapt if a is  and b is y
                         b_float_position, a_float_position= self.mesh_centroids[calculate_coordinates(min_b, a)]
-                        self.draw_the_line(self.lower_bound(b_float_position), self.line(a_float_position), color=color)
+                        self.draw_the_line(
+                                self.lower_bound(b_float_position),
+                                self.line(a_float_position),
+                                color=color)
                         b_float_position, a_float_position = self.mesh_centroids[calculate_coordinates(max_b, a)]
                         self.draw_the_line(
-                            self.lower_bound(b_float_position, plus_one=True), self.line(a_float_position), color=color)
+                            self.lower_bound(b_float_position, plus_one=True),
+                            self.line(a_float_position),
+                            color=color)
                     else:
                         a_float_position, b_float_position= self.mesh_centroids[calculate_coordinates(a, min_b)]
-                        self.draw_the_line(self.line(a_float_position), self.lower_bound(b_float_position), color=color)
+                        self.draw_the_line(
+                                self.line(a_float_position),
+                                self.lower_bound(b_float_position),
+                                color=color)
                         a_float_position, b_float_position = self.mesh_centroids[calculate_coordinates(a, max_b)]
                         self.draw_the_line(
-                            self.line(a_float_position), self.lower_bound(b_float_position, plus_one=True), color=color)
+                            self.line(a_float_position),
+                            self.lower_bound(b_float_position, plus_one=True),
+                            color=color)
                 else:  # case not convex, which is not often so it's gonna be dirty
                     for b in a_line_b_list:
                         if swapped_coordinates:
                             if (b - 1) not in a_line_b_list:
                                 b_float_position, a_float_position = self.mesh_centroids[calculate_coordinates(b, a)]
-                                self.draw_the_line(self.lower_bound(b_float_position), self.line(a_float_position), color=color)
+                                self.draw_the_line(
+                                        self.lower_bound(b_float_position),
+                                        self.line(a_float_position),
+                                        color=color)
                             if (b + 1) not in a_line_b_list:
                                 b_float_position, a_float_position = self.mesh_centroids[calculate_coordinates(b, a)]
                                 self.draw_the_line(
-                                    self.lower_bound(b_float_position, plus_one=True), self.line(a_float_position), color=color)
+                                    self.lower_bound(b_float_position, plus_one=True),
+                                    self.line(a_float_position),
+                                    color=color)
                         else:
                             if (b - 1) not in a_line_b_list:
                                 a_float_position, b_float_position = self.mesh_centroids[calculate_coordinates(a, b)]
-                                self.draw_the_line(self.line(a_float_position), self.lower_bound(b_float_position), color=color)
+                                self.draw_the_line(
+                                        self.line(a_float_position),
+                                        self.lower_bound(b_float_position),
+                                        color=color)
                             if (b + 1) not in a_line_b_list:
                                 a_float_position, b_float_position = self.mesh_centroids[calculate_coordinates(a, b)]
                                 self.draw_the_line(
-                                    self.line(a_float_position), self.lower_bound(b_float_position, plus_one=True), color=color)
+                                    self.line(a_float_position),
+                                    self.lower_bound(b_float_position, plus_one=True),
+                                    color=color)
                             
         draw_all_lines(self, cluster_y_list_by_x, swapped_coordinates=True)
         draw_all_lines(self, cluster_x_list_by_y, swapped_coordinates=False)
-
-        # self.refresh_graph()
-        # looks like he disn't worked
 
     
     def apply_borders(self, normalize_frontier, frontier_builder, *args):
@@ -734,6 +778,7 @@ class Vizualization:
                 if label_down_neighbor != current_centroid_label:
                     if (label_down_neighbor, current_centroid_label) in frontier:
                         frontier_density = normalized_frontier[(label_down_neighbor, current_centroid_label)]
+
                         lines.append(line_dict_maker(
                             xdata = (x-self.size_centroid/2, x+self.size_centroid/2),
                             ydata = (y-self.size_centroid/2, y-self.size_centroid/2),
@@ -744,6 +789,7 @@ class Vizualization:
                 if label_left_neighbor != current_centroid_label:
                     if (label_left_neighbor, current_centroid_label) in normalized_frontier:
                         frontier_density = normalized_frontier[(label_left_neighbor, current_centroid_label)]
+
                         lines.append(line_dict_maker(
                             xdata=(x-self.size_centroid/2, x-self.size_centroid/2),
                             ydata=(y-self.size_centroid/2, y+self.size_centroid/2),
@@ -787,14 +833,16 @@ class Vizualization:
         for index, (x, y) in enumerate(self.mesh_centroids):
 
             current_centroid_cluster_label = centroids_cluster_by_index[index]
+
             number_good_points = self.number_good_point_by_cluster.get(current_centroid_cluster_label, 0)
-            number_bad_points = self.number_bad_point_by_cluster.get(current_centroid_cluster_label, 0)
+            number_bad_points  = self.number_bad_point_by_cluster.get (current_centroid_cluster_label, 0)
             number_null_points = self.number_null_point_by_cluster.get(current_centroid_cluster_label, 0)
+
             number_of_valid_cluster_points = number_good_points + number_bad_points
 
             if number_of_valid_cluster_points > 0:
-                proportion_correct = number_good_points / float(number_of_valid_cluster_points)
-                proportion_null    = number_null_points / float(number_of_valid_cluster_points)
+                proportion_correct   = number_good_points / float(number_of_valid_cluster_points)
+                proportion_null      = number_null_points / float(number_of_valid_cluster_points)
                 proportion_incorrect = 1 - proportion_correct
             else:
                 proportion_correct = 1
@@ -806,8 +854,8 @@ class Vizualization:
             blue  = proportion_correct
             
             x_coordinate, y_coordinate = self.get_coordinates_from_index(index)
-            all_colors[x_coordinate][y_coordinate ] = [red, green, blue]
 
+            all_colors[x_coordinate][y_coordinate ] = [red, green, blue]
 
         logging.info('heatmap: proportion done')
         return all_colors
@@ -843,10 +891,15 @@ class Vizualization:
     
             current_centroid_label = centroids_label[index]
 
-            number_of_point_by_class = self.number_of_points_by_class_by_cluster.get(current_centroid_label, {})
+            number_of_point_by_class      = self.number_of_points_by_class_by_cluster.get(current_centroid_label, {})
             number_of_point_by_class_list = [number_of_point_by_class.get(class_, 0) for class_ in ordered_class_list]
-            
-            if (not number_of_point_by_class) or len(self.index_by_cluster_label[current_centroid_label]) == 0:
+           
+            try:
+                cluster_is_empty = bool(self.index_by_cluster_label[current_centroid_label])
+            except KeyError:
+                cluster_is_empty=True
+
+            if (not number_of_point_by_class) or cluster_is_empty:
                 current_entropy = 0
             else:
                 current_entropy = (
@@ -865,7 +918,11 @@ class Vizualization:
         # this exception is poorly handleded right now
         if float(amplitude_entropys)==0.:
             amplitude_entropys = 1
-        logging.info('heatmap entropy: max cross-entropy='+str(max_entropys)+' min='+str(min_entropys))
+        logging.info(
+                'heatmap entropy: max cross-entropy={} min={}'.format(
+                    max_entropys,
+                    min_entropys,)
+                )
 
         for index, (x, y) in enumerate(self.mesh_centroids):
             if index > len(entropys):
@@ -913,25 +970,43 @@ class Vizualization:
         logging.info('frontiers : applied '+method)
 
     def get_cache_file_name(self, method):
+        """
+        Makes a filename for the pickled object of your clusterizer
+        """
         base_path, data_unique_id_string, number_of_clusters, clustering_method = (
-            self.model_path, self.data_unique_id_string, self.number_of_clusters, method
+            self.model_path,
+            self.data_unique_id_string,
+            self.number_of_clusters,
+            method,
         )
-        if not os.path.exists(base_path):  # if the base path isn't valid (for whatever reason, saves into dev/null)
+        if not os.path.exists(base_path):
+            # if the base path isn't valid (for whatever reason, saves into dev/null)
             return os.devnull, False
             
         cache_path = os.path.join(base_path, 'cache')
         if not os.path.exists(cache_path):
             os.makedirs(cache_path)
-        cluster_filename = '_cachejoin_'.join([str(x) for x in
-                                               [data_unique_id_string, number_of_clusters, clustering_method]])
+        cluster_filename = '_cachejoin_'.join(
+                [str(x) for x in [
+                    data_unique_id_string,
+                    number_of_clusters,
+                    clustering_method
+                    ]])
+
         cluster_path = os.path.join(cache_path, cluster_filename)
         np_extension_name = '.npz'
+
         if os.path.exists(cluster_path + np_extension_name):
             return (cluster_path + np_extension_name), True
         
         return cluster_path, False
 
     def clustering_fit(self, method):
+        """
+        Creates the clustering engine depending on the method you require
+        Actually different engine use different initialisations
+        """
+
         logging.info("cluster: requesting a new " + method + " engine")
         if method is None:
             method = self.last_clusterizer_method
@@ -1046,9 +1121,13 @@ class Vizualization:
 
         for output_class in new_rows:
             self.local_effectif[output_class] = to_include[output_class]
+
             self.local_proportion[output_class] = (
                 number_good_point_by_class.get(output_class,0) /
-                (number_good_point_by_class.get(output_class,0) + number_bad_point_by_class.get(output_class,0))
+                (
+                    number_good_point_by_class.get(output_class,0)
+                    + number_bad_point_by_class.get(output_class,0)
+                    )
             )
         for cluster in self.currently_selected_cluster:
             for index in self.index_by_cluster_label[cluster]:
@@ -1062,15 +1141,23 @@ class Vizualization:
             self.local_confusion_by_class_sorted[output_class] = Counter(errors).most_common(2)
 
         for output_class in rows_to_update:
-            self.local_proportion[output_class] = (
-                ( self.local_proportion[output_class] * self.local_effectif[output_class] +
-                  (number_good_point_by_class.get(output_class,0) /
-                   (number_good_point_by_class.get(output_class,0) + number_bad_point_by_class.get(output_class,0)
-                    ) * to_include.get(output_class, 0)
+            self.local_proportion[output_class] = ((
+                    self.local_proportion[output_class] * self.local_effectif[output_class]
+                    + (
+                        number_good_point_by_class.get(output_class,0)
+                        / (
+                            number_good_point_by_class.get(output_class,0)
+                            + number_bad_point_by_class.get(output_class,0)
+                            )
+                        * to_include.get(output_class, 0)
                    )
                 ) / (self.local_effectif[output_class] + to_include.get(output_class, 0))
             )
-            self.local_effectif[output_class] += number_good_point_by_class.get(output_class,0) + number_bad_point_by_class.get(output_class,0)
+
+            self.local_effectif[output_class] += (
+                    number_good_point_by_class.get(output_class,0)
+                    + number_bad_point_by_class.get(output_class,0)
+                    )
 
     def get_selected_indexes(self):
         """
@@ -1099,12 +1186,14 @@ class Vizualization:
         values = [
             [
                 (
-                    '{0:.0f}'.format(self.local_effectif[c]) + "  ("
-                    + '{0:.2f}'.format(self.local_effectif[c] / self.number_of_individual_by_true_output[c] * 100) + "%)"),
+                    '{0:.0f} ({1:.1f}%)'.format(
+                        self.local_effectif[c],
+                        self.local_effectif[c] / self.number_of_individual_by_true_output[c] * 100),
+                    )
                 (
-                    '{0:.2f}'.format(self.local_proportion[c]*100)+"% ("+
-                    '{0:.2f}'.format((self.local_proportion[c]-self.proportion_by_class[c])*100)+"%) - "+
-                    '{0:.2f}'.format(
+                    '{0:.2f}% ({1:.1f}%) - {0:.2f}'.format(
+                        self.local_proportion[c]*100,
+                        (self.local_proportion[c]-self.proportion_by_class[c])*100,
                         stats.binom_test(
                             self.local_effectif[c]*self.local_proportion[c],
                             self.local_effectif[c],
@@ -1114,21 +1203,17 @@ class Vizualization:
                         )
                     ),
                 (
-                    '{0:.0f}'.format(self.number_of_individual_by_true_output[c]) + ' (' +
-                    '{0:.2f}'.format(self.number_of_individual_by_true_output[c] / float(len(self.projected_input)) * 100) + '%)'
+                    '{0:.0f} ({1:.2f}%)'.format(
+                        self.number_of_individual_by_true_output[c],
+                        self.number_of_individual_by_true_output[c] / float(len(self.projected_input)) * 100,
+                        )
                     ),
-                
-
                 (
                     ' '.join([
-                        str(class_mistaken)[:6]+' ('+'{0:.0f}'.format(
-                            error_count/float(self.local_bad_count_by_class[c])*100
-                            )
-                        +'%) '
+                        '{}'.format(class_mistaken[:6])+ '({0:.0f}%)'.format(error_count/float(self.local_bad_count_by_class[c])*100)
                         for class_mistaken, error_count in self.local_confusion_by_class_sorted[c] if self.local_bad_count_by_class[c]!=0
                         ])
                     ),
-                    
             ]
             for c in row_labels
         ]
@@ -1148,9 +1233,12 @@ class Vizualization:
 
         self.rows = row_labels
 
-        cols = ['#class_local (#class_local/#class)', 'accuracy local (accuracy global) - p-value',
-                     '#class (#class/#all_class)',
-                     'common mistakes']
+        cols = [
+                '#class_local (#class_local/#class)',
+                'accuracy local (accuracy global) - p-value',
+                 '#class (#class/#all_class)',
+                 'common mistakes'
+                 ]
 
         summary = axe.table(
             cellText=values,
@@ -1176,8 +1264,10 @@ class Vizualization:
             [
                 '{0:.2f}'.format(self.proportion_by_class[c]*100)+"%",
                 (
-                    '{0:.0f}'.format(self.number_of_individual_by_true_output[c]) + ' (' +
-                    '{0:.2f}'.format(self.number_of_individual_by_true_output[c] / float(len(self.projected_input)) * 100) + '%)'
+                    '{0:.0f} ({0:.2f}%)'.format(
+                        self.number_of_individual_by_true_output[c],
+                        self.number_of_individual_by_true_output[c] / float(len(self.projected_input)) * 100
+                        )
                     ),
             ]
             for c in row_labels
@@ -1202,18 +1292,30 @@ class Vizualization:
 
         self.heatmaps.append((heatmap_builder, axe, title))
 
-    def export(self, output_path):
+    def export(self, output_path, format='csv'):
+        """
+        Export your selected data in a .csv file for analysis
+        """
         logging.info('exporting:...')
-        pd.DataFrame(
-                [
-                    self.x_raw[idx]
-                    for idx,c in enumerate(self.cluster_by_idx)
-                    if c in self.currently_selected_cluster
-                    ]
-                ).to_csv(output_path)
+        to_export =  pd.DataFrame(
+                    [
+                        self.x_raw[idx]
+                        for idx,c in enumerate(self.cluster_by_idx)
+                        if c in self.currently_selected_cluster
+                        ]
+                    )
+        if format=='csv':
+            to_export.to_csv(output_path)
+        if format=='hdf5':
+            to_export.to_hdf(output_path, 'data')
+
         logging.info('exporting: done')
     
     def view_details_figure(self):
+        """
+        Deprecated, was used to display a scatterplot of your selected cluster(s)
+        Unusable because too laggy and bloated graphics
+        """
         logging.info('exporting:...')
         indexes = self.get_selected_indexes()
         self.viz_handler.set_additional_graph(
@@ -1231,7 +1333,11 @@ class Vizualization:
 
         gs=GridSpec(3,4)
 
-        self.cluster_view = Cluster_viewer(self.features_to_display, self.x_raw, self.x_raw_columns, show_dichotomy=True)
+        self.cluster_view = Cluster_viewer(
+                self.features_to_display,
+                self.x_raw,
+                self.x_raw_columns,
+                show_dichotomy=True)
         
         #self.view_details = View_details(self.x_raw)
         self.viz_handler = Viz_handler(
