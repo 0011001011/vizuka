@@ -1188,10 +1188,10 @@ class Vizualization:
                 (
                     '{0:.0f} ({1:.1f}%)'.format(
                         self.local_effectif[c],
-                        self.local_effectif[c] / self.nb_of_individual_by_true_output[c] * 100),
+                        self.local_effectif[c] / self.nb_of_individual_by_true_output[c] * 100)
                     ),
                 (
-                    '{0:.2f}% ({1:.1f}%) - {0:.2f}'.format(
+                    '{0:.2f}% ({1:+.1f}%) - {0:.1f}'.format(
                         self.local_proportion[c]*100,
                         (self.local_proportion[c]-self.proportion_by_class[c])*100,
                         stats.binom_test(
@@ -1199,20 +1199,21 @@ class Vizualization:
                             self.local_effectif[c],
                             self.proportion_by_class[c],
                             alternative='two-sided'
-                            ) * 100,
-                        ),
+                            ),
+                        )
                     ),
                 (
-                    '{0:.0f} ({1:.2f}%)'.format(
+                    '{0:.0f} ({1:.1f}%)'.format(
                         self.nb_of_individual_by_true_output[c],
                         self.nb_of_individual_by_true_output[c] / float(len(self.projected_input)) * 100,
-                        ),
+                        )
                     ),
                 (
                     ' '.join([
                         '{:.6}'.format(class_mistaken)+ '({0:.1f}%)'.format(error_count/float(self.local_bad_count_by_class[c])*100)
-                        for class_mistaken, error_count in self.local_confusion_by_class_sorted[c] if self.local_bad_count_by_class[c]!=0
-                        ]),
+                        for class_mistaken, error_count in self.local_confusion_by_class_sorted[c] if error_count != 0
+                        #self.local_bad_count_by_class[c]!=0
+                        ])
                     ),
             ]
             for c in row_labels
@@ -1234,8 +1235,9 @@ class Vizualization:
         self.rows = row_labels
 
         cols = [
+                'true class',
                 '#class_local (#class_local/#class)',
-                'accuracy local (accuracy global) - p-value',
+                'accuracy local (delta accuracy) - p-value',
                  '#class (#class/#all_class)',
                  'common mistakes'
                  ]
@@ -1268,7 +1270,7 @@ class Vizualization:
             [
                 '{0:.2f}'.format(self.proportion_by_class[c]*100)+"%",
                 (
-                    '{0:.0f} ({0:.2f}%)'.format(
+                    '{0:.0f} ({1:.2f}%)'.format(
                         self.nb_of_individual_by_true_output[c],
                         self.nb_of_individual_by_true_output[c] / float(len(self.projected_input)) * 100
                         )
@@ -1303,10 +1305,11 @@ class Vizualization:
         logging.info('exporting:...')
         to_export =  pd.DataFrame(
                     [
-                        self.x_raw[idx]
+                        [*self.x_raw[idx], self.projected_input[idx], self.prediction_outputs[idx]]
                         for idx,c in enumerate(self.cluster_by_idx)
                         if c in self.currently_selected_cluster
-                        ]
+                        ],
+                    columns = [*self.x_raw_columns, 'projected coordinates', 'predicted class'],
                     )
         if format=='csv':
             to_export.to_csv(output_path)
