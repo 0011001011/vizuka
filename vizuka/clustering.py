@@ -71,7 +71,7 @@ class KmeansClusterizer(Clusterizer):
     def __init__(self, n_clusters=120, *args, **kwargs):
         """
         Uses sklearn kmeans, accepts same arguments.
-        Default number of cluster : 120
+        Default nb of cluster : 120
         """
         self.engine = KMeans(n_clusters=n_clusters, *args, **kwargs)
 
@@ -222,7 +222,7 @@ class DummyClusterizer(Clusterizer):
         """
         Inits the "engine" by giving it a resolution.
         The resolution will be the square root of the
-        number of clusters.
+        nb of clusters.
         """
         self.mesh   = mesh
         self.kdtree = cKDTree(self.mesh)
@@ -252,14 +252,14 @@ def make_clusterizer(xs, method='kmeans', **kwargs):
 
     :param data:       array with shape (n,2) of inputs to clusterize
     :param method:     algo to use, supported: kmeans, dbscan, dummy
-    :param n_clusters: number of clusters to find (if applicable)
+    :param n_clusters: nb of clusters to find (if applicable)
 
     :return: a clusterizer object (instance of child of Clusterizer())
     """
     
     clusterizer = None
     if method == 'kmeans':
-        clusterizer = KmeansClusterizer(kwargs['number_of_clusters'])
+        clusterizer = KmeansClusterizer(kwargs['nb_of_clusters'])
     elif method == 'dbscan':
         clusterizer = DBSCANClusterizer()
     else:

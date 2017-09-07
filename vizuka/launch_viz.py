@@ -191,7 +191,7 @@ def main():
             class_decoder=class_decoder,
             class_encoder=class_encoder,
             special_class='0',
-            number_of_clusters=120,
+            nb_of_clusters=120,
             features_name_to_filter  = features_name_to_filter,
             features_name_to_display = features_name_to_display,
             output_path=os.path.join('output.csv'),
