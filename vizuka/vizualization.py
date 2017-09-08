@@ -21,10 +21,10 @@ from matplotlib import pyplot as plt
 import pandas as pd
 import wordcloud
 
+from vizuka import similarity
 from vizuka.qt_handler import Viz_handler
 from vizuka.ml_helpers import (
         cross_entropy,
-        bhattacharyya,
         )
 from vizuka import clustering
 from vizuka.cluster_diving import Cluster_viewer
@@ -488,16 +488,13 @@ class Vizualization:
         ..note:: does not touch the summary array, for this use self.reset_summary()
         """
         logging.info("scatterplot: removing specific objects")
-        for i in [
-                *self.ax.get_children(),
-                *[heatmap[1].get_children() for heatmap in self.heatmaps],
-                # self.heatmaps contains [(heatmap_builder, axe, title)]
-                ]:
-            if isinstance(i, matplotlib.collections.PathCollection):
-                i.remove()
-            elif isinstance(i, matplotlib.lines.Line2D):
-                if i.get_color() == self.manual_cluster_color:
+        for ax in self.axes_needing_borders:
+            for i in ax.get_children():
+                if isinstance(i, matplotlib.collections.PathCollection):
                     i.remove()
+                elif isinstance(i, matplotlib.lines.Line2D) or isinstance(i, matplotlib.collections.LineCollection):
+                    if i.get_color() == self.manual_cluster_color:
+                        i.remove()
         
         logging.info("scatterplot: drawing observations")
         self.cluster_view.clear()
@@ -755,7 +752,7 @@ class Vizualization:
         logging.info('borders: cleaning')
         for axe in axes:
             for child in axe.get_children():
-                if isinstance(child, plt.Line2D):
+                if isinstance(child, matplotlib.collections.LineCollection):
                     child.remove()
 
         def line_dict_maker(xdata, ydata, frontier_density):
@@ -763,7 +760,7 @@ class Vizualization:
             return {'xdata': xdata,
                     'ydata': ydata,
                     'color': black,
-                    'alpha': 1 - frontier_density
+                    'alpha': frontier_density
                     }
 
         lines = []
@@ -794,8 +791,8 @@ class Vizualization:
                             xdata=(x-self.size_centroid/2, x-self.size_centroid/2),
                             ydata=(y-self.size_centroid/2, y+self.size_centroid/2),
                             frontier_density=frontier_density))
-
-        line_collection_lines = [[elt['xdata'], elt['ydata']] for elt in lines]
+        
+                        line_collection_lines = [list(zip(elt['xdata'], elt['ydata'])) for elt in lines]
         line_collection_colors = [(*elt['color'], elt['alpha']) for elt in lines]
         
         for axe in axes:
@@ -946,19 +943,24 @@ class Vizualization:
         method = method.lower()
         logging.info('frontiers : requiring new delimitations '+method)
 
+        for axe in self.axes_needing_borders:
+            for child in axe.get_children():
+                if isinstance(child, matplotlib.collections.LineCollection):
+                    child.remove()
+                    logging.info("removing a line collection")
+
         if method == 'bhattacharyya':
             logging.debug('frontiers: set up to '+method)
-            self.similarity_measure = bhattacharyya
+            self.similarity_measure = similarity.bhattacharyya
             self.normalize_frontier=True
         elif method =='all':
-            self.similarity_measure = lambda x,y:0
+            self.similarity_measure = similarity.all_are_dissimilar
             self.normalize_frontier=False
             logging.debug('frontiers: set up to '+method)
         elif method == 'none':
-            self.similarity_measure = lambda x,y:1
+            self.similarity_measure = similarity.all_are_similar
             self.normalize_frontier=False
-            logging.debug('frontiers: set up to '+method)
-            logging.info('frontiers : applied '+method)
+            self.refresh_graph()
             return
         
         self.apply_borders(
@@ -981,6 +983,7 @@ class Vizualization:
         )
         if not os.path.exists(base_path):
             # if the base path isn't valid (for whatever reason, saves into dev/null)
+            logging.info("path not valid : {}".format(base_path))
             return os.devnull, False
             
         cache_path = os.path.join(base_path, 'cache')
@@ -994,10 +997,10 @@ class Vizualization:
                     ]])
 
         cluster_path = os.path.join(cache_path, cluster_filename)
-        np_extension_name = '.npz'
 
-        if os.path.exists(cluster_path + np_extension_name):
-            return (cluster_path + np_extension_name), True
+        if os.path.exists(cluster_path):
+            logging.info("loading the clusterizer in {}".format(cluster_path))
+            return (cluster_path), True
         
         return cluster_path, False
 
@@ -1026,8 +1029,11 @@ class Vizualization:
         cache_file_path, loadable = self.get_cache_file_name(method)
 
         if loadable:
+            logging.info("loading clusterizer")
             self.clusterizer.load_cluster(cache_file_path)
         else:
+            logging.info("requested clusterizer not found in cache ({}), calculating".format(
+                cache_file_path))
             self.last_clusterizer_method = method
             self.clusterizer.fit(xs=self.projected_input)
             self.clusterizer.save_cluster(cache_file_path)
@@ -1235,7 +1241,6 @@ class Vizualization:
         self.rows = row_labels
 
         cols = [
-                'true class',
                 '#class_local (#class_local/#class)',
                 'accuracy local (delta accuracy) - p-value',
                  '#class (#class/#all_class)',
