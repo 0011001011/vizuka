@@ -226,6 +226,7 @@ class DummyClusterizer(Clusterizer):
         """
         self.mesh   = mesh
         self.kdtree = cKDTree(self.mesh)
+        self.engine = None
 
     def fit(self, xs):
         """
