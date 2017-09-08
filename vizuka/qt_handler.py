@@ -414,7 +414,7 @@ class Viz_handler(Qt_matplotlib_handler):
             self.viz_engine.reload_predict,
             self.right_dock,
         )
-        self.textboxs['number_of_clusters'] = add_text_panel(
+        self.textboxs['nb_of_clusters'] = add_text_panel(
             self.window,
             'Number of clusters (default:120)',
             self.textbox_function_n_clusters,
@@ -423,10 +423,10 @@ class Viz_handler(Qt_matplotlib_handler):
 
     def textbox_function_n_clusters(self):
         """
-        Wrapper for textbox, to change number_of_clusters
+        Wrapper for textbox, to change nb_of_clusters
         without specifying parameters
         """
-        n_str = self.textboxs['number_of_clusters'].text()
+        n_str = self.textboxs['nb_of_clusters'].text()
         n = int(n_str)
-        self.viz_engine.number_of_clusters = n
+        self.viz_engine.nb_of_clusters = n
 
