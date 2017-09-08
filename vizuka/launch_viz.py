@@ -23,7 +23,7 @@ def main():
     See --help if you want help
     """
     
-    from config import (
+    from vizuka.config import (
         DATA_PATH,
         VERSION,
         REDUCTION_SIZE_FACTOR,
