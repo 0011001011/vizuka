@@ -22,7 +22,7 @@ def entropy(my_dic):
 def cross_entropy(global_distribution, specialized_distribution, global_entropy=None):
     """
     Cross-entropy between two dicts
-    dict1 must contains all keys in specialized_distribution
+    global_dictionnary must contains all keys in specialized_distribution
 
     :param gobal_distribution: dictionnary containing {class_label:occurence}
     :param specialized_distribution: dictionnary containing {class_label:occurence}
@@ -39,19 +39,3 @@ def cross_entropy(global_distribution, specialized_distribution, global_entropy=
     entropy_local = specialized_array / np.sum(specialized_array)
     
     return np.sum( - entropy_local * global_entropy)
-    
-
-    # return ce
-
-def bhattacharyya(dict1, dict2):
-    """
-    Similarity measure between two empirical distribution
-    
-    :param dict1: dictionnary containing {class_label:occurence}
-    :param dict2: dictionnary containing {class_label:occurence}
-    """
-    s = 0
-    for i in {*dict1, *dict2}:
-        s+=(dict1.get(i,0)*dict2.get(i,0))**.5
-    return -math.log(s) if s!=0 else -np.inf
-
