@@ -95,7 +95,7 @@ Your files should be structured this way :
     * internal structure:
         * x_2D: array of (float, float) datas
     * name: embedded_x_1-$(REDUCTION_SIZE_FACTOR)_$(PARAMS[0])_$(PARAMS[1]).$(PARAMS[N]).npz
-    * path: $(TSNE_DATA_PATH)
+    * path: $(REDUCTED_DATA_PATH)
 
 * raw transactions:
     * type: npz

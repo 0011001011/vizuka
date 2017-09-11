@@ -11,7 +11,7 @@ import os
 BASE_PATH       = os.path.join('data/')
 
 DATA_PATH       = os.path.join(BASE_PATH, 'set/')
-TSNE_DATA_PATH  = os.path.join(BASE_PATH, 'tSNE/')
+REDUCTED_DATA_PATH  = os.path.join(BASE_PATH, 'reducted/')
 MODEL_PATH      = os.path.join(BASE_PATH, 'models/')
 GRAPH_PATH      = os.path.join(BASE_PATH, 'graph/')
 

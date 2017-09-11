@@ -1,9 +1,9 @@
+scipy
 numpy
 sklearn
-scipy
+pandas
 matplotlib
+pyqt5
 keras
 ipdb
-seaborn
-pyqt5==5.9
 wordcloud

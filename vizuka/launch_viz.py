@@ -27,12 +27,13 @@ def main():
         DATA_PATH,
         VERSION,
         REDUCTION_SIZE_FACTOR,
-        TSNE_DATA_PATH,
+        REDUCTED_DATA_PATH,
         PARAMS_LEARNING,
         PARAMS_VIZ,
         MODEL_PATH,
         INPUT_FILE_BASE_NAME,
         OUTPUT_NAME,
+        RAW_NAME,
     )
 
 
@@ -62,7 +63,7 @@ def main():
          help='do not show a nice data vizualization (but prepare it nonetheless)')
     parser.add_argument(
         '--path',
-         help='(optional) location of your data/ folder, containing set/ tSNE/ graph/ models/')
+         help='(optional) location of your data/ folder, containing set/ reducted/ graph/ models/')
     
     parser.set_defaults(
             no_plot=False, 
@@ -78,7 +79,7 @@ def main():
 
     MODEL_PATH = os.path.join(args.path, MODEL_PATH)
     INPUT_FILE_BASE_NAME = os.path.join(args.path, INPUT_FILE_BASE_NAME)
-    TSNE_DATA_PATH = os.path.join(args.path, TSNE_DATA_PATH)
+    REDUCTED_DATA_PATH = os.path.join(args.path, REDUCTED_DATA_PATH)
     DATA_PATH = os.path.join(args.path, DATA_PATH)
 
 
@@ -130,7 +131,7 @@ def main():
             x                       = x_small,
             params                  = PARAMS_LEARNING,
             version                 = VERSION,
-            path                    = TSNE_DATA_PATH,
+            path                    = REDUCTED_DATA_PATH,
             reduction_size_factor   = REDUCTION_SIZE_FACTOR,
             pca_variance_needed     = pca_variance_needed,
         )
@@ -142,7 +143,7 @@ def main():
         x_transformed, models = dim_reduction.load_tSNE(
             params                = PARAMS_LEARNING,
             version               = VERSION,
-            path                  = TSNE_DATA_PATH,
+            path                  = REDUCTED_DATA_PATH,
             reduction_size_factor = REDUCTION_SIZE_FACTOR,
         )
 
@@ -164,28 +165,35 @@ def main():
     )
     logging.info('RNpredictions=ready')
     
-    logging.info("loading raw transactions for analysis..")
-    transactions_raw_ = np.load(
-        DATA_PATH + 'originals' + VERSION + '.npz'
-    )
+    raw_filename = DATA_PATH + RAW_NAME + VERSION + '.npz'
+    if os.path.exists(raw_filename):
+        logging.info("loading raw transactions for analysis..")
+        raw_data_ = np.load(raw_filename)
+        raw_data = raw_data_['originals']
+        raw_columns = raw_data_['columns']
+    else:
+        logging.info('no raw data provided, all cluster vizualization disabled! (-s and -f options)')
+        raw_data    = []
+        raw_columns = []
+        features_name_to_filter  = []
+        features_name_to_display = {}
+
+
     
-    data_unique_id_string = '_filesep_'.join([str(PARAMS_VIZ['perplexity']),
+    data_unique_id_string = '_'.join([str(PARAMS_VIZ['perplexity']),
                                               str(PARAMS_VIZ['learning_rate']),
                                               str(PARAMS_VIZ['init']),
                                               str(PARAMS_VIZ['n_iter']),
                                               str(VERSION),
-                                              str(TSNE_DATA_PATH).replace('/', '_')
+                                              str(REDUCTED_DATA_PATH).replace('/', '_')
                                              ])
-    transactions_raw = transactions_raw_['originals']
-    transactions_columns = transactions_raw_['columns']
-
     if not no_vizualize:
 
         f = vizualization.Vizualization(
             projected_input=x_2D,
             predicted_outputs=x_predicted,
-            raw_inputs=transactions_raw,
-            raw_inputs_columns=transactions_columns,
+            raw_inputs=raw_data,
+            raw_inputs_columns=raw_columns,
             correct_outputs=y_small,
             resolution=200,
             class_decoder=class_decoder,

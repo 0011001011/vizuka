@@ -24,7 +24,7 @@ from vizuka.config import (
     DATA_PATH,
     VERSION,
     REDUCTION_SIZE_FACTOR,
-    TSNE_DATA_PATH,
+    REDUCTED_DATA_PATH,
     PARAMS_LEARNING,
     OUTPUT_NAME,
     PCA_DIMS,
@@ -120,7 +120,7 @@ def reduce_with_PCA(x, variance_needed):
     return x_reduced
 
 
-def learn_tSNE(x, params=PARAMS_LEARNING, version=VERSION, path=TSNE_DATA_PATH,
+def learn_tSNE(x, params=PARAMS_LEARNING, version=VERSION, path=REDUCTED_DATA_PATH,
                reduction_size_factor=REDUCTION_SIZE_FACTOR, pca_variance_needed=0.9):
     """
     Learn tSNE representation.
@@ -205,7 +205,7 @@ def learn_tSNE(x, params=PARAMS_LEARNING, version=VERSION, path=TSNE_DATA_PATH,
     return x_transformed, models
 
 
-def load_tSNE(params=PARAMS_LEARNING, version=VERSION, path=TSNE_DATA_PATH,
+def load_tSNE(params=PARAMS_LEARNING, version=VERSION, path=REDUCTED_DATA_PATH,
               reduction_size_factor=REDUCTION_SIZE_FACTOR):
     """
     Load tSNE representation.

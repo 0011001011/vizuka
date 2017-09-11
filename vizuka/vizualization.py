@@ -465,12 +465,13 @@ class Vizualization:
             self.delimit_cluster(clicked_cluster, color=self.manual_cluster_color)
             self.update_summary(clicked_cluster)
             self.print_summary(self.summary_axe)
-            self.cluster_view.update_cluster_view(
-                    clicked_cluster,
-                    self.index_by_cluster_label,
-                    indexes_good = self.index_good_predicted,
-                    indexes_bad = self.index_bad_predicted,
-                    )
+            if self.cluster_view:
+                self.cluster_view.update_cluster_view(
+                        clicked_cluster,
+                        self.index_by_cluster_label,
+                        indexes_good = self.index_good_predicted,
+                        indexes_bad = self.index_bad_predicted,
+                        )
 
         if left_click:
             handle_left_click(self)
@@ -497,7 +498,8 @@ class Vizualization:
                         i.remove()
         
         logging.info("scatterplot: drawing observations")
-        self.cluster_view.clear()
+        if self.cluster_view:
+            self.cluster_view.clear()
 
         self.draw_scatterplot(
                 self.well_predicted_projected_points_array,
@@ -1308,20 +1310,24 @@ class Vizualization:
         Export your selected data in a .csv file for analysis
         """
         logging.info('exporting:...')
-        to_export =  pd.DataFrame(
-                    [
-                        [*self.x_raw[idx], self.projected_input[idx], self.prediction_outputs[idx]]
-                        for idx,c in enumerate(self.cluster_by_idx)
-                        if c in self.currently_selected_cluster
-                        ],
-                    columns = [*self.x_raw_columns, 'projected coordinates', 'predicted class'],
-                    )
-        if format=='csv':
-            to_export.to_csv(output_path)
-        if format=='hdf5':
-            to_export.to_hdf(output_path, 'data')
+        if self.x_raw:
+            to_export =  pd.DataFrame(
+                        [
+                            [*self.x_raw[idx], self.projected_input[idx], self.prediction_outputs[idx]]
+                            for idx,c in enumerate(self.cluster_by_idx)
+                            if c in self.currently_selected_cluster
+                            ],
+                        columns = [*self.x_raw_columns, 'projected coordinates', 'predicted class'],
+                        )
+            if format=='csv':
+                to_export.to_csv(output_path)
+            if format=='hdf5':
+                to_export.to_hdf(output_path, 'data')
+            logging.info('exporting: done')
+        else:
+            logging.info("nothing to export, no raw data provided!")
 
-        logging.info('exporting: done')
+
     
     def view_details_figure(self):
         """
@@ -1344,12 +1350,17 @@ class Vizualization:
         #self.cluster_view = matplotlib.figure.Figure()
 
         gs=GridSpec(3,4)
+        if self.features_to_display and self.x_raw and self.x_raw_columns:
+            self.cluster_view = Cluster_viewer(
+                    self.features_to_display,
+                    self.x_raw,
+                    self.x_raw_columns,
+                    show_dichotomy=True)
+            additional_figures = [self.cluster_view]
 
-        self.cluster_view = Cluster_viewer(
-                self.features_to_display,
-                self.x_raw,
-                self.x_raw_columns,
-                show_dichotomy=True)
+        else:
+            self.cluster_view = None
+            additional_figures = []
         
         #self.view_details = View_details(self.x_raw)
         self.viz_handler = Viz_handler(
@@ -1357,7 +1368,7 @@ class Vizualization:
                 figure             = self.main_fig,
                 onclick            = self.onclick,
                 additional_filters = self.features_name_to_filter,
-                additional_figures = [self.cluster_view],
+                additional_figures = additional_figures,
                 )
 
         # main subplot with the scatter plot
