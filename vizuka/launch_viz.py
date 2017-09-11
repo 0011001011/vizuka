@@ -56,6 +56,9 @@ def main():
         '--version', type=str,
         help='(optional) specify a version of the files to load/generate, currently: '+VERSION)
     parser.add_argument(
+        '--force_no_predict', action="store_true",
+        help='do not load a predictions file : vizualize as if you predicted with 100% accuracy')
+    parser.add_argument(
         '--no_vizualize', action="store_true",
          help='do not prepare a nice data vizualization')
     parser.add_argument(
@@ -73,6 +76,7 @@ def main():
             feature_to_filter=[],
             feature_to_show=[],
             use_pca = 0,
+            force_no_predict = False,
             )
 
     args = parser.parse_args()
@@ -90,6 +94,7 @@ def main():
     features_name_to_filter  = args.feature_to_filter
     features_name_to_display = args.feature_to_show
     pca_variance_needed = args.use_pca
+    force_no_predict = args.force_no_predict
     
     new_fntd = {}
     error_msg  = 'Argument should be feature_name:plotter with plotter'
@@ -110,8 +115,8 @@ def main():
     logging.info("raw_data=loading")
 
     (
-        x_small,
-        y_small,
+        x,
+        y,
         class_encoder,
         class_decoder,
     ) = dim_reduction.load_raw_data(
@@ -137,11 +142,17 @@ def main():
 
         logging.info('t-sne=ready')
 
-    if (not x_transformed) or reduce_: # if nothing loaded or reduce is forced by arg
+    if not x_transformed:
+        logging.info("no reduced data found! Needs to learn some dimension reduction..")
+        force_reduce = True
+    else:
+        force_reduce = False
+
+    if force_reduce or reduce_: # if nothing loaded or reduce is forced by arg
         logging.info("t-sne=learning")
 
         x_transformed, models = dim_reduction.learn_tSNE(
-            x                       = x_small,
+            x                       = x,
             params                  = PARAMS_LEARNING,
             version                 = VERSION,
             path                    = REDUCTED_DATA_PATH,
@@ -160,12 +171,22 @@ def main():
 
     ###############
     # PREDICT
-    logging.info('RNpredictions=loading')
-    x_predicted = labelling.load_predict(
-        path=MODEL_PATH,
-        version=VERSION
-    )
-    logging.info('RNpredictions=ready')
+    if force_no_predict:
+        x_predicted = y
+    else:
+        try:
+            logging.info('predictions=loading')
+            x_predicted = labelling.load_predict(
+                path=MODEL_PATH,
+                version=VERSION
+            )
+            logging.info('RNpredictions=ready')
+        except FileNotFoundError:
+            logging.info(
+                    "Nothing found in {}, no predictions to vizualize",
+                    "if this is intended you can force the vizualization",
+                    "with --force_no_predict\n",
+                    )
     
     raw_filename = DATA_PATH + RAW_NAME + VERSION + '.npz'
     if os.path.exists(raw_filename):
@@ -196,7 +217,7 @@ def main():
             predicted_outputs=x_predicted,
             raw_inputs=raw_data,
             raw_inputs_columns=raw_columns,
-            correct_outputs=y_small,
+            correct_outputs=y,
             resolution=200,
             class_decoder=class_decoder,
             class_encoder=class_encoder,

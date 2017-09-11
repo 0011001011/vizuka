@@ -13,7 +13,15 @@ Simply run
 vizuka
 
 # Similar to :
+
 python3 vizuka/launch_viz.py
+
+```
+
+If you have a dataset containing your non-preprocessed/human-readable data (and their "columns" aka names):
+you can also draw visualisations of the data in your selected cluster (see third pic)
+```sh
+vizuka -s amount:logdensity -s datacontainingstrings:wordcloud
 ```
 
 It assumes you already have your 2D data, if not you can ask for tSNE+PCA reduction :
