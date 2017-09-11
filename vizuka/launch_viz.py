@@ -124,7 +124,20 @@ def main():
 
     logging.info('raw_data=loaded')
 
-    if reduce_:
+    x_transformed = {}
+    if not reduce_:
+        logging.info("t-sne=loading")
+
+        x_transformed, models = dim_reduction.load_tSNE(
+            params                = PARAMS_LEARNING,
+            version               = VERSION,
+            path                  = REDUCTED_DATA_PATH,
+            reduction_size_factor = REDUCTION_SIZE_FACTOR,
+        )
+
+        logging.info('t-sne=ready')
+
+    if (not x_transformed) or reduce_: # if nothing loaded or reduce is forced by arg
         logging.info("t-sne=learning")
 
         x_transformed, models = dim_reduction.learn_tSNE(
@@ -134,17 +147,6 @@ def main():
             path                    = REDUCTED_DATA_PATH,
             reduction_size_factor   = REDUCTION_SIZE_FACTOR,
             pca_variance_needed     = pca_variance_needed,
-        )
-
-        logging.info('t-sne=ready')
-    else:
-        logging.info("t-sne=loading")
-
-        x_transformed, models = dim_reduction.load_tSNE(
-            params                = PARAMS_LEARNING,
-            version               = VERSION,
-            path                  = REDUCTED_DATA_PATH,
-            reduction_size_factor = REDUCTION_SIZE_FACTOR,
         )
 
         logging.info('t-sne=ready')
