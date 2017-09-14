@@ -11,6 +11,7 @@ import logging
 import math
 import itertools
 from collections import Counter
+import pickle
 
 from scipy import stats
 import numpy as np
@@ -160,6 +161,7 @@ class Vizualization:
         self.feature_to_display_by_col = {}
         self.features_to_display = features_name_to_display
         self.cluster_view_selected_indexes = []
+        self.left_clicks = set()
 
         self.last_clusterizer_method = None
         
@@ -457,31 +459,36 @@ class Vizualization:
         self.summary_axe.axis('off')
         
 
-        def handle_left_click(self):
-            if (x is None) or (y is None):  # clicks out of the screen
-                return
-            clicked_cluster = self.clusterizer.predict([(x,y)])[0]
-    
-            self.delimit_cluster(clicked_cluster, color=self.manual_cluster_color)
-            self.update_summary(clicked_cluster)
-            self.print_summary(self.summary_axe)
-            if self.cluster_view:
-                self.cluster_view.update_cluster_view(
-                        clicked_cluster,
-                        self.index_by_cluster_label,
-                        indexes_good = self.index_good_predicted,
-                        indexes_bad = self.index_bad_predicted,
-                        )
-
         if left_click:
-            handle_left_click(self)
+            self.do_left_click((x,y))
+
             
         elif right_click:
             # reboot vizualization
+            self.left_clicks = set()
             self.reset_summary()
             self.reset_viz()
 
         self.refresh_graph()
+    
+    def do_left_click(self, xy):
+        x, y = xy
+        if (x is None) or (y is None):  # clicks out of the screen
+            return
+        
+        self.left_clicks.add((x,y))
+        clicked_cluster = self.clusterizer.predict([(x,y)])[0]
+
+        self.delimit_cluster(clicked_cluster, color=self.manual_cluster_color)
+        self.update_summary(clicked_cluster)
+        self.print_summary(self.summary_axe)
+        if self.cluster_view:
+            self.cluster_view.update_cluster_view(
+                    clicked_cluster,
+                    self.index_by_cluster_label,
+                    indexes_good = self.index_good_predicted,
+                    indexes_bad = self.index_bad_predicted,
+                    )
 
     def reset_viz(self):
         """
@@ -1310,15 +1317,27 @@ class Vizualization:
         Export your selected data in a .csv file for analysis
         """
         logging.info('exporting:...')
-        if self.x_raw:
-            to_export =  pd.DataFrame(
+
+        if self.x_raw.any():
+            columns = [
+                *self.x_raw_columns,
+                'projected coordinates',
+                'predicted class',
+                'well predicted',
+                ]
+            rows =  [
                         [
-                            [*self.x_raw[idx], self.projected_input[idx], self.prediction_outputs[idx]]
-                            for idx,c in enumerate(self.cluster_by_idx)
-                            if c in self.currently_selected_cluster
-                            ],
-                        columns = [*self.x_raw_columns, 'projected coordinates', 'predicted class'],
-                        )
+                            *self.x_raw[idx],
+                            self.projected_input[idx],
+                            self.prediction_outputs[idx],
+                            int(idx in self.index_good_predicted),
+                            ]
+                        for idx,c in enumerate(self.cluster_by_idx)
+                        if c in self.currently_selected_cluster
+                        ]
+
+            to_export =  pd.DataFrame(rows, columns=columns)
+
             if format=='csv':
                 to_export.to_csv(output_path)
             if format=='hdf5':
@@ -1327,6 +1346,26 @@ class Vizualization:
         else:
             logging.info("nothing to export, no raw data provided!")
 
+    def save_clusterization(self):
+        cache_file_path, _ = self.get_cache_file_name('manual_clusters')
+        self.clusterizer.save_cluster(cache_file_path)
+        pickle.dump(
+                self.left_clicks,
+                open(os.path.join(self.model_path, 'clusters.pkl'), 'wb')
+                )
+
+    def load_clusterization(self):
+        cache_file_path, _ = self.get_cache_file_name('manual_clusters')
+        self.clusterizer.load_cluster(cache_file_path)
+        left_clicks_to_reproduce = pickle.load(
+                open(os.path.join(self.model_path, 'clusters.pkl'), 'rb'),
+                )
+        self.left_clicks = set()
+
+        for left_click in left_clicks_to_reproduce:
+            self.do_left_click(left_click)
+        
+        self.refresh_graph()
 
     
     def view_details_figure(self):
@@ -1350,7 +1389,7 @@ class Vizualization:
         #self.cluster_view = matplotlib.figure.Figure()
 
         gs=GridSpec(3,4)
-        if self.features_to_display and self.x_raw and self.x_raw_columns:
+        if self.features_to_display:
             self.cluster_view = Cluster_viewer(
                     self.features_to_display,
                     self.x_raw,

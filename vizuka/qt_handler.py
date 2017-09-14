@@ -380,15 +380,18 @@ class Viz_handler(Qt_matplotlib_handler):
             lambda: self.viz_engine.export(self.viz_engine.output_path),
             self.right_dock,
         )
-        '''
         add_button(
             self.window,
-            "View_details",
-            lambda: self.viz_engine.view_details_figure(),
+            "Save clusterization",
+            lambda: self.viz_engine.save_clusterization(),
             self.right_dock,
         )
-        '''
-        # logging.info("action buttons=ready")
+        add_button(
+            self.window,
+            "Load clusterization",
+            lambda: self.viz_engine.load_clusterization(),
+            self.right_dock,
+        )
 
         # add menulist
         add_menulist(

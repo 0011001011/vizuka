@@ -5,6 +5,11 @@ This is a collection of tools to represent and navigate through the high-dimensi
 
 Usage
 -----
+### How to install ?
+```sh
+pip install vizuka
+```
+or clone the repo
 
 ### How to run?
 
