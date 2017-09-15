@@ -6,7 +6,7 @@ import wordcloud
 from collections import Counter
 
 from vizuka import qt_handler
-from vizuka.dynamic_subplot import add_subplot
+from vizuka.drawing import add_subplot
 
 def plot_density(data, axe, scale='linear'):
     if not data:

@@ -22,76 +22,16 @@ from matplotlib import pyplot as plt
 import pandas as pd
 import wordcloud
 
+from vizuka import viz_helper
 from vizuka import similarity
 from vizuka.qt_handler import Viz_handler
-from vizuka.ml_helpers import (
-        cross_entropy,
-        )
 from vizuka import clustering
+from vizuka import drawing
+from vizuka import heatmaps
 from vizuka.cluster_diving import Cluster_viewer
 from vizuka.config import (
     MODEL_PATH,
     )
-
-def find_grid_position(x, y, resolution, amplitude):
-    """
-    Gives the int indexes of (x,y) inside the grid matrix
-    :param resolution: size of grid (nb of square by row/column)
-    :param amplitude:  size of embedded space, as max of axis (rounded as an int)
-                       e.g: [[-1,1],[.1,.1] as an amplitude of 2
-    """
-
-    z1 = math.floor(x / (amplitude / float(resolution)))
-    z2 = math.floor(y / (amplitude / float(resolution)))
-
-    return z1, z2
-
-def find_grid_positions(xys, resolution, amplitude):
-        return [
-                find_grid_position(
-                        xy[0], xy[1],
-                        resolution,
-                        amplitude,
-                        )
-                for xy in xys
-]
-
-def find_amplitude(projection):
-        """
-        Find the absolute max of the axis
-        """
-        x_proj_amplitude = 1 + int(
-            max(-min(np.array(projection)[:, 0]), max(np.array(projection)[:, 0])))
-        y_proj_amplitude = 1 + int(
-            max(-min(np.array(projection)[:, 1]), max(np.array(projection)[:, 1])))
-        return 2 * max(x_proj_amplitude, y_proj_amplitude)
-
-
-def separate_prediction(predicted_outputs, true_outputs, special_class):
-    """
-    Gives the index of good/bad/not predicted
-    :param predicted_outputs: possible_outputs_list predicted, decoded (human-readable)
-    :param true_outputs: true possible_outputs_list, decoded  (human-readable)
-    :param special_class: label (decoded) of special class (typically 0)
-
-    :return: indexes of (bad predictions, good prediction, special_class predictions)
-    :rtype: array(int), array(int), array(int)
-    """
-
-    index_bad_predicted = set()
-    index_well_predicted = set()
-    index_not_predicted = set()
-    
-    # Sort good / bad / not predictions
-    for index, prediction in enumerate(predicted_outputs):
-        if special_class == true_outputs[index]:
-            index_not_predicted.add(index)
-        if prediction == true_outputs[index]:
-            index_well_predicted.add(index)
-        else:
-            index_bad_predicted.add(index)
-
-    return index_bad_predicted, index_well_predicted, index_not_predicted
 
 
 class Vizualization:
@@ -161,6 +101,11 @@ class Vizualization:
         self.feature_to_display_by_col = {}
         self.features_to_display = features_name_to_display
         self.cluster_view_selected_indexes = []
+        self.filters = {
+                'PREDICTIONS':set(),
+                'GROUND_TRUTH':set(),
+                **{k:set() for k in features_name_to_filter},
+                }
         self.left_clicks = set()
 
         self.last_clusterizer_method = None
@@ -192,7 +137,7 @@ class Vizualization:
         self.ctrl_held = False
 
         self.local_effectif = {}
-        self.local_proportion = {}
+        self.local_accuracy = {}
         self.local_confusion_by_class = {
                 class_:
                 {
@@ -206,7 +151,7 @@ class Vizualization:
 
         # Get the real possible_outputs_list found in true y
 
-        self.amplitude = find_amplitude(self.projected_input)
+        self.amplitude = viz_helper.find_amplitude(self.projected_input)
 
         mesh = np.meshgrid(
                 np.arange(
@@ -242,38 +187,34 @@ class Vizualization:
             self.index_bad_predicted,
             self.index_good_predicted,
             self.index_not_predicted,
-        ) = separate_prediction(
-            self.prediction_outputs,
-            self.correct_outputs,
-            self.special_class,
-        )
+        ) = viz_helper.separate_prediction(
+                self.prediction_outputs,
+                self.correct_outputs,
+                self.special_class,
+                )
+
+        (
+            self.well_predicted_projected_points_array,
+            self.misspredicted_projected_points_array,
+            self.not_predicted_projected_points_array,
+
+            ) = viz_helper.get_projections_from_index(
+                    self.index_good_predicted,
+                    self.index_bad_predicted,
+                    self.index_not_predicted,
+                    self.projected_input,
+                    )
+
     
         # Sort good/bad/not predictions in t-SNE space
         logging.info("projections=listing")
         
-        self.proportion_by_class = {}
-        for possible_output in self.possible_outputs_list:
-            if not possible_output in self.index_by_true_output:
-                continue
-            list_correct_index = self.index_by_true_output[possible_output]
-            if not len(list_correct_index) > 0:
-                self.proportion_by_class[possible_output] = 0
-                continue
-            self.proportion_by_class[possible_output] = sum([
-                            (self.correct_outputs[i] == self.prediction_outputs[i])
-                            for i in list_correct_index]) / float(len(list_correct_index))
+        self.accuracy_by_class = viz_helper.get_accuracy_by_class(
+                self.index_by_true_output,
+                self.correct_outputs,
+                self.prediction_outputs,
+                self.possible_outputs_list)
 
-        logging.info("projections=sorting")
-        self.well_predicted_projected_points_array = np.array(
-            [self.projected_input[i] for i in self.index_good_predicted])
-
-        self.misspredicted_projected_points_array = np.array(
-            [self.projected_input[i] for i in self.index_bad_predicted])
-
-        self.not_predicted_projected_points_array = np.array(
-            [self.projected_input[i] for i in self.index_not_predicted])
-
-        logging.info("projections=ready")
         
     def reload_predict(self, filename):
         """
@@ -287,31 +228,7 @@ class Vizualization:
 
         self.reset_viz()
         self.refresh_graph()
-    
-    def draw_scatterplot(self, well_predicted_array, badly_predicted_array, special_class_array):
-        """
-        Draw the datas on the main 2D map
-        """
-        if len(well_predicted_array) > 0:
-            self.ax.scatter(
-                x=well_predicted_array[:, 0],
-                y=well_predicted_array[:, 1],
-                color='b', marker="+"
-            )
-        if len(badly_predicted_array) > 0:
-            self.ax.scatter(
-                x=badly_predicted_array[:, 0],
-                y=badly_predicted_array[:, 1],
-                color='r',
-                marker='+'
-            )
-        if len(special_class_array) > 0:
-            self.ax.scatter(
-                x=special_class_array[:, 0],
-                y=special_class_array[:, 1],
-                marker='x',
-                color='g'
-            )
+
 
     def filter_by_feature(self, feature_col, selected_feature_list):
         """
@@ -321,10 +238,14 @@ class Vizualization:
         selected_feature_list: list of checked/unchecked feature to display
         """
 
-        self.feature_to_display_by_col[feature_col] = [
+        featured_data = [
                 item for item, selected in selected_feature_list.items() if selected
                 ]
-        self.display_by_filter()
+        self.feature_to_display_by_col[feature_col] = featured_data
+        self.filters[feature_col] = featured_data
+
+        # self.display_by_filter()
+        self.conciliate_filters(self.filters)
 
     def filter_by_correct_class(self, selected_outputs_class_list):
         """
@@ -333,7 +254,9 @@ class Vizualization:
         self.correct_class_to_display = {
                 output_class for output_class, selected in selected_outputs_class_list.items() if selected
                 }
-        self.display_by_filter()
+        self.filters["GROUND_TRUTH"] = self.correct_class_to_display
+        # self.display_by_filter()
+        self.conciliate_filters(self.filters)
 
     def filter_by_predicted_class(self, selected_outputs_class_list):
         """
@@ -342,100 +265,42 @@ class Vizualization:
         self.predicted_class_to_display = {
                 output_class for output_class, selected in selected_outputs_class_list.items() if selected
                 }
-        self.display_by_filter()
+        self.filters["PREDICTIONS"] = self.predicted_class_to_display
+        # self.display_by_filter()
+        self.conciliate_filters(self.filters)
 
-    def display_by_filter(self):
-        """
-        Sum up all the filters and display accordingly
-        If none are set to be display in one of the sets, it displays all
-        """
-        all_unchecked = (
-                (not self.predicted_class_to_display) and (not self.correct_class_to_display)
-                )
-        index_inputs_to_display = set()
-
-        for output_class in self.predicted_class_to_display:
-            for index, predicted_class in enumerate(self.prediction_outputs):
-                if predicted_class == output_class:
-                    index_inputs_to_display.add(index)
+    def conciliate_filters(self, filters):
         
-        for output_class in self.correct_class_to_display:
-            for index, true_class in enumerate(self.correct_outputs) :
-                if true_class == output_class:
-                    index_inputs_to_display.add(index)
-    
-        for child in self.ax.get_children():
-            if isinstance(child, matplotlib.collections.PathCollection):
-                child.remove()
+        to_display = set(range(len(self.projected_input)))
+        print(filters)
 
-        bad_to_display, good_to_display, special_to_display = set(), set(), set()
+        if filters["GROUND_TRUTH"]:
+            filtered = filters["GROUND_TRUTH"]
+            to_display = to_display.intersection(set([
+                    idx for idx, class_ in enumerate(self.correct_outputs) if class_ in filtered]))
+            
+        if filters["PREDICTIONS"]:
+            filtered = filters["PREDICTIONS"]
+            to_display = to_display.intersection(set([
+                    idx for idx, class_ in enumerate(self.prediction_outputs) if class_ in filtered]))
+        other_filters = {k:v for k,v in filters.items() if k!="PREDICTIONS" and k!="GROUND_TRUTH"}
+        for col in other_filters: # other filters are column number identifying features
+            if other_filters[col]:
+                to_display.intersection(set([
+                    idx for idx, x in enumerate(self.x_raw) if x[col] not in other_filters[col]]))
 
-        for index in index_inputs_to_display:
-            index_pass_feature_check = True
-            for col in self.feature_to_display_by_col.keys():
-                # check if there is a feature check
-                if self.x_raw[index][col] not in self.feature_to_display_by_col[col]:
-                    index_pass_feature_check = False
-                    continue
-            if index_pass_feature_check:
-                if index in self.index_bad_predicted:
-                    bad_to_display.add(index)
-                elif index in self.index_good_predicted:
-                    good_to_display.add(index)
-                else:
-                    special_to_display.add(index)
+        viz_helper.remove_pathCollection(self.ax)
 
-        bad_to_display_array = np.array([self.projected_input[i] for i in bad_to_display])
-        good_to_display_array = np.array([self.projected_input[i] for i in good_to_display])
-        special_to_display_array = np.array([self.projected_input[i] for i in special_to_display])
-
-        self.draw_scatterplot(
-                good_to_display_array,
-                bad_to_display_array,
-                special_to_display_array
+        drawing.draw_scatterplot_from_indexes(
+                to_display,
+                self.index_bad_predicted,
+                self.index_good_predicted,
+                self.index_not_predicted,
+                self.projected_input,
+                self.ax,
                 )
-
-        if all_unchecked:
-            # display nothing ? gross
-
-            well_predicted = self.filter_indexes_list_by_features(self.index_good_predicted)
-            miss_predicted = self.filter_indexes_list_by_features(self.index_bad_predicted)
-            not_predicted = self.filter_indexes_list_by_features(self.index_not_predicted)
-
-            self.draw_scatterplot(
-                well_predicted,
-                miss_predicted,
-                not_predicted,
-                )
-
+                
         self.refresh_graph()
-
-    def filter_indexes_list_by_features(self, indexes_set):
-        logging.info("Filtering by feature")
-        to_display = indexes_set.copy()
-        for col in self.feature_to_display_by_col:
-            logging.info("filtering by: {}".format(col))
-            for index in indexes_set:
-                if self.x_raw[index][col] not in self.feature_to_display_by_col[col]:
-                    to_display.discard(index)
-        points_to_display = np.array([self.projected_input[i] for i in to_display])
-        return points_to_display
-
-    def onmodifier_press(self, event):
-        if event.key == 'shift':
-            self.shift_held = True
-            logging.info("shift held")
-        if event.key == 'ctrl':
-            self.ctrl_held = True
-            logging.info("ctrl held")
-
-    def onmodifier_release(self, event):
-        if event.key == 'shift':
-            self.shift_held = False
-            logging.info("shift unheld")
-        if event.key == 'ctrl':
-            self.ctrl_held = False
-            logging.info("ctrl unheld")
 
     #######################################
     # Similarity functions to draw clusters
@@ -462,12 +327,8 @@ class Vizualization:
         if left_click:
             self.do_left_click((x,y))
 
-            
         elif right_click:
-            # reboot vizualization
-            self.left_clicks = set()
-            self.reset_summary()
-            self.reset_viz()
+            self.do_right_click((x,y))
 
         self.refresh_graph()
     
@@ -476,12 +337,17 @@ class Vizualization:
         if (x is None) or (y is None):  # clicks out of the screen
             return
         
+        # Register this click for replay
         self.left_clicks.add((x,y))
+        
+        # find associated cluster and gather data
         clicked_cluster = self.clusterizer.predict([(x,y)])[0]
-
         self.delimit_cluster(clicked_cluster, color=self.manual_cluster_color)
         self.update_summary(clicked_cluster)
+
         self.print_summary(self.summary_axe)
+        
+        # shows additional info if requested (argument -s)
         if self.cluster_view:
             self.cluster_view.update_cluster_view(
                     clicked_cluster,
@@ -489,6 +355,12 @@ class Vizualization:
                     indexes_good = self.index_good_predicted,
                     indexes_bad = self.index_bad_predicted,
                     )
+
+    def do_right_click(self, xy):
+            # reboot vizualization
+            self.left_clicks = set()
+            self.reset_summary()
+            self.reset_viz()
 
     def reset_viz(self):
         """
@@ -508,7 +380,8 @@ class Vizualization:
         if self.cluster_view:
             self.cluster_view.clear()
 
-        self.draw_scatterplot(
+        drawing.draw_scatterplot(
+                self.ax,
                 self.well_predicted_projected_points_array,
                 self.misspredicted_projected_points_array,
                 self.not_predicted_projected_points_array
@@ -520,7 +393,7 @@ class Vizualization:
         Reset the local summary
         """
         self.local_effectif = {}
-        self.local_proportion = {}
+        self.local_accuracy = {}
         self.local_confusion_by_class = {
                 output_class: {
                     other_output_class:0 for other_output_class in self.possible_outputs_list
@@ -534,74 +407,42 @@ class Vizualization:
         self.local_sum = 0
         self.currently_selected_cluster = []
 
-    def cluster_label_mesh(self):
+    def init_clusters(self):
         """
-        Labels the mesh centroids
-
-        Useful for heatmap right after this method. Should be called just
-        after a change in clustering method. Parameter is implicitely the
-        clusteriser of the vizualization
+        Clusterize the data and retrieve some countings
         """
+        (
+            self.index_by_cluster_label,
+            self.all_cluster_labels,
+            self.nb_of_points_by_class_by_cluster,
+            self.cluster_by_idx,
 
-        self.cluster_by_idx = self.clusterizer.predict(self.projected_input)
+            ) = viz_helper.cluster_label_mesh(
 
-        all_cluster_labels = set(self.cluster_by_idx)
-        
-        index_by_cluster_label = { cluster_label:[] for cluster_label in all_cluster_labels }
-        
-        nb_of_points_by_class_by_cluster = {
-                cluster_label: {
-                    output_class:0 for output_class in self.projection_points_list_by_correct_output }
-                for cluster_label in all_cluster_labels
-                }
-        
-        nb_null_point_by_cluster = dict()
-        nb_good_point_by_cluster = dict()
-        nb_bad_point_by_cluster  = dict()
-        nb_good_point_by_class_by_cluster = dict()
-        nb_bad_point_by_class_by_cluster  = dict()
-        
-        for index, cluster_label in enumerate(self.cluster_by_idx):
-            index_by_cluster_label[cluster_label].append(index)
-            nb_of_points_by_class_by_cluster[cluster_label][self.correct_outputs[index]]+=1
+                self.clusterizer,
+                self.projected_input,
+                self.projection_points_list_by_correct_output,
+                self.correct_outputs,
+                )
 
 
-        logging.info('clustering: analyze each one')
-        for cluster_label in all_cluster_labels:
-            nb_good_point_by_cluster[cluster_label] = 0
-            nb_bad_point_by_cluster[cluster_label]  = 0
-            nb_null_point_by_cluster[cluster_label] = 0
-            nb_good_point_by_class_by_cluster[cluster_label] = {}
-            nb_bad_point_by_class_by_cluster[cluster_label] = {}
+        (
+            self.nb_good_point_by_cluster,
+            self.nb_bad_point_by_cluster,
+            self.nb_good_point_by_class_by_cluster,
+            self.nb_bad_point_by_class_by_cluster,
+            self.nb_null_point_by_cluster,
 
-            for point_in_cluster_index in index_by_cluster_label[cluster_label]:
-                point_correct_output = self.correct_outputs[point_in_cluster_index]
-                if point_in_cluster_index in self.index_good_predicted:
-                    nb_good_point_by_cluster[cluster_label] += 1
-                    if point_correct_output in nb_good_point_by_class_by_cluster[cluster_label]:
-                        nb_good_point_by_class_by_cluster[cluster_label][point_correct_output] += 1
-                    else:
-                        nb_good_point_by_class_by_cluster[cluster_label][point_correct_output] = 1
+            ) = viz_helper.get_count_by_cluster(
 
-                elif point_in_cluster_index in self.index_bad_predicted:
-                    nb_bad_point_by_cluster[cluster_label] += 1
-                    if point_correct_output in nb_bad_point_by_class_by_cluster[cluster_label]:
-                        nb_bad_point_by_class_by_cluster[cluster_label][point_correct_output] += 1
-                    else:
-                        nb_bad_point_by_class_by_cluster[cluster_label][point_correct_output] = 1
-                elif point_in_cluster_index in self.index_not_predicted:
-                    nb_null_point_by_cluster[cluster_label] += 1
-                else:
-                    logging.error("index not in any indexes : %s", point_in_cluster_index)
+                self.all_cluster_labels,
+                self.index_by_cluster_label,
+                self.correct_outputs,
+                self.index_good_predicted,
+                self.index_bad_predicted,
+                self.index_not_predicted,
+                )
 
-        
-        self.nb_good_point_by_cluster = nb_good_point_by_cluster
-        self.nb_bad_point_by_cluster = nb_bad_point_by_cluster
-        self.nb_good_point_by_class_by_cluster = nb_good_point_by_class_by_cluster
-        self.nb_bad_point_by_class_by_cluster = nb_bad_point_by_class_by_cluster
-        self.nb_null_point_by_cluster = nb_null_point_by_cluster
-        self.index_by_cluster_label = index_by_cluster_label
-        self.nb_of_points_by_class_by_cluster = nb_of_points_by_class_by_cluster
 
     def calculate_centroid_coordinates(self, x, y):
         return x + self.resolution * y
@@ -701,248 +542,12 @@ class Vizualization:
         draw_all_lines(self, cluster_x_list_by_y, swapped_coordinates=False)
 
     
-    def apply_borders(self, normalize_frontier, frontier_builder, *args):
-        """
-        Returns the line to draw the clusters border
-        
-        :param normalize_frontier: sset to True if the value given by
-        the :param frontier_builder: needs some normalization, if True
-        it will be set between [0,1]
-        :param frontier_builder: function that takes two dicts
-        (clusters) and compute a frontier density (typically
-        based on a similarity measure)
-        :param axes: list of axes to draw the borders
-        """
-        axes = args[0]
-        frontier = {}
-
-        logging.info('borders: calculating')
-        centroids_cluster_by_index = self.clusterizer.predict(self.mesh_centroids)
-        for index, xy in enumerate(self.mesh_centroids):
-            current_centroid_label = centroids_cluster_by_index[index]
-            if index > self.resolution:
-                label_down_neighbor = centroids_cluster_by_index[index-self.resolution]
-                if label_down_neighbor != current_centroid_label:
-                    if (label_down_neighbor, current_centroid_label) not in frontier:
-                        current_frontier = frontier_builder(
-                                    self.nb_of_points_by_class_by_cluster[label_down_neighbor],
-                                    self.nb_of_points_by_class_by_cluster[current_centroid_label]
-                                    )
-                        if current_frontier > -np.inf:
-                            frontier[(label_down_neighbor, current_centroid_label)] = current_frontier
-
-            if index % self.resolution > 0:
-                label_left_neighbor = centroids_cluster_by_index[index-1]
-                if label_left_neighbor != current_centroid_label:
-                    if (label_left_neighbor, current_centroid_label) not in frontier:
-                        current_frontier = frontier_builder(
-                                    self.nb_of_points_by_class_by_cluster[label_left_neighbor],
-                                    self.nb_of_points_by_class_by_cluster[current_centroid_label]
-                                    )
-                        if current_frontier > -np.inf:
-                            frontier[(label_left_neighbor, current_centroid_label)] = current_frontier
-
-        frontier = { key:frontier[key] for key in frontier if frontier[key] != -np.inf }
-        
-        if normalize_frontier:
-            max_frontier = frontier[max(frontier, key=frontier.get)]
-            min_frontier = frontier[min(frontier, key=frontier.get)]
-
-            frontier_amplitude = max_frontier - min_frontier
-
-            if frontier_amplitude:
-                normalized_frontier = { key:(frontier[key]-min_frontier) / frontier_amplitude for key in frontier }
-            else:
-                normalized_frontier = frontier
-        else:
-            normalized_frontier = frontier
-
-
-        logging.info('borders: cleaning')
-        for axe in axes:
-            for child in axe.get_children():
-                if isinstance(child, matplotlib.collections.LineCollection):
-                    child.remove()
-
-        def line_dict_maker(xdata, ydata, frontier_density):
-            black = (0, 0, 0)
-            return {'xdata': xdata,
-                    'ydata': ydata,
-                    'color': black,
-                    'alpha': frontier_density
-                    }
-
-        lines = []
-
-        logging.info('borders: drawing')
-        for index, (x, y) in enumerate(self.mesh_centroids):
-
-            current_centroid_label = centroids_cluster_by_index[index]
-
-            if index > self.resolution:
-                label_down_neighbor = centroids_cluster_by_index[index-self.resolution]
-                if label_down_neighbor != current_centroid_label:
-                    if (label_down_neighbor, current_centroid_label) in frontier:
-                        frontier_density = normalized_frontier[(label_down_neighbor, current_centroid_label)]
-
-                        lines.append(line_dict_maker(
-                            xdata = (x-self.size_centroid/2, x+self.size_centroid/2),
-                            ydata = (y-self.size_centroid/2, y-self.size_centroid/2),
-                            frontier_density=frontier_density))
-
-            if index % self.resolution > 0:
-                label_left_neighbor = centroids_cluster_by_index[index-1]
-                if label_left_neighbor != current_centroid_label:
-                    if (label_left_neighbor, current_centroid_label) in normalized_frontier:
-                        frontier_density = normalized_frontier[(label_left_neighbor, current_centroid_label)]
-
-                        lines.append(line_dict_maker(
-                            xdata=(x-self.size_centroid/2, x-self.size_centroid/2),
-                            ydata=(y-self.size_centroid/2, y+self.size_centroid/2),
-                            frontier_density=frontier_density))
-        
-                        line_collection_lines = [list(zip(elt['xdata'], elt['ydata'])) for elt in lines]
-        line_collection_colors = [(*elt['color'], elt['alpha']) for elt in lines]
-        
-        for axe in axes:
-            axe.add_artist(
-                    matplotlib.collections.LineCollection(
-                        line_collection_lines,
-                        colors=line_collection_colors
-                        )
-                    )
-        logging.info('borders: ready')
 
     def get_coordinates_from_index(self, index):
         return (self.resolution - index // self.resolution -1, index % self.resolution)
         # check it's the same
         # return (self.resolution - int(((index - index % self.resolution) / self.resolution)) - 1,
         #         index % self.resolution)
-
-    def heatmap_proportion(self):
-        """
-        Prepare the patches for a 'proportion' heatmap (good predictions / total effectif)
-
-        This method is a  heatmap_builder returning a list of patches to be plotted somewhere
-        Three colors are actually used : red for bad prediction, blue for correct, and green for
-            special_class prediction which is a special label defined at the Vizualization.__init__
-            (typically the label "0")
-        All colors are mixed linearly
-
-        ..seealso:: add_heatmap
-        """
-
-        all_colors = [[0 for _ in range(self.resolution)] for _ in range(self.resolution) ]
-        centroids_cluster_by_index = self.clusterizer.predict(self.mesh_centroids)
-        logging.info('heatmap: drawing proportion heatmap')
-
-        for index, (x, y) in enumerate(self.mesh_centroids):
-
-            current_centroid_cluster_label = centroids_cluster_by_index[index]
-
-            nb_good_points = self.nb_good_point_by_cluster.get(current_centroid_cluster_label, 0)
-            nb_bad_points  = self.nb_bad_point_by_cluster.get (current_centroid_cluster_label, 0)
-            nb_null_points = self.nb_null_point_by_cluster.get(current_centroid_cluster_label, 0)
-
-            nb_of_valid_cluster_points = nb_good_points + nb_bad_points
-
-            if nb_of_valid_cluster_points > 0:
-                proportion_correct   = nb_good_points / float(nb_of_valid_cluster_points)
-                proportion_null      = nb_null_points / float(nb_of_valid_cluster_points)
-                proportion_incorrect = 1 - proportion_correct
-            else:
-                proportion_correct = 1
-                proportion_null = 1
-                proportion_incorrect = 1
-
-            red   = proportion_incorrect
-            green = proportion_null
-            blue  = proportion_correct
-            
-            x_coordinate, y_coordinate = self.get_coordinates_from_index(index)
-
-            all_colors[x_coordinate][y_coordinate ] = [red, green, blue]
-
-        logging.info('heatmap: proportion done')
-        return all_colors
-
-
-    def heatmap_entropy(self):
-        """
-        Prepares the patches for an entropy heatmap
-
-        This method is a heatmap_builder returning a list of patches to be
-        plotted somewhere
-        The maximum entropy for the Vizualization is calculated and used as
-        normalization parameter,
-        The plot is actually a logplot as it is more eye-friendly
-        ..seealso:: add_heatmap
-
-        """
-        all_colors = [[0 for _ in range(self.resolution)] for _ in range(self.resolution) ]
-        logging.info('heatmap entropy: drawing')
-        centroids_label = self.clusterizer.predict(self.mesh_centroids)
-        
-        entropys = []
-
-        ordered_class_list = list(self.nb_of_individual_by_true_output.keys())
-        ordered_class_list.sort()
-        global_list = []
-        for class_ in ordered_class_list:
-            global_list.append(self.nb_of_individual_by_true_output.get(class_))
-        global_array = np.array(global_list)
-        global_entropy = np.log(global_array / np.sum(global_array))
-
-        for index, (x, y) in enumerate(self.mesh_centroids):
-    
-            current_centroid_label = centroids_label[index]
-
-            nb_of_point_by_class      = self.nb_of_points_by_class_by_cluster.get(current_centroid_label, {})
-            nb_of_point_by_class_list = [nb_of_point_by_class.get(class_, 0) for class_ in ordered_class_list]
-           
-            try:
-                cluster_is_empty = not bool(self.index_by_cluster_label[current_centroid_label])
-            except KeyError:
-                cluster_is_empty=True
-
-            if (not nb_of_point_by_class) or cluster_is_empty:
-                current_entropy = 0
-            else:
-                current_entropy = (
-                    cross_entropy(
-                        global_array,
-                        nb_of_point_by_class_list,
-                        global_entropy=global_entropy
-                        )
-                    )
-
-            entropys.append(current_entropy)
-
-        min_entropys = min(entropys)
-        max_entropys = max(entropys)
-        amplitude_entropys = max_entropys - min_entropys
-        # this exception is poorly handleded right now
-        if float(amplitude_entropys)==0.:
-            amplitude_entropys = 1
-        logging.info(
-                'heatmap entropy: max cross-entropy={} min={}'.format(
-                    max_entropys,
-                    min_entropys,)
-                )
-
-        for index, (x, y) in enumerate(self.mesh_centroids):
-            if index > len(entropys):
-                current_entropy = min_entropys
-            else:
-                current_entropy = entropys[index]
-
-            normalized_entropy = ((current_entropy - min_entropys) / amplitude_entropys)
-
-            x_index, y_index = self.get_coordinates_from_index(index)
-            all_colors[x_index][y_index] = normalized_entropy
-
-        logging.info('heatmap entropy: done')
-        return all_colors
 
 
     def request_new_frontiers(self, method):
@@ -972,7 +577,8 @@ class Vizualization:
             self.refresh_graph()
             return
         
-        self.apply_borders(
+        drawing.apply_borders(
+                self,
                 self.normalize_frontier,
                 self.similarity_measure,
                 self.axes_needing_borders
@@ -1021,8 +627,8 @@ class Vizualization:
 
         logging.info("cluster: requesting a new " + method + " engine")
         if method is None:
-            method = self.last_clusterizer_method
-        if method == 'kmeans':
+            return 
+        elif method == 'kmeans':
             self.clusterizer = clustering.KmeansClusterizer(
                 n_clusters=self.nb_of_clusters,
             )
@@ -1056,10 +662,11 @@ class Vizualization:
         method = method.lower()
         self.clustering_fit(method)
 
-        self.cluster_label_mesh()
+        self.init_clusters()
         self.update_all_heatmaps()
 
-        self.apply_borders(
+        drawing.apply_borders(
+                self,
                 self.normalize_frontier,
                 self.similarity_measure,
                 self.axes_needing_borders)
@@ -1076,7 +683,7 @@ class Vizualization:
         """
         for (heatmap_builder, axe, title) in self.heatmaps:
             axe.clear()
-            heatmap_color = heatmap_builder()
+            heatmap_color = heatmap_builder(self)
             logging.info("heatmaps: drawing in "+str(axe))
             im = axe.imshow(
                     heatmap_color,
@@ -1109,7 +716,7 @@ class Vizualization:
             - self.local_classes contains possible_outputs_list inside current_cluster
             - self.local_effectif contains the effetif of each label inside current_cluster
             - self.local_sum the sum of local_effectif
-            - self.local_proportion is the ratio of good/total predicted inside cluster, by label
+            - self.local_accuracy is the ratio of good/total predicted inside cluster, by label
 
         :param current_cluster: cluster name selected by click
         """
@@ -1137,7 +744,7 @@ class Vizualization:
         for output_class in new_rows:
             self.local_effectif[output_class] = to_include[output_class]
 
-            self.local_proportion[output_class] = (
+            self.local_accuracy[output_class] = (
                 nb_good_point_by_class.get(output_class,0) /
                 (
                     nb_good_point_by_class.get(output_class,0)
@@ -1151,13 +758,16 @@ class Vizualization:
                     self.local_bad_count_by_class[current_class] += 1
                     self.local_confusion_by_class[current_class][self.prediction_outputs[index]]+=1
 
-        self.local_confusion_by_class_sorted = {output_class:[] for output_class in self.local_confusion_by_class}
+        self.local_confusion_by_class_sorted = {
+                output_class:[] for output_class in self.local_confusion_by_class
+                }
+
         for output_class, errors in self.local_confusion_by_class.items():
             self.local_confusion_by_class_sorted[output_class] = Counter(errors).most_common(2)
 
         for output_class in rows_to_update:
-            self.local_proportion[output_class] = ((
-                    self.local_proportion[output_class] * self.local_effectif[output_class]
+            self.local_accuracy[output_class] = ((
+                    self.local_accuracy[output_class] * self.local_effectif[output_class]
                     + (
                         nb_good_point_by_class.get(output_class,0)
                         / (
@@ -1189,7 +799,7 @@ class Vizualization:
         """
         Print a short summary with basic stats (occurrence, classification rate) on an axe
 
-        This method gets its data mainly from self.local_proportion and self.local_effectif,
+        This method gets its data mainly from self.local_accuracy and self.local_effectif,
         these objects are self-updated when needed and contain the data of the user-selected clusters
         
         :param max_row: max nb of row to add in table summary
@@ -1207,12 +817,12 @@ class Vizualization:
                     ),
                 (
                     '{0:.2f}% ({1:+.1f}%) - {0:.1f}'.format(
-                        self.local_proportion[c]*100,
-                        (self.local_proportion[c]-self.proportion_by_class[c])*100,
+                        self.local_accuracy[c]*100,
+                        (self.local_accuracy[c]-self.accuracy_by_class[c])*100,
                         stats.binom_test(
-                            self.local_effectif[c]*self.local_proportion[c],
+                            self.local_effectif[c]*self.local_accuracy[c],
                             self.local_effectif[c],
-                            self.proportion_by_class[c],
+                            self.accuracy_by_class[c],
                             alternative='two-sided'
                             ),
                         )
@@ -1225,9 +835,10 @@ class Vizualization:
                     ),
                 (
                     ' '.join([
-                        '{:.6}'.format(class_mistaken)+ '({0:.1f}%)'.format(error_count/float(self.local_bad_count_by_class[c])*100)
+                        '{:.6}'.format(class_mistaken)+ '({0:.1f}%)'.format(
+                            error_count/float(self.local_bad_count_by_class[c])*100
+                            )
                         for class_mistaken, error_count in self.local_confusion_by_class_sorted[c] if error_count != 0
-                        #self.local_bad_count_by_class[c]!=0
                         ])
                     ),
             ]
@@ -1282,7 +893,7 @@ class Vizualization:
         row_labels = np.array(most_common_classes)[:,0]
         values = [
             [
-                '{0:.2f}'.format(self.proportion_by_class[c]*100)+"%",
+                '{0:.2f}'.format(self.accuracy_by_class[c]*100)+"%",
                 (
                     '{0:.0f} ({1:.2f}%)'.format(
                         self.nb_of_individual_by_true_output[c],
@@ -1347,6 +958,9 @@ class Vizualization:
             logging.info("nothing to export, no raw data provided!")
 
     def save_clusterization(self):
+        """
+        Basically loads a clusterizer and replays a sequence of leftclicks
+        """
         cache_file_path, _ = self.get_cache_file_name('manual_clusters')
         self.clusterizer.save_cluster(cache_file_path)
         pickle.dump(
@@ -1355,6 +969,9 @@ class Vizualization:
                 )
 
     def load_clusterization(self):
+        """
+        Basically saves clustering engine and sequence of left_clicks
+        """
         cache_file_path, _ = self.get_cache_file_name('manual_clusters')
         self.clusterizer.load_cluster(cache_file_path)
         left_clicks_to_reproduce = pickle.load(
@@ -1424,7 +1041,7 @@ class Vizualization:
         self.print_global_summary(self.global_summary_axe)
 
         # heatmap subplots
-        # contain proportion of correct prediction and entropy
+        # contain accuracy of correct prediction and entropy
 
         self.axes_needing_borders = [self.ax]
 
@@ -1434,15 +1051,15 @@ class Vizualization:
 
         self.heatmaps = []
         
-        self.heat_proportion = self.main_fig.add_subplot(
+        self.heat_accuracy = self.main_fig.add_subplot(
                 gs[1,3],
                 sharex=self.ax,
                 sharey=self.ax)
         self.add_heatmap(
-                self.heatmap_proportion,
-                self.heat_proportion,
-                title='Heatmap: proportion correct predictions')
-        self.axes_needing_borders.append(self.heat_proportion)
+                heatmaps.accuracy,
+                self.heat_accuracy,
+                title='Heatmap: accuracy correct predictions')
+        self.axes_needing_borders.append(self.heat_accuracy)
         
 
         self.heat_entropy = self.main_fig.add_subplot(
@@ -1450,12 +1067,12 @@ class Vizualization:
                 sharex=self.ax,
                 sharey=self.ax)
         self.add_heatmap(
-                self.heatmap_entropy,
+                heatmaps.entropy,
                 self.heat_entropy,
                 title='Heatmap: cross-entropy Cluster-All')
         self.axes_needing_borders.append(self.heat_entropy)
         
-        self.cluster_label_mesh()
+        self.init_clusters()
 
         self.update_all_heatmaps()
         logging.info("heatmap=ready")
@@ -1480,20 +1097,3 @@ class Vizualization:
         logging.info('refreshing cluster diving')
         #self.cluster_diver.refresh()
         logging.info("refreshing done")
-
-    def time_logging(self, message=None):
-        """Silly module to do manual profiling"""
-        import inspect
-        caller_method_name = inspect.stack()[1][0].f_code.co_name
-
-        if not message:
-            self.last_time[caller_method_name] = time.time()
-        else:
-            new_time = time.time()
-            previous_time = self.last_time.get(caller_method_name, None)
-            if previous_time:
-                logging.info("time for %s : %s", message, new_time - previous_time)
-            else:
-                logging.info("time for %s : error, no previous time registered", message)
-            self.last_time[caller_method_name] = new_time
-    
