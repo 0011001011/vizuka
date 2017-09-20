@@ -3,7 +3,7 @@ import os
 
 setup(
         name='Vizuka',
-        version='0.24',
+        version='0.25.dev13',
         packages=['vizuka/'],
         entry_points = {
             'console_scripts':['vizuka=vizuka.launch_viz:main'],

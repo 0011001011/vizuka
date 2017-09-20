@@ -59,7 +59,7 @@ class Vizualization:
             class_decoder=(lambda x: x), class_encoder=(lambda x: x),
             output_path='output.csv',
             model_path=MODEL_PATH,
-            data_unique_id_string=''
+            version='',
             ):
         """
         Central function, draw heatmap + scatter plot + zoom + annotations on tSNE data
@@ -77,8 +77,9 @@ class Vizualization:
         self.manual_cluster_color = 'cyan'
         self.output_path = output_path
         self.predictors = os.listdir(model_path)
-        self.data_unique_id_string = data_unique_id_string
+        self.saved_clusters = os.listdir(os.path.join(model_path, 'user_clusters'))
         self.model_path = model_path
+        self.version = version
         
         def str_with_default_value(value):
             if not value:
@@ -108,8 +109,6 @@ class Vizualization:
                 }
         self.left_clicks = set()
 
-        self.last_clusterizer_method = None
-        
         #self.possible_outputs_list = list({self.class_decoder(y_encoded) for y_encoded in self.correct_outputs})
         self.possible_outputs_set = set(self.correct_outputs).union(set(self.prediction_outputs))
         self.possible_outputs_set.discard(None)
@@ -226,8 +225,19 @@ class Vizualization:
         self.prediction_outputs = np.load(os.path.join(self.model_path, filename))['pred']
         self.calculate_prediction_projection_arrays() # us
 
+        self.print_global_summary(self.global_summary_axe)
+
+        self.init_clusters()
+        self.update_all_heatmaps()
+
+        self.reset_summary()
         self.reset_viz()
+
+        for click in self.left_clicks:
+            self.do_left_click(click)
+
         self.refresh_graph()
+        
 
 
     def filter_by_feature(self, feature_col, selected_feature_list):
@@ -590,10 +600,12 @@ class Vizualization:
         """
         Makes a filename for the pickled object of your clusterizer
         """
-        base_path, data_unique_id_string, nb_of_clusters, clustering_method = (
+        if os.path.exists(method):
+            return method, True
+        base_path, nb_of_clusters, clustering_method, version = (
             self.model_path,
-            self.data_unique_id_string,
             self.nb_of_clusters,
+            self.version,
             method,
         )
         if not os.path.exists(base_path):
@@ -604,10 +616,10 @@ class Vizualization:
         cache_path = os.path.join(base_path, 'cache')
         if not os.path.exists(cache_path):
             os.makedirs(cache_path)
-        cluster_filename = '_cachejoin_'.join(
+        cluster_filename = '_'.join(
                 [str(x) for x in [
-                    data_unique_id_string,
                     nb_of_clusters,
+                    version,
                     clustering_method
                     ]])
 
@@ -617,6 +629,7 @@ class Vizualization:
             logging.info("loading the clusterizer in {}".format(cluster_path))
             return (cluster_path), True
         
+        logging.info("no clusterizer in {}".format(cluster_path))
         return cluster_path, False
 
     def clustering_fit(self, method):
@@ -626,32 +639,34 @@ class Vizualization:
         """
 
         logging.info("cluster: requesting a new " + method + " engine")
-        if method is None:
-            return 
-        elif method == 'kmeans':
-            self.clusterizer = clustering.KmeansClusterizer(
-                n_clusters=self.nb_of_clusters,
-            )
-        elif method == 'dbscan':
-            self.clusterizer = clustering.DBSCANClusterizer()
-        elif method == 'loader':
-            self.clusterizer = clustering.LoaderClusterizer()
-        else:
-            self.clusterizer = clustering.DummyClusterizer(
-                mesh=self.mesh_centroids,
-            )
-
         cache_file_path, loadable = self.get_cache_file_name(method)
 
         if loadable:
             logging.info("loading clusterizer")
-            self.clusterizer.load_cluster(cache_file_path)
+            self.clusterizer = clustering.load_cluster(cache_file_path)
         else:
+
+            if method is None:
+                return 
+            elif method == 'kmeans':
+                self.clusterizer = clustering.KmeansClusterizer(
+                    n_clusters=self.nb_of_clusters,
+                )
+            elif method == 'dbscan':
+                self.clusterizer = clustering.DBSCANClusterizer()
+            elif method == 'dummy':
+                self.clusterizer = clustering.DummyClusterizer()
+            else:
+                logging.info("Sorry but the method for clusterizer was not understood")
+                return
+            
             logging.info("requested clusterizer not found in cache ({}), calculating".format(
                 cache_file_path))
-            self.last_clusterizer_method = method
             self.clusterizer.fit(xs=self.projected_input)
             self.clusterizer.save_cluster(cache_file_path)
+            logging.info("clusterizer saved in {}".format(
+                cache_file_path))
+
 
     def request_new_clustering(self, method):
         """
@@ -683,6 +698,7 @@ class Vizualization:
         """
         for (heatmap_builder, axe, title) in self.heatmaps:
             axe.clear()
+            axe.axis('off')
             heatmap_color = heatmap_builder(self)
             logging.info("heatmaps: drawing in "+str(axe))
             im = axe.imshow(
@@ -756,6 +772,7 @@ class Vizualization:
                 if index in self.index_bad_predicted:
                     current_class = self.correct_outputs[index]
                     self.local_bad_count_by_class[current_class] += 1
+                    self.prediction_outputs[index]
                     self.local_confusion_by_class[current_class][self.prediction_outputs[index]]+=1
 
         self.local_confusion_by_class_sorted = {
@@ -883,6 +900,8 @@ class Vizualization:
         their classification accuracy
         """
         
+        ax.clear()
+        ax.axis('off')
         cols = ['accuracy', 'effectif']
         most_common_classes = Counter(
                 {
@@ -957,27 +976,30 @@ class Vizualization:
         else:
             logging.info("nothing to export, no raw data provided!")
 
-    def save_clusterization(self):
+    def save_clusterization(self, name_clusters='clusters.pkl'):
         """
         Basically loads a clusterizer and replays a sequence of leftclicks
         """
-        cache_file_path, _ = self.get_cache_file_name('manual_clusters')
+        cache_file_path, _ = self.get_cache_file_name(self.clusterizer.method)
         self.clusterizer.save_cluster(cache_file_path)
         pickle.dump(
-                self.left_clicks,
-                open(os.path.join(self.model_path, 'clusters.pkl'), 'wb')
+                (cache_file_path, self.left_clicks),
+                open(os.path.join(self.model_path, 'user_clusters', name_clusters), 'wb')
                 )
+        self.viz_handler.user_cluster_menulist.add_items([name_clusters])
 
-    def load_clusterization(self):
+    def load_clusterization(self, name):
         """
         Basically saves clustering engine and sequence of left_clicks
         """
-        cache_file_path, _ = self.get_cache_file_name('manual_clusters')
-        self.clusterizer.load_cluster(cache_file_path)
-        left_clicks_to_reproduce = pickle.load(
-                open(os.path.join(self.model_path, 'clusters.pkl'), 'rb'),
-                )
+        self.reset_viz()
         self.left_clicks = set()
+
+        cache_file_path, left_clicks_to_reproduce = pickle.load(
+                open(os.path.join(self.model_path, 'user_clusters', name), 'rb'),
+                )
+        self.request_new_clustering(cache_file_path)
+        self.reset_summary()
 
         for left_click in left_clicks_to_reproduce:
             self.do_left_click(left_click)

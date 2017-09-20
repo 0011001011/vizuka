@@ -26,14 +26,14 @@ def draw_scatterplot_from_indexes(
             special_to_display.append(data[i])
         elif i in indexes_good_predictions:
             good_to_display.append(data[i])
-        elif i in self.indexes_bad_predictions:
+        elif i in indexes_bad_predictions:
             bad_to_display.append(data[i])
 
     bad_to_display     = np.array(bad_to_display)
     good_to_display    = np.array(good_to_display)
     special_to_display = np.array(special_to_display)
     
-    self.draw_scatterplot(axe, good_to_display, bad_to_display, special_to_display)
+    draw_scatterplot(axe, good_to_display, bad_to_display, special_to_display)
 
 
 

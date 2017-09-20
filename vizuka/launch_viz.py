@@ -139,6 +139,7 @@ def main():
             path                  = REDUCTED_DATA_PATH,
             reduction_size_factor = REDUCTION_SIZE_FACTOR,
         )
+        logging.info("found version:{} with {} different sets of reducted data".format(version, len(x_transformed)))
 
         logging.info('t-sne=ready')
 
@@ -161,7 +162,7 @@ def main():
         )
 
         logging.info('t-sne=ready')
-
+    
     x_2D = x_transformed[
             PARAMS_VIZ['perplexity'],
             PARAMS_VIZ['learning_rate'],
@@ -203,13 +204,6 @@ def main():
 
 
     
-    data_unique_id_string = '_'.join([str(PARAMS_VIZ['perplexity']),
-                                              str(PARAMS_VIZ['learning_rate']),
-                                              str(PARAMS_VIZ['init']),
-                                              str(PARAMS_VIZ['n_iter']),
-                                              str(VERSION),
-                                              str(REDUCTED_DATA_PATH).replace('/', '_')
-                                             ])
     if not no_vizualize:
 
         f = vizualization.Vizualization(
@@ -227,12 +221,13 @@ def main():
             features_name_to_display = features_name_to_display,
             output_path=os.path.join('output.csv'),
             model_path=MODEL_PATH,
-            data_unique_id_string=data_unique_id_string
+            version=VERSION,
         )
 
         if not no_plot:
             f.plot()
             f.show()
+    return f
 
 if __name__ == '__main__':
     main()

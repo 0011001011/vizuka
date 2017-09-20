@@ -5,5 +5,4 @@ pandas
 matplotlib
 pyqt5
 keras
-ipdb
 wordcloud

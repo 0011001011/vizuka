@@ -386,12 +386,6 @@ class Viz_handler(Qt_matplotlib_handler):
             lambda: self.viz_engine.save_clusterization(),
             self.right_dock,
         )
-        add_button(
-            self.window,
-            "Load clusterization",
-            lambda: self.viz_engine.load_clusterization(),
-            self.right_dock,
-        )
 
         # add menulist
         add_menulist(
@@ -415,6 +409,14 @@ class Viz_handler(Qt_matplotlib_handler):
             'Load',
             self.viz_engine.predictors,
             self.viz_engine.reload_predict,
+            self.right_dock,
+        )
+        self.user_cluster_menulist = add_menulist(
+            self.window,
+            'Saved clusters',
+            'Load',
+            self.viz_engine.saved_clusters,
+            self.viz_engine.load_clusterization,
             self.right_dock,
         )
         self.textboxs['nb_of_clusters'] = add_text_panel(

@@ -28,7 +28,7 @@ RAW_NAME = 'originals'
 DEFAULT_PREDICTOR = 'metapredict'
 
 # A version is a string added to the end of each filename
-VERSION = '_20170817'
+VERSION = '_20170921'
 
 # data output name (labels)
 OUTPUT_NAME = 'account'

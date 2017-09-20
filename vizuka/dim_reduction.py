@@ -264,6 +264,14 @@ def load_tSNE(params=PARAMS_LEARNING, version=VERSION, path=REDUCTED_DATA_PATH,
             except KeyError:
                 logging.info("old version, model not found, only embedded data")
             logging.info("RNmodel=ready")
+        else:
+            logging.info("model {} {} {} {}  not found".format(
+                perplexity,
+                learning_rate,
+                init,
+                n_iter
+                )
+            )
 
 
     return x_transformed, models

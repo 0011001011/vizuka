@@ -9,7 +9,7 @@ If you want to provide new ones dont forget to register them in qt_handler
 import numpy as np
 import logging
 
-from ml_helpers import cross_entropy
+from vizuka.ml_helpers import cross_entropy
 
 def accuracy(vizualization):
     """

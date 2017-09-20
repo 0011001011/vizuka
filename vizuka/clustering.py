@@ -15,10 +15,15 @@ import numpy as np
 from matplotlib import pyplot as plt
 from sklearn.cluster import KMeans, DBSCAN
 from scipy.spatial import cKDTree
-import ipdb
 import logging
 
 from vizuka import vizualization
+
+
+def load_cluster(path):
+    with open(path, 'rb') as f:
+        return pickle.load(f)
+        
 
 
 class Clusterizer():
@@ -33,6 +38,7 @@ class Clusterizer():
                                    it can literally be whatever you want
             """
             self.engine = None
+            self.method=''
 
         def fit(self, xs):
             """
@@ -56,14 +62,9 @@ class Clusterizer():
             return (0, ) * len(xs)
         
 
-        def load_cluster(self, path):
-            with open(path, 'rb') as f:
-                self.engine = pickle.load(f)
-        
-
         def save_cluster(self, path):
             with open(path, 'wb') as f:
-                pickle.dump(self.engine, f)
+                pickle.dump(self, f)
 
 
 class KmeansClusterizer(Clusterizer):
@@ -74,6 +75,7 @@ class KmeansClusterizer(Clusterizer):
         Default nb of cluster : 120
         """
         self.engine = KMeans(n_clusters=n_clusters, *args, **kwargs)
+        self.method='kmeans'
 
     def fit(self, xs):
         """
@@ -132,6 +134,7 @@ class DBSCANClusterizer(Clusterizer):
         Accepts the same arguments
         """
         self.engine = DBSCAN(n_jobs=4, eps=1.6, min_samples=30, *args, **kwargs)
+        self.method='dbscan'
 
     def fit(self, xs):
         """
@@ -227,6 +230,7 @@ class DummyClusterizer(Clusterizer):
         self.mesh   = mesh
         self.kdtree = cKDTree(self.mesh)
         self.engine = None
+        self.method='dummy'
 
     def fit(self, xs):
         """
