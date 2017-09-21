@@ -40,7 +40,8 @@ OUTPUT_NAME = 'account'
 
 # t-SNE parameters
 # best tuple so far is (50,1000,pca,15000)
-PARAMS_LEARNING = { 'perplexities'  : [40,50,65,80],
+PARAMS_LEARNING = {
+           'perplexities'  : [40,50,65,80],
                                          # roughly the number of neighbors in cluster
                                          # https://lvdmaaten.github.io/publications/papers/JMLR_2008.pdf
                                          # p4
@@ -50,10 +51,11 @@ PARAMS_LEARNING = { 'perplexities'  : [40,50,65,80],
          }
 
 # t-SNE parameters for the reduced data we will draw
-PARAMS_VIZ = { 'perplexity'  : 80,
+PARAMS_VIZ = {
+           'perplexity'  : 80,
            'learning_rate': 1000,
            'init'         : 'random', #deprecated, use pca_variance_needed instead
-           'n_iter'       : 15000,
+           'n_iter'       : 12000,
            }
 
 PCA_MIN_VARIANCE = 0.9  # 90% of explained_variance in test case
