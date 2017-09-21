@@ -27,7 +27,7 @@ from vizuka.config import (
     REDUCTED_DATA_PATH,
     PARAMS_LEARNING,
     OUTPUT_NAME,
-    PCA_DIMS,
+    PCA_MIN_VARIANCE,
 )
 
 
@@ -62,7 +62,7 @@ def load_raw_data(
     x_small = []
     y_small = []
     
-    xy = np.load(path + INPUT_FILE_BASE_NAME + VERSION + '.npz')
+    xy = np.load(path + INPUT_FILE_BASE_NAME + version + '.npz')
 
     if output_name + '_encoder' in xy.keys():
         logging.info("found encoder")
@@ -91,7 +91,7 @@ def load_raw_data(
 
     #y_small = y[:int(y.shape[0] / reduction_factor)]; del y # noqa
 
-def reduce_with_PCA(x, variance_needed):
+def reduce_with_PCA(x, variance_needed=PCA_MIN_VARIANCE):
     """
     Reduce your dataset x with PCA
     variance_needed: how much of the original variance you want to capture
