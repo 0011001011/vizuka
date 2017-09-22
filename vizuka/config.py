@@ -52,7 +52,7 @@ PARAMS_LEARNING = {
 
 # t-SNE parameters for the reduced data we will draw
 PARAMS_VIZ = {
-           'perplexity'  : 80,
+           'perplexity'  : 65,
            'learning_rate': 1000,
            'init'         : 'random', #deprecated, use pca_variance_needed instead
            'n_iter'       : 12000,
