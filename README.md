@@ -73,9 +73,21 @@ Other options:
 * force number of clusters (for kmeans essentially)
 * choose a different set of predictions to display
 
-Ok cool I installed everything I want to do machine learning stuff, now what ?
+What does it needs to be executed ?
 -----------------------------------
-You have your preprocessed data ? Cool, this is the only mandatory file you need. Place it in the folder data/set/preprocessed_inputs_VERSION.npz, VERSION being a string specific to this specific dataset. It must contains at least the key 'x' representing the vectors you learn from. If you have the correct output that your algo try to predict, place it under the key 'y', the data viz will be much more useful !
+
+vizuka needs the following files:
+* pre-processed transactions, optionnaly (but recommended) the output you want to predict.
+* 2D-projections: (optional)
+    * a t-SNE (or another dimension-reduction nD-to-2D algorithm) output representing pre-processed data in a 2D-space **or**
+    * parameters for t-SNE (optional, default ones are provided)
+* your predictions (optional)
+* raw transactions (optional) which will be used to display additional human-understandable info.
+
+
+Ok cool I have all the data, I also installed everything, I want to do machine learning stuff, now what ?
+-----------------------------------
+You have your preprocessed data ? Cool, this is the only mandatory file you need. Place it in the folder *data/set/preprocessed_inputs_VERSION.npz*, VERSION being a string specific to this specific dataset. It must contains at least the key 'x' representing the vectors you learn from. If you have both the correct output and your own predicitons (inside *data/models/ALGONAMEpredict_VERSION.npz* and key 'pred')that your algo try to predict, place it under the key 'y', the data viz will be much more useful !
 
 Optionally you can add an *original_VERSION.npz* file containing raw data non-preprocessed. The vector should be the key "originals" and the name of the human-readable "features" in the key "columns".
 
@@ -90,21 +102,6 @@ When you are satisfied, enable "detect mouse event" to be able to select cluster
 Great now you can select whole clusters of data at once. But what's in there ? Click on the *export* button to find out in a nicely formatted csv (assuming you provided "raw" data).
 
 You finished your session but still want to dive in the clusters later ? Just select *Save clusterization* to save your session.
-
-What does it needs to be executed ?
------------------------------------
-
-vizuka needs the following files:
-* pre-processed transactions
-* predictions:
-    * predictor (currently only the keras NN are supported), the algo which will eat the pre-processed transactions
-            it should have been trained on data ordered the same way as the raw transactions array.**or** 
-    * its predictions
-* 2D-projections: (optional)
-    * a t-SNE (or another dimension-reduction nD-to-2D algorithm) output representing pre-processed data in a 2D-space **or**
-    * parameters for t-SNE (optional, default ones are provided)
-* raw transactions (optional) which will be used to display additional human-understandable info.
-
 
 File structures
 ---------------
