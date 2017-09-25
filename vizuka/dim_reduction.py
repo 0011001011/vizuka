@@ -221,6 +221,6 @@ def load_tSNE(params=PARAMS_LEARNING, version=VERSION, path=REDUCTED_DATA_PATH,
 if __name__ == '__main__':
 
     logging.basicConfig(level=logging.DEBUG)
-    x, y, encoder, decoder = load_raw_data()
+    x, y, encoder, decoder = utils.load_raw_data()
     x_transformed, models = learn_tSNE(x)
 

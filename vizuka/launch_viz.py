@@ -198,11 +198,12 @@ def main():
             )
             logging.info('RNpredictions=ready')
         except FileNotFoundError:
-            logging.info(
-                    "Nothing found in {}, no predictions to vizualize",
-                    "if this is intended you can force the vizualization",
-                    "with --force_no_predict\n".format(path),
-                    )
+            logging.info((
+                    "Nothing found in {}, no predictions to vizualize\n"
+                    "if this is intended you can force the vizualization"
+                    "with --force_no_predict\n"
+                    ).format(MODEL_PATH))
+            return
     
     raw_filename = DATA_PATH + RAW_NAME + version + '.npz'
     if os.path.exists(raw_filename):
