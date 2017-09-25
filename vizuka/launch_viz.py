@@ -15,6 +15,7 @@ import argparse
 from vizuka import dim_reduction
 from vizuka import labelling
 from vizuka import vizualization
+from vizuka import utils
 
 
 def main():
@@ -119,11 +120,11 @@ def main():
         y,
         class_encoder,
         class_decoder,
-    ) = dim_reduction.load_raw_data(
+    ) = utils.load_raw_data(
             file_base_name   = INPUT_FILE_BASE_NAME,
             output_name      = OUTPUT_NAME,
             path             = DATA_PATH,
-            version          = VERSION,
+            version          = version,
             reduction_factor = REDUCTION_SIZE_FACTOR
             )
 
@@ -135,11 +136,15 @@ def main():
 
         x_transformed, models = dim_reduction.load_tSNE(
             params                = PARAMS_LEARNING,
-            version               = VERSION,
+            version               = version,
             path                  = REDUCTED_DATA_PATH,
             reduction_size_factor = REDUCTION_SIZE_FACTOR,
         )
-        logging.info("found version:{} with {} different sets of reducted data".format(version, len(x_transformed)))
+        logging.info("found version:{} with"
+                     "{} different sets of reducted data".format(
+                            version, len(x_transformed)
+                            )
+                     )
 
         logging.info('t-sne=ready')
 
@@ -155,7 +160,7 @@ def main():
         x_transformed, models = dim_reduction.learn_tSNE(
             x                       = x,
             params                  = PARAMS_LEARNING,
-            version                 = VERSION,
+            version                 = version,
             path                    = REDUCTED_DATA_PATH,
             reduction_size_factor   = REDUCTION_SIZE_FACTOR,
             pca_variance_needed     = pca_variance_needed,
@@ -163,12 +168,22 @@ def main():
 
         logging.info('t-sne=ready')
     
-    x_2D = x_transformed[
+    param_to_vizualize = (
             PARAMS_VIZ['perplexity'],
             PARAMS_VIZ['learning_rate'],
             PARAMS_VIZ['init'],
             PARAMS_VIZ['n_iter'],
-            ]
+            )
+
+    if param_to_vizualize in x_transformed.keys():
+        x_2D = x_transformed[param_to_vizualize]
+    else:
+        random_param_to_load = list(x_transformed.keys())[0]
+        logging.info("PARAM_VIZ specified in config.py not found, but other data exists"
+                     " will load {} instead (chosen randomly)".format(random_param_to_load)
+                     )
+        x_2D = x_transformed[random_param_to_load]
+
 
     ###############
     # PREDICT
@@ -179,17 +194,17 @@ def main():
             logging.info('predictions=loading')
             x_predicted = labelling.load_predict(
                 path=MODEL_PATH,
-                version=VERSION
+                version=version,
             )
             logging.info('RNpredictions=ready')
         except FileNotFoundError:
             logging.info(
                     "Nothing found in {}, no predictions to vizualize",
                     "if this is intended you can force the vizualization",
-                    "with --force_no_predict\n",
+                    "with --force_no_predict\n".format(path),
                     )
     
-    raw_filename = DATA_PATH + RAW_NAME + VERSION + '.npz'
+    raw_filename = DATA_PATH + RAW_NAME + version + '.npz'
     if os.path.exists(raw_filename):
         logging.info("loading raw transactions for analysis..")
         raw_data_ = np.load(raw_filename)
@@ -221,7 +236,7 @@ def main():
             features_name_to_display = features_name_to_display,
             output_path=os.path.join('output.csv'),
             model_path=MODEL_PATH,
-            version=VERSION,
+            version=version,
         )
 
         if not no_plot:

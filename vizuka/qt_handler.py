@@ -23,6 +23,7 @@ from PyQt5.QtWidgets import (
     QSizePolicy,
     QDockWidget,
     QLineEdit,
+    QInputDialog,
 )
 
 from vizuka.cluster_diving import moar_filters
@@ -33,7 +34,7 @@ def onclick_wrapper(onclick):
     """
     This decorator for onclick detects if the mouse event
     should trigger something.
-    Hummmm...
+    I tried to make it worst but this is my best
     """
     def wrapper(*args, **kwargs):
         if args[0].detect_mouse_event:  # args[0] is self
@@ -383,7 +384,7 @@ class Viz_handler(Qt_matplotlib_handler):
         add_button(
             self.window,
             "Save clusterization",
-            lambda: self.viz_engine.save_clusterization(),
+            self.save_clusters,
             self.right_dock,
         )
 
@@ -425,6 +426,13 @@ class Viz_handler(Qt_matplotlib_handler):
             self.textbox_function_n_clusters,
             self.right_dock,
         )
+
+    def save_clusters(self):
+        text, validated = QInputDialog.getText(self.window, "YOLO", "Name for the clusters you selected ?")
+        if validated:
+            if text == '':
+                text = "clusters"
+            self.viz_engine.save_clusterization(text+'.pkl')
 
     def textbox_function_n_clusters(self):
         """
