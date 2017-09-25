@@ -73,6 +73,24 @@ Other options:
 * force number of clusters (for kmeans essentially)
 * choose a different set of predictions to display
 
+Ok cool I installed everything I want to do machine learning stuff, now what ?
+-----------------------------------
+You have your preprocessed data ? Cool, this is the only mandatory file you need. Place it in the folder data/set/preprocessed_inputs_VERSION.npz, VERSION being a string specific to this specific dataset. It must contains at least the key 'x' representing the vectors you learn from. If you have the correct output that your algo try to predict, place it under the key 'y', the data viz will be much more useful !
+
+Optionally you can add an *original_VERSION.npz* file containing raw data non-preprocessed. The vector should be the key "originals" and the name of the human-readable "features" in the key "columns".
+
+Now you may want to launch Vizuka ! First do specify the parameters fitting your needs in config.py. And take some coffee. Or two. Or three. Vizuka is busy reducing the dimension.
+
+...
+
+Congratulations ! Now you may want to display your 2D-data, as your arble to browse your embedded space. Maybe you want to look for a specific cluster. Explore the data with graph options, zoom in and zoom out, and use the filters provided to find an interesting area.
+
+When you are satisfied, enable "detect mouse event" to be able to select clusters. This is quite unefficient you will select smal rectangular tiles one by one, you may want to *Clusterize* using KMeans or DBSCAN.
+
+Great now you can select whole clusters of data at once. But what's in there ? Click on the *export* button to find out in a nicely formatted csv (assuming you provided "raw" data).
+
+You finished your session but still want to dive in the clusters later ? Just select *Save clusterization* to save your session.
+
 What does it needs to be executed ?
 -----------------------------------
 
