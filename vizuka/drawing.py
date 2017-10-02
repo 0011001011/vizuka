@@ -15,7 +15,11 @@ def draw_scatterplot_from_indexes(
         indexes_good_predictions,
         indexes_special_predictions,
         data,
-        axe):
+        axe
+        ):
+    """
+    Draw the scattered data on the axe, with 3 colors based on the indexes provided
+    """
 
     good_to_display    = []
     bad_to_display     = []
@@ -43,7 +47,7 @@ def draw_scatterplot(
         badly_predicted_array,
         special_class_array):
     """
-    Draw the datas on the main 2D map
+    Draw the scattered data on the axe, with 3 colors
     """
     if len(well_predicted_array) > 0:
         axe.scatter(

@@ -25,10 +25,10 @@ INPUT_FILE_BASE_NAME = 'preprocessed_inputs'
 RAW_NAME = 'originals'
 
 # default RN for predictions
-DEFAULT_PREDICTOR = 'metapredict'
+DEFAULT_PREDICTOR = 'adv_meta_23-08predict'
 
 # A version is a string added to the end of each filename
-VERSION = '_20170921'
+VERSION = '_20170925'
 
 # data output name (labels)
 OUTPUT_NAME = 'account'

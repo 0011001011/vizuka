@@ -36,6 +36,8 @@ vizuka --reduce
 
 It will search in its \_\_package\_\_/data/ the datas but you can force your own with __--path__ argument
 
+* Note that if you are effectively doing big data you should uncomment MulticoreTSNE in vizuka/dim_reduction unless you want to discover t-SNE crashed with a segfault. Instructions for installation can be found in requirements/requirements.apt
+
 What will I get ?
 -----------------
 
