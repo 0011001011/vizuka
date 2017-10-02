@@ -28,6 +28,7 @@ from vizuka.qt_handler import Viz_handler
 from vizuka import clustering
 from vizuka import drawing
 from vizuka import heatmaps
+from vizuka import data_loader
 from vizuka.cluster_diving import Cluster_viewer
 from vizuka.config import (
     MODEL_PATH,
@@ -222,8 +223,8 @@ class Vizualization:
         be located in the self.model_path folder
         """
 
-        self.prediction_outputs = np.load(os.path.join(self.model_path, filename))['pred']
-        self.calculate_prediction_projection_arrays() # us
+        self.prediction_outputs = data_loader.load_predict_byname(filename, path=self.model_path)
+        self.calculate_prediction_projection_arrays()
 
         self.print_global_summary(self.global_summary_axe)
 
@@ -910,6 +911,7 @@ class Vizualization:
                 ).most_common(max_row)
 
         row_labels = np.array(most_common_classes)[:,0]
+        print(row_labels)
         values = [
             [
                 '{0:.2f}'.format(self.accuracy_by_class[c]*100)+"%",

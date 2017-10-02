@@ -145,82 +145,9 @@ def learn_tSNE(x, params=PARAMS_LEARNING, version=VERSION, path=REDUCTED_DATA_PA
     return x_transformed, models
 
 
-def load_tSNE(params=PARAMS_LEARNING, version=VERSION, path=REDUCTED_DATA_PATH,
-              reduction_size_factor=REDUCTION_SIZE_FACTOR):
-    """
-    Load tSNE representation.
-
-    :param params: dict of multiples t-SNE parameters of the representations
-    we want
-                   load every combination available
-                   .. seealso:: sklearn.manifold.TSNE()
-    :type params: {
-                    'perplexities':array(int),
-                    'learning_rates':array(int),
-                    'inits':array({'pca', 'random'})
-                    'n_iter':array(int),
-                    }
-    :param version: version of data to load (e.g: _20170614)
-    :param path: location of the 2D representation to load
-    :param reduction_size_factor: factor by which the number of samples
-    is divided (tsne is greedy)
-
-    :return: Embedded data in 2D space, and t-SNE model
-    :rtype:  dict{params:(float,float)}, dict({params:tsne.model})
-    """
-
-    perplexities = params['perplexities']
-    learning_rates = params['learning_rates']
-    inits = params['inits']
-    n_iters = params['n_iters']
-
-    x_transformed = {}
-    models = {}
-
-    for perplexity, learning_rate, init, n_iter in itertools.product(
-            perplexities, learning_rates, inits, n_iters):
-
-        param = (perplexity, learning_rate, init, n_iter)
-        name = ''.join('_' + str(p) for p in param)
-        full_path = ''.join([
-            path,
-            'embedded_x_1-',
-            str(reduction_size_factor),
-            name,
-            version,
-            '.npz',
-        ])
-        logging.info("RNmodel=trying to load %s %s %s %s from %s",
-                     str(perplexity),
-                     str(learning_rate),
-                     str(init),
-                     str(n_iter),
-                     full_path,
-                     )
-        if os.path.exists(full_path):
-            x_transformed[param] = np.load(full_path)['x_2D']
-        
-            try:
-                models[param] = np.load(full_path)['model']
-            except KeyError:
-                logging.info("old version, model not found, only embedded data")
-            logging.info("RNmodel=ready")
-        else:
-            logging.info("model {} {} {} {}  not found".format(
-                perplexity,
-                learning_rate,
-                init,
-                n_iter
-                )
-            )
-
-
-    return x_transformed, models
-
-
 if __name__ == '__main__':
 
     logging.basicConfig(level=logging.DEBUG)
-    x, y, encoder, decoder = utils.load_raw_data()
+    x, y, encoder, decoder = data_loader.load_preprocessed()
     x_transformed, models = learn_tSNE(x)
 

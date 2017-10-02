@@ -322,8 +322,9 @@ if __name__ == '__main__':
     """
     Yes, I like to test my code with __main__
     """
-    import dim_reduction as dr
-    datas_sets, models = dr.load_tSNE()
+    from vizuka import dim_reduction as dr
+    from vizuka import data_loader as dl
+    datas_sets, models = dl.load_tSNE()
     datas = datas_sets[50, 1000, 'pca', 15000]
 
     clusterizer = make_clusterizer(datas, method='kmeans', n_clusters=80)

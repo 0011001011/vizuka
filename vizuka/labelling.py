@@ -5,6 +5,8 @@ Not interesting to read
 
 import numpy as np
 
+import logging
+
 from vizuka.config import (
     MODEL_PATH,
     VERSION,
@@ -61,13 +63,6 @@ def predict_rnn(
         )
 
     return x_predicted
-
-
-def load_predict(path=MODEL_PATH, version=VERSION, namePredictor=DEFAULT_PREDICTOR):
-    """
-    Simply load the predictions stored with predict_rnn function
-    """
-    return np.load(path + namePredictor + version + '.npz')['pred']
 
 
 def reformat_predict(predictions):
