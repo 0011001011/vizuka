@@ -13,9 +13,8 @@ import os
 import argparse
 
 from vizuka import dim_reduction
-from vizuka import labelling
+from vizuka import data_loader
 from vizuka import vizualization
-from vizuka import utils
 
 
 def main():
@@ -120,7 +119,7 @@ def main():
         y,
         class_encoder,
         class_decoder,
-    ) = utils.load_raw_data(
+    ) = data_loader.load_preprocessed(
             file_base_name   = INPUT_FILE_BASE_NAME,
             output_name      = OUTPUT_NAME,
             path             = DATA_PATH,
@@ -134,7 +133,7 @@ def main():
     if not reduce_:
         logging.info("t-sne=loading")
 
-        x_transformed, models = dim_reduction.load_tSNE(
+        x_transformed, models = data_loader.load_tSNE(
             params                = PARAMS_LEARNING,
             version               = version,
             path                  = REDUCTED_DATA_PATH,
@@ -192,7 +191,7 @@ def main():
     else:
         try:
             logging.info('predictions=loading')
-            x_predicted = labelling.load_predict(
+            x_predicted = data_loader.load_predict(
                 path=MODEL_PATH,
                 version=version,
             )
@@ -201,16 +200,14 @@ def main():
             logging.info((
                     "Nothing found in {}, no predictions to vizualize\n"
                     "if this is intended you can force the vizualization"
-                    "with --force_no_predict\n"
-                    ).format(MODEL_PATH))
+                    "with --force_no_predict :\n{}\n"
+                    ).format(MODEL_PATH, os.listdir(MODEL_PATH)))
             return
     
-    raw_filename = DATA_PATH + RAW_NAME + version + '.npz'
-    if os.path.exists(raw_filename):
+    raw = data_loader.load_raw(version, DATA_PATH)
+    if raw:
         logging.info("loading raw transactions for analysis..")
-        raw_data_ = np.load(raw_filename)
-        raw_data = raw_data_['originals']
-        raw_columns = raw_data_['columns']
+        raw_data, raw_columns = raw
     else:
         logging.info('no raw data provided, all cluster vizualization disabled! (-s and -f options)')
         raw_data    = []
@@ -231,7 +228,7 @@ def main():
             resolution=200,
             class_decoder=class_decoder,
             class_encoder=class_encoder,
-            special_class='0',
+            special_class='x',
             nb_of_clusters=120,
             features_name_to_filter  = features_name_to_filter,
             features_name_to_display = features_name_to_display,
