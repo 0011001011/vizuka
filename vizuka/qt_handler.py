@@ -8,6 +8,7 @@ This should be rewritten with QtCreator's help.
 import matplotlib
 import sys
 import logging
+import os
 
 matplotlib.use('Qt5Agg')  # noqa
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
@@ -378,7 +379,7 @@ class Viz_handler(Qt_matplotlib_handler):
         add_button(
             self.window,
             "Export x",
-            lambda: self.viz_engine.export(self.viz_engine.output_path),
+            self.export,
             self.right_dock,
         )
         add_button(
@@ -428,7 +429,10 @@ class Viz_handler(Qt_matplotlib_handler):
         )
 
     def save_clusters(self):
-        text, validated = QInputDialog.getText(self.window, "YOLO", "Name for the clusters you selected ?")
+        text, validated = QInputDialog.getText(
+                self.window,
+                "YOLO", "Name for the clusters you selected ?"
+                )
         if validated:
             if text == '':
                 text = "clusters"
@@ -442,4 +446,13 @@ class Viz_handler(Qt_matplotlib_handler):
         n_str = self.textboxs['nb_of_clusters'].text()
         n = int(n_str)
         self.viz_engine.nb_of_clusters = n
-
+    
+    def export(self):
+        text, validated = QInputDialog.getText(
+                self.window,
+                "YOLO", "Name for the exported csv ?"
+                )
+        if validated:
+            if text == '':
+                text = "export.csv"
+        self.viz_engine.export(text)
