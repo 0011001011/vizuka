@@ -18,15 +18,13 @@ Simply run
 vizuka
 
 # Similar to :
-
-python3 vizuka/launch_viz.py
+python3 $PYTHONPATH/vizuka/launch_viz.py
 
 ```
 
-If you have a dataset containing your non-preprocessed/human-readable data (and their "columns" aka names):
-you can also draw visualisations of the data in your selected cluster (see third pic)
+You can add human-readable data visualization :
 ```sh
-vizuka -s amount:logdensity -s datacontainingstrings:wordcloud
+vizuka -s price:logdensity -s name:wordcloud
 ```
 
 It assumes you already have your 2D data, if not you can ask for tSNE+PCA reduction :
@@ -34,7 +32,7 @@ It assumes you already have your 2D data, if not you can ask for tSNE+PCA reduct
 vizuka --reduce
 ```
 
-It will search in its \_\_package\_\_/data/ the datas but you can force your own with __--path__ argument
+It will search in \_\_package\_\_/data/ the datas but you can force your own with __--path__ argument
 
 * Note that if you are effectively doing big data you should uncomment MulticoreTSNE in vizuka/dim_reduction unless you want to discover t-SNE crashed with a segfault. Instructions for installation can be found in requirements/requirements.apt
 
@@ -53,7 +51,7 @@ And if you specify a set of non-preprocessed inputs to associate with your train
 
 
 ### How to use ?
-Navigate inside the 2D space and look at the data, selecting it in the main window (the big one). Only this one is interactive. Data is grouped by cluster, you can select cluster individually (left click).
+Navigate inside the 2D space and look at the data, selecting it in the main window (the big one). Data is grouped by cluster, you can select cluster individually (left click).
 
 Main window represents all the data in 2D space. Blue are good-predicted transactions, Red are the bad ones, Green are the special class (by default the label 0).
 
@@ -78,17 +76,59 @@ Other options:
 What does it needs to be executed ?
 -----------------------------------
 
-vizuka needs the following files:
-* pre-processed transactions, optionnaly (but recommended) the output you want to predict.
+vizuka needs the following files to be put in \_\_package\_\_/data:
+* pre-processed transactions with the output you want to predict.
 * 2D-projections: (optional)
     * a t-SNE (or another dimension-reduction nD-to-2D algorithm) output representing pre-processed data in a 2D-space **or**
     * parameters for t-SNE (optional, default ones are provided)
-* your predictions (optional)
+* your predictions (optional but recommended)
 * raw transactions (optional) which will be used to display additional human-understandable info.
 
 
 Ok cool I have all the data, I also installed everything, I want to do machine learning stuff, now what ?
 -----------------------------------
+But all your stuff in \_\_package\_\_/data (or anywhere, and specify with __--data__ argument)
+Respect this formatting :
+
+
+* pre-processed transactions:
+    * type: npz
+    * keys:
+        * entry x: pre-processed inputs
+        * entry y_$(OUTPUT_NAME): pre-processed label to be predicted
+        * (optional) entry $(OUTPUT_NAME)_encoder: humanToMachine labels labelling
+    * name: $(INPUT_FILE_BASE_NAME)_x_y$(VERSION).npz
+    * path: $(DATA_PATH)
+    * ex: data/set/preprocessed_x_y_20170825.npz)
+
+* 2D-projections: (optional)
+    * type: npz
+    * keys:
+        * x_2D: array of (float, float) datas
+    * name: embedded_x_1-$(REDUCTION_SIZE_FACTOR)_$(PARAMS[0])_$(PARAMS[1]).$(PARAMS[N]).npz
+    * path: $(REDUCTED_DATA_PATH)
+    * ex: data/reduced/embedded_1-1_50_10000_20170825.npz
+    
+* raw transactions: (optional)
+    * type: npz
+    * keys:
+        * originals: raw transactions
+	* columns: collections of string to explicit nature of the data (human-readable)
+    * name: originals$(VERSION).npz
+    * path: $(DATA_PATH)
+    * ex: originals_20150825.npz
+    
+* predictions: (optional but highy recommended)
+    * type: npz
+    * keys:
+        * pred: predictions
+    * pred: $(PREDICTOR)$(VERSION)
+    * path: $(MODEL_PATH)
+    * ex: metapredict_20170825.npz
+
+Typical use-case :
+------------------
+
 You have your preprocessed data ? Cool, this is the only mandatory file you need. Place it in the folder *data/set/preprocessed_inputs_VERSION.npz*, VERSION being a string specific to this specific dataset. It must contains at least the key 'x' representing the vectors you learn from. If you have both the correct output and your own predicitons (inside *data/models/ALGONAMEpredict_VERSION.npz* and key 'pred')that your algo try to predict, place it under the key 'y', the data viz will be much more useful !
 
 Optionally you can add an *original_VERSION.npz* file containing raw data non-preprocessed. The vector should be the key "originals" and the name of the human-readable "features" in the key "columns".
@@ -105,42 +145,6 @@ Great now you can select whole clusters of data at once. But what's in there ? C
 
 You finished your session but still want to dive in the clusters later ? Just select *Save clusterization* to save your session.
 
-File structures
----------------
-
-Your files should be structured this way :
-(samples are provided in the data folder, you still need to find the raw/processed datas as it too heavy to be put here.
-
-* pre-processed transactions:
-    * type: npz
-    * internal structure:
-        * entry x: pre-processed inputs
-        * entry y_$(OUTPUT_NAME): pre-processed label to be predicted
-        * (optional) entry $(OUTPUT_NAME)_encoder: humanToMachine labels labelling
-    * name: $(INPUT_FILE_BASE_NAME)_x_y$(VERSION).npz
-    * path: $(DATA_PATH)
-
-* 2D-projections:
-    * type: npz
-    * internal structure:
-        * x_2D: array of (float, float) datas
-    * name: embedded_x_1-$(REDUCTION_SIZE_FACTOR)_$(PARAMS[0])_$(PARAMS[1]).$(PARAMS[N]).npz
-    * path: $(REDUCTED_DATA_PATH)
-
-* raw transactions:
-    * type: npz
-    * internal_structure:
-        * originals: raw transactions
-	* columns: collections of string to explicit nature of the data (human-readable)
-    * name: originals$(VERSION).npz
-    * path: $(DATA_PATH)
-    
-* predictor:
-    * type: npz
-    * internal_structure:
-        * pred: predictions
-    * pred: $(PREDICTOR)$(VERSION)
-    * path: $(MODEL_PATH)
 
 Default parameters
 ------------------
