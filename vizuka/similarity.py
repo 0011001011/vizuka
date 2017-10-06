@@ -27,8 +27,8 @@ def bhattacharyya(dict1, dict2, inside01=True):
         return -math.log(s) if s!=0 else -np.inf
 
 
-def all_are_similar(dict0, dict1, force_inside01=True):
+def all_solid(dict0, dict1, force_inside01=True):
     return 0
 
-def all_are_dissimilar(dict0, dict1, force_inside01=True):
+def all_invisible(dict0, dict1, force_inside01=True):
     return 1

@@ -579,11 +579,11 @@ class Vizualization:
             self.similarity_measure = similarity.bhattacharyya
             self.normalize_frontier=True
         elif method =='all':
-            self.similarity_measure = similarity.all_are_dissimilar
+            self.similarity_measure = similarity.all_solid
             self.normalize_frontier=False
             logging.debug('frontiers: set up to '+method)
         elif method == 'none':
-            self.similarity_measure = similarity.all_are_similar
+            self.similarity_measure = similarity.all_invisible
             self.normalize_frontier=False
             self.refresh_graph()
             return

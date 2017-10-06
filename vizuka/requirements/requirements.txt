@@ -4,5 +4,4 @@ sklearn
 pandas
 matplotlib
 pyqt5
-keras
 wordcloud
