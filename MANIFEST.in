@@ -1,7 +1,7 @@
 include README.md
-include data_viz/data/
-include data_viz/data/tSNE/
-include data_viz/data/set/
-include data_viz/data/graph/
-include data_viz/data/models/
-include data_viz/requirements/requirements.txt
+include vizuka/data/*
+include vizuka/data/tSNE/.gitkeep
+include vizuka/data/set/.gitkeep
+include vizuka/data/graph/.gitkeep
+include vizuka/data/models/.gitkeep
+include vizuka/requirements/requirements.txt

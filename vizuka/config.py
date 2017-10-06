@@ -8,21 +8,13 @@ import os
 # ALL DEFAULT PATH
 #
 
-BASE_PATH       = os.path.join(os.path.dirname(__file__), 'data/')
+BASE_PATH       = os.path.join('data/')
 
-def make_folder_path(name, base_path=BASE_PATH):
-    return os.path.join(base_path, name)
+DATA_PATH       = os.path.join(BASE_PATH, 'set/')
+REDUCTED_DATA_PATH  = os.path.join(BASE_PATH, 'reducted/')
+MODEL_PATH      = os.path.join(BASE_PATH, 'models/')
+GRAPH_PATH      = os.path.join(BASE_PATH, 'graph/')
 
-def make_all_folders_path(*args):
-    return {a.capitalize()+'_PATH':make_folder_path(a) for a in args}
-
-
-FOLDERS_PATH = make_all_folders_path(
-        'set',
-        'tSNE',
-        'models',
-        'graph'
-        )
 
 #
 # ALL DEFAULT FILENAME
@@ -33,10 +25,10 @@ INPUT_FILE_BASE_NAME = 'preprocessed_inputs'
 RAW_NAME = 'originals'
 
 # default RN for predictions
-DEFAULT_PREDICTOR = 'metapredict'
+DEFAULT_PREDICTOR = 'adv_meta_23-08predict'
 
 # A version is a string added to the end of each filename
-VERSION = '_20170817'
+VERSION = '_20170925'
 
 # data output name (labels)
 OUTPUT_NAME = 'account'
@@ -48,23 +40,25 @@ OUTPUT_NAME = 'account'
 
 # t-SNE parameters
 # best tuple so far is (50,1000,pca,15000)
-PARAMS_LEARNING = { 'perplexities'  : [30,40,50,80],
+PARAMS_LEARNING = {
+           'perplexities'  : [40,50,65,80],
                                          # roughly the number of neighbors in cluster
                                          # https://lvdmaaten.github.io/publications/papers/JMLR_2008.pdf
                                          # p4
-           'learning_rates': [500, 800, 1000],
-           'inits'         : ['random', 'pca'],
-           'n_iters'       : [5000, 15000]
+           'learning_rates': [800, 1000],
+           'inits'         : ['random'], #deprecated, use pca_variance_needed instead
+           'n_iters'       : [12000]
          }
 
 # t-SNE parameters for the reduced data we will draw
-PARAMS_VIZ = { 'perplexity'  : 80,
+PARAMS_VIZ = {
+           'perplexity'  : 65,
            'learning_rate': 1000,
-           'init'         : 'random',
-           'n_iter'       : 15000,
+           'init'         : 'random', #deprecated, use pca_variance_needed instead
+           'n_iter'       : 12000,
            }
 
-PCA_DIMS = 42  # ~90% of explained_variance
+PCA_MIN_VARIANCE = 0.9  # 90% of explained_variance in test case
 
 # 30 for OVH, 50 for local, 15 for epinal
 REDUCTION_SIZE_FACTOR = 1

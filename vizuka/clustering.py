@@ -9,14 +9,21 @@ on qt_handler, to be able to select on the IHM
     fit     - to prepare the algo for the data
     predict - to find out the cluster of a (x,y)
 '''
+import pickle
 
 import numpy as np
 from matplotlib import pyplot as plt
 from sklearn.cluster import KMeans, DBSCAN
-from scipy.spatial import KDTree
-import ipdb
+from scipy.spatial import cKDTree
+import logging
 
-from data_viz import vizualization
+from vizuka import vizualization
+
+
+def load_cluster(path):
+    with open(path, 'rb') as f:
+        return pickle.load(f)
+        
 
 
 class Clusterizer():
@@ -31,6 +38,7 @@ class Clusterizer():
                                    it can literally be whatever you want
             """
             self.engine = None
+            self.method=''
 
         def fit(self, xs):
             """
@@ -52,6 +60,11 @@ class Clusterizer():
             :return: array-like of cluster id
             """
             return (0, ) * len(xs)
+        
+
+        def save_cluster(self, path):
+            with open(path, 'wb') as f:
+                pickle.dump(self, f)
 
 
 class KmeansClusterizer(Clusterizer):
@@ -59,9 +72,10 @@ class KmeansClusterizer(Clusterizer):
     def __init__(self, n_clusters=120, *args, **kwargs):
         """
         Uses sklearn kmeans, accepts same arguments.
-        Default number of cluster : 120
+        Default nb of cluster : 120
         """
         self.engine = KMeans(n_clusters=n_clusters, *args, **kwargs)
+        self.method='kmeans'
 
     def fit(self, xs):
         """
@@ -80,6 +94,37 @@ class KmeansClusterizer(Clusterizer):
         """
         return self.engine.predict(xs)
 
+class LoaderClusterizer(Clusterizer):
+
+    def __init__(self):
+        """
+        Simply loads a npz with all labels
+        """
+        data = pickle.load(open('vizuka/data/models/clusterizer.pkl', 'rb'))
+        self.xs, self.engine = data # self.engine is here a collection of labels
+        self.kdtree = cKDTree(self.xs)
+
+    def fit(self, xs):
+        pass
+
+    def predict(self, xs):
+        """
+        Return the predictions found in the predictions .pkl
+        """
+        return self.kdtree.query(xs)[1]
+        """
+        current_predicts = []
+        for x in xs:
+            x_tuple = tuple(x)
+            if x_tuple in self.predictions:
+                current_predicts.append(self.predictions[x_tuple])
+            else:
+                current_predicts.append(
+                    self.predictions[tuple(self.xs[self.kdtree.query(x)[1]])]
+                )
+        return current_predicts
+        """
+
 
 class DBSCANClusterizer(Clusterizer):
 
@@ -88,7 +133,8 @@ class DBSCANClusterizer(Clusterizer):
         Inits a DBSCAN clustering engine from sklearn
         Accepts the same arguments
         """
-        self.engine = DBSCAN(n_jobs=4, *args, **kwargs)
+        self.engine = DBSCAN(n_jobs=4, eps=1.6, min_samples=30, *args, **kwargs)
+        self.method='dbscan'
 
     def fit(self, xs):
         """
@@ -106,9 +152,45 @@ class DBSCANClusterizer(Clusterizer):
         """
         xs_tuple = [ tuple(x) for x in xs ]
         tmp = self.engine.fit_predict(xs_tuple)
+        
         self.predictions = {xs_tuple[idx]: predict for idx, predict in enumerate(tmp)}
-        self.kdtree = KDTree(xs)
+        labels = set(tmp)
+
+        def do(xs_tuple):
+            tmp = self.engine.fit_predict(xs_tuple)
+            self.predictions = {xs_tuple[idx]: predict for idx, predict in enumerate(tmp)}
+            labels = set(tmp)
+
+            f = plt.figure()
+            s = f.add_subplot(111)
+            s.set_title(str(len(labels))+" class")
+
+            for i in labels:
+                to_display = np.array([x for idx,x in enumerate(xs_tuple) if i == tmp[idx]])
+                s.scatter(to_display[:,0], to_display[:,1])
+
+            plt.show()
+        
+        # do(xs_tuple)
+
+        self.kdtree = cKDTree(xs)
         self.xs = xs
+        logging.info("DBSCAN found {} labels".format(len(labels)))
+
+        # There is a problm here : all isolated points are classified -1
+        # in DBSCAN, which is a problem for our interactive cluster selection
+        # as selecting a title (labelled as the label of nearest point to its
+        # "centroid") may lead to select all tiles labelled as -1 : this would
+        # be very ugly
+
+        class_min = min(labels)
+        for key, class_ in self.predictions.items():
+            if class_ <= -1:
+                class_min-=1
+                self.predictions[key] = class_min
+        labels = set(self.predictions.values())
+        
+        logging.info("DBSCAN found {} labels after correction".format(len(labels)))
 
     def predict(self, xs):
         """
@@ -143,10 +225,12 @@ class DummyClusterizer(Clusterizer):
         """
         Inits the "engine" by giving it a resolution.
         The resolution will be the square root of the
-        number of clusters.
+        nb of clusters.
         """
         self.mesh   = mesh
-        self.kdtree = KDTree(self.mesh)
+        self.kdtree = cKDTree(self.mesh)
+        self.engine = None
+        self.method='dummy'
 
     def fit(self, xs):
         """
@@ -162,7 +246,8 @@ class DummyClusterizer(Clusterizer):
         Simply give you the index of the mesh in which the
         data is, it is considered as a cluster label
         """
-        return [self.kdtree.query(x)[1] for x in xs]
+        return self.kdtree.query(xs)[1]
+        # return [self.kdtree.query(x)[1] for x in xs]
 
 
 def make_clusterizer(xs, method='kmeans', **kwargs):
@@ -172,14 +257,14 @@ def make_clusterizer(xs, method='kmeans', **kwargs):
 
     :param data:       array with shape (n,2) of inputs to clusterize
     :param method:     algo to use, supported: kmeans, dbscan, dummy
-    :param n_clusters: number of clusters to find (if applicable)
+    :param n_clusters: nb of clusters to find (if applicable)
 
     :return: a clusterizer object (instance of child of Clusterizer())
     """
     
     clusterizer = None
     if method == 'kmeans':
-        clusterizer = KmeansClusterizer(kwargs['number_of_clusters'])
+        clusterizer = KmeansClusterizer(kwargs['nb_of_clusters'])
     elif method == 'dbscan':
         clusterizer = DBSCANClusterizer()
     else:
@@ -207,7 +292,6 @@ def plot_clusters(data, clusterizer):
 
     # Obtain possible_outputs_list
     Z = clusterizer.predict(np.c_[xx.ravel(), yy.ravel()])
-    ipdb.set_trace()
 
     # Put the result into a color plot
     Z = Z.reshape(xx.shape)
@@ -238,8 +322,9 @@ if __name__ == '__main__':
     """
     Yes, I like to test my code with __main__
     """
-    import dim_reduction as dr
-    datas_sets, models = dr.load_tSNE()
+    from vizuka import dim_reduction as dr
+    from vizuka import data_loader as dl
+    datas_sets, models = dl.load_tSNE()
     datas = datas_sets[50, 1000, 'pca', 15000]
 
     clusterizer = make_clusterizer(datas, method='kmeans', n_clusters=80)
