@@ -7,7 +7,7 @@ Usage
 -----
 ### How to install ?
 ```sh
-pip install vizuka
+$ pip install vizuka
 ```
 or clone the repo
 
@@ -15,21 +15,20 @@ or clone the repo
 
 Simply run
 ```sh
-vizuka
-
+$ vizuka
 # Similar to :
-python3 $PYTHONPATH/vizuka/launch_viz.py
+$ python3 $PYTHONPATH/vizuka/launch_viz.py
 
 ```
-
 You can add human-readable data visualization :
+
 ```sh
-vizuka -s price:logdensity -s name:wordcloud
+$ vizuka -s price:logdensity -s name:wordcloud
 ```
 
-It assumes you already have your 2D data, if not you can ask for tSNE+PCA reduction :
+It assumes you already have your 2D data, you can force for tSNE+PCA reduction :
 ```sh
-vizuka --reduce
+$ vizuka --reduce --use_pca 0.99 # Use PCA to reduce dimension and keep 99% of explained variance, then tSNE
 ```
 
 It will search in \_\_package\_\_/data/ the datas but you can force your own with __--path__ argument
