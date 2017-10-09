@@ -32,7 +32,6 @@ def main():
         PARAMS_VIZ,
         MODEL_PATH,
         INPUT_FILE_BASE_NAME,
-        OUTPUT_NAME,
         RAW_NAME,
     )
 
@@ -67,6 +66,9 @@ def main():
     parser.add_argument(
         '--path',
          help='(optional) location of your data/ folder, containing set/ reducted/ graph/ models/')
+    parser.add_argument(
+        '--mnist',
+         help='use MNIST dataset')
     
     parser.set_defaults(
             no_plot=False, 
@@ -77,6 +79,7 @@ def main():
             feature_to_show=[],
             use_pca = 0,
             force_no_predict = False,
+            mnist=False,
             )
 
     args = parser.parse_args()
@@ -86,7 +89,6 @@ def main():
     REDUCTED_DATA_PATH = os.path.join(args.path, REDUCTED_DATA_PATH)
     DATA_PATH = os.path.join(args.path, DATA_PATH)
 
-
     reduce_      = args.reduce
     no_vizualize = args.no_vizualize
     no_plot      = args.no_plot
@@ -95,6 +97,10 @@ def main():
     features_name_to_display = args.feature_to_show
     pca_variance_needed = args.use_pca
     force_no_predict = args.force_no_predict
+    
+    if args.mnist:
+        from example import load_mnist
+        version = load_mnist.version
     
     new_fntd = {}
     error_msg  = 'Argument should be feature_name:plotter with plotter'
@@ -121,7 +127,6 @@ def main():
         class_decoder,
     ) = data_loader.load_preprocessed(
             file_base_name   = INPUT_FILE_BASE_NAME,
-            output_name      = OUTPUT_NAME,
             path             = DATA_PATH,
             version          = version,
             reduction_factor = REDUCTION_SIZE_FACTOR

@@ -23,13 +23,14 @@ import pandas as pd
 import wordcloud
 
 from vizuka import viz_helper
-from vizuka import similarity
-from vizuka.qt_handler import Viz_handler
-from vizuka import clustering
 from vizuka import drawing
-from vizuka import heatmaps
 from vizuka import data_loader
+from vizuka.plugins import similarity
+from vizuka.plugins import clustering
+from vizuka.plugins import heatmaps
+
 from vizuka.cluster_diving import Cluster_viewer
+from vizuka.qt_handler import Viz_handler
 from vizuka.config import (
     MODEL_PATH,
     )
@@ -623,6 +624,7 @@ class Vizualization:
                     version,
                     clustering_method
                     ]])
+        cluster_filename+='.pkl'
 
         cluster_path = os.path.join(cache_path, cluster_filename)
 
@@ -911,7 +913,6 @@ class Vizualization:
                 ).most_common(max_row)
 
         row_labels = np.array(most_common_classes)[:,0]
-        print(row_labels)
         values = [
             [
                 '{0:.2f}'.format(self.accuracy_by_class[c]*100)+"%",
@@ -927,7 +928,7 @@ class Vizualization:
 
         summary = ax.table(
             cellText=values,
-            rowLabels=[r[:6] for r in row_labels],
+            rowLabels=[' '+str(r[:6])+' ' for r in row_labels],
             colLabels=cols,
             loc='center',
         )

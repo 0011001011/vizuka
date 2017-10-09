@@ -25,13 +25,10 @@ INPUT_FILE_BASE_NAME = 'preprocessed_inputs'
 RAW_NAME = 'originals'
 
 # default RN for predictions
-DEFAULT_PREDICTOR = 'adv_meta_23-08predict'
+DEFAULT_PREDICTOR = 'predict'
 
 # A version is a string added to the end of each filename
-VERSION = '_20170925'
-
-# data output name (labels)
-OUTPUT_NAME = 'account'
+VERSION = '_MNIST'
 
 
 #
@@ -41,18 +38,18 @@ OUTPUT_NAME = 'account'
 # t-SNE parameters
 # best tuple so far is (50,1000,pca,15000)
 PARAMS_LEARNING = {
-           'perplexities'  : [40,50,65,80],
+           'perplexities'  : [50,80],
                                          # roughly the number of neighbors in cluster
                                          # https://lvdmaaten.github.io/publications/papers/JMLR_2008.pdf
                                          # p4
-           'learning_rates': [800, 1000],
+           'learning_rates': [1000],
            'inits'         : ['random'], #deprecated, use pca_variance_needed instead
            'n_iters'       : [12000]
          }
 
 # t-SNE parameters for the reduced data we will draw
 PARAMS_VIZ = {
-           'perplexity'  : 65,
+           'perplexity'  : 50,
            'learning_rate': 1000,
            'init'         : 'random', #deprecated, use pca_variance_needed instead
            'n_iter'       : 12000,

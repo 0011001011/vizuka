@@ -13,7 +13,7 @@ from vizuka.ml_helpers import cross_entropy
 
 def accuracy(vizualization):
     """
-    Prepare the patches for a 'accuracy' heatmap (good predictions / total effectif)
+    Prepare an 'accuracy' heatmap (good predictions / total effectif)
 
     This method is a  heatmap_builder returning a list of patches to be plotted somewhere
     Three colors are actually used : red for bad prediction, blue for correct, and green for
@@ -61,7 +61,7 @@ def accuracy(vizualization):
 
 def entropy(vizualization):
     """
-    Prepares the patches for an entropy heatmap
+    Prepares an entropy heatmap
 
     This method is a heatmap_builder returning a list of patches to be
     plotted somewhere
