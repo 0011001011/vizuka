@@ -16,9 +16,9 @@ or clone the repo
 Simply run
 ```sh
 $ vizuka
-# Similar to :
-$ python3 $PYTHONPATH/vizuka/launch_viz.py
-
+# For a quick working example run :
+$ vizuka --mnist
+# Similar to copy your data and run "vizuka --image:images --version _MNIST_example"
 ```
 You can add human-readable data visualization :
 
