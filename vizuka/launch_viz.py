@@ -67,7 +67,7 @@ def main():
         '--path',
          help='(optional) location of your data/ folder, containing set/ reducted/ graph/ models/')
     parser.add_argument(
-        '--mnist',
+        '--mnist', action='store_true',
          help='use MNIST dataset')
     
     parser.set_defaults(
@@ -99,8 +99,10 @@ def main():
     force_no_predict = args.force_no_predict
     
     if args.mnist:
-        from example import load_mnist
+        from vizuka.example import load_mnist
         version = load_mnist.version
+        features_name_to_display = ['image:images']
+
     
     new_fntd = {}
     error_msg  = 'Argument should be feature_name:plotter with plotter'
