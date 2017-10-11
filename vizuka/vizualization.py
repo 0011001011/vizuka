@@ -372,6 +372,7 @@ class Vizualization:
             # reboot vizualization
             self.left_clicks = set()
             self.reset_summary()
+            self.cluster_view.reset()
             self.reset_viz()
 
     def reset_viz(self):

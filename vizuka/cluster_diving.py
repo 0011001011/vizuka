@@ -48,8 +48,10 @@ def plot_logdensity(data, fig, spec):
 def plot_random_images(data, fig, spec):
     if not data:
         return
+    import ipdb
+    ipdb.set_trace()
 
-    selected_data = [data[random.randint(0,len(data))] for _ in range(25)]
+    selected_data = [data[random.randint(0,max(len(data)-1,0))] for _ in range(25)]
     inner = gridspec.GridSpecFromSubplotSpec(5,5,
                     subplot_spec=spec)
     for idx, inner_spec in enumerate(inner):
@@ -143,6 +145,8 @@ class Cluster_viewer(matplotlib.figure.Figure):
         indexes_good: indexes of all good predictions
         indexes_bad: indexes of all bad predicitons
         """
+        self.clear()
+
         self.cluster_view_selected_indexes += index_by_cluster_label[clicked_cluster]
 
         selected_xs_raw  ={'all': [self.x_raw[idx] for idx in self.cluster_view_selected_indexes]}
@@ -169,6 +173,9 @@ class Cluster_viewer(matplotlib.figure.Figure):
                 }
 
         def plot_it(data_name, fig, spec_to_update_, key):
+            import ipdb
+            ipdb.set_trace()
+
             spec_to_update = spec_to_update_[key]
             data = data_to_display[key][data_name]
             axe = plotter(data, fig, spec_to_update)
@@ -179,7 +186,6 @@ class Cluster_viewer(matplotlib.figure.Figure):
             if axe:
                 axe.set_title(data_name)
 
-        self.all_clear()
 
         for key in ['good', 'bad']:
             for data_name in self.features_to_display:
@@ -188,7 +194,7 @@ class Cluster_viewer(matplotlib.figure.Figure):
                     spec_to_update = self.spec_by_name[data_name+plotter_name]
                     plot_it(data_name, self, spec_to_update, key) 
         
-    def all_clear(self):
+    def reset(self):
         self.clear()
         self.cluster_view_selected_indexes = []
 

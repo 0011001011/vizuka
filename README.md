@@ -9,25 +9,24 @@ Usage
 ```sh
 $ pip install vizuka
 ```
-or clone the repo
+or clone the repo :)
 
 ### How to run?
 
-Simply run
 ```sh
 $ vizuka
 # For a quick working example run :
 $ vizuka --mnist
 # Similar to copy your data and run "vizuka --image:images --version _MNIST_example"
 ```
-You can add human-readable data visualization :
+You can add human-readable data visualization in data/set/RAW\_NAME+VERSION.npz (default originals\_MNIST\_example.npz) :
 
 ```sh
 $ vizuka -s price:logdensity -s name:wordcloud
 # --feature-to-show raw_variable_name:{wordcloud|counter|density|logdensity|images}
 ```
 
-It assumes you already have your 2D data, will project if not found.
+It assumes you already have your 2D data, projection will be done if launched for the first time (not for MNIST toy example)
 You can force for PCA reduction prior to t-SNE :
 ```sh
 $ vizuka --reduce --use_pca 0.99 # Use PCA to reduce dimension and keep 99% of explained variance, then tSNE

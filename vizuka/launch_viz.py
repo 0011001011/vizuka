@@ -121,7 +121,6 @@ def main():
 
     logging.info("Starting script")
     logging.info("raw_data=loading")
-
     (
         x,
         y,
@@ -131,7 +130,7 @@ def main():
             file_base_name   = INPUT_FILE_BASE_NAME,
             path             = DATA_PATH,
             version          = version,
-            reduction_factor = REDUCTION_SIZE_FACTOR
+            reduction_factor = REDUCTION_SIZE_FACTOR,
             )
 
     logging.info('raw_data=loaded')
