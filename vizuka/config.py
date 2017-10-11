@@ -8,7 +8,7 @@ import os
 # ALL DEFAULT PATH
 #
 
-BASE_PATH       = os.path.join('data/')
+BASE_PATH       = os.path.join(os.path.dirname(__file__), 'data/')
 
 DATA_PATH       = os.path.join(BASE_PATH, 'set/')
 REDUCTED_DATA_PATH  = os.path.join(BASE_PATH, 'reducted/')
@@ -28,7 +28,7 @@ RAW_NAME = 'originals'
 DEFAULT_PREDICTOR = 'predict'
 
 # A version is a string added to the end of each filename
-VERSION = '_MNIST'
+VERSION = '_MNIST_example'
 
 
 #
