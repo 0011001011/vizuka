@@ -1,7 +1,7 @@
 Data vizualization
 ==================
 
-This is a collection of tools to represent and navigate through the high-dimensional data. The algorithm t-SNE has been used to construct the 2D space so some choices and feature of the visualization may reflect that. The module should be agnostic of the data provided.
+This is a collection of tools to represent and navigate through the high-dimensional data. The algorithm t-SNE is default to construct the 2D space. The module should be agnostic of the data provided. It ships with MNIST.
 
 Usage
 -----
@@ -24,9 +24,11 @@ You can add human-readable data visualization :
 
 ```sh
 $ vizuka -s price:logdensity -s name:wordcloud
+# --feature-to-show raw_variable_name:{wordcloud|counter|density|logdensity|images}
 ```
 
-It assumes you already have your 2D data, you can force for tSNE+PCA reduction :
+It assumes you already have your 2D data, will project if not found.
+You can force for PCA reduction prior to t-SNE :
 ```sh
 $ vizuka --reduce --use_pca 0.99 # Use PCA to reduce dimension and keep 99% of explained variance, then tSNE
 ```
