@@ -8,13 +8,26 @@ import os
 # ALL DEFAULT PATH
 #
 
+
+def path_builder(base_path):
+    return [ os.path.join(base_path, relative) for relative in [
+                        'set/',
+                        'reduced/',
+                        'models/',
+                        'graph/',
+                        ]
+        ]
+
+# Build all path from one base
 BASE_PATH       = os.path.join(os.path.dirname(__file__), 'data/')
-
-DATA_PATH       = os.path.join(BASE_PATH, 'set/')
-REDUCTED_DATA_PATH  = os.path.join(BASE_PATH, 'reducted/')
-MODEL_PATH      = os.path.join(BASE_PATH, 'models/')
-GRAPH_PATH      = os.path.join(BASE_PATH, 'graph/')
-
+      
+(
+        DATA_PATH,
+        REDUCED_DATA_PATH,
+        MODEL_PATH,
+        GRAPH_PATH,
+        
+        ) = path_builder(BASE_PATH)
 
 #
 # ALL DEFAULT FILENAME
@@ -23,6 +36,9 @@ GRAPH_PATH      = os.path.join(BASE_PATH, 'graph/')
 # File containing data to be t-SNEed
 INPUT_FILE_BASE_NAME = 'preprocessed_inputs'
 RAW_NAME = 'originals'
+
+# t-SNEDed data
+REDUCED_DATA_NAME  = '2Dembedding'
 
 # default RN for predictions
 DEFAULT_PREDICTOR = 'predict'
@@ -38,7 +54,7 @@ VERSION = '_MNIST_example'
 # t-SNE parameters
 # best tuple so far is (50,1000,pca,15000)
 PARAMS_LEARNING = {
-           'perplexities'  : [50,80],
+           'perplexities'  : [50, 75],
                                          # roughly the number of neighbors in cluster
                                          # https://lvdmaaten.github.io/publications/papers/JMLR_2008.pdf
                                          # p4

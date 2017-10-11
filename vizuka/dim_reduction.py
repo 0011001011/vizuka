@@ -16,15 +16,16 @@ import logging
 
 import numpy as np
 from sklearn.decomposition import PCA
-from MulticoreTSNE import MulticoreTSNE as tsne
-#from sklearn.manifold import TSNE as tsne
+# from MulticoreTSNE import MulticoreTSNE as tsne
+from sklearn.manifold import TSNE as tsne
 
 from vizuka.config import (
     INPUT_FILE_BASE_NAME,
     DATA_PATH,
     VERSION,
     REDUCTION_SIZE_FACTOR,
-    REDUCTED_DATA_PATH,
+    REDUCED_DATA_PATH,
+    REDUCED_DATA_NAME,
     PARAMS_LEARNING,
     PCA_MIN_VARIANCE,
 )
@@ -60,7 +61,7 @@ def reduce_with_PCA(x, variance_needed=PCA_MIN_VARIANCE):
     return x_reduced
 
 
-def learn_tSNE(x, params=PARAMS_LEARNING, version=VERSION, path=REDUCTED_DATA_PATH,
+def learn_tSNE(x, params=PARAMS_LEARNING, version=VERSION, path=REDUCED_DATA_PATH,
                reduction_size_factor=REDUCTION_SIZE_FACTOR, pca_variance_needed=0.9):
     """
     Learn tSNE representation.
@@ -123,14 +124,14 @@ def learn_tSNE(x, params=PARAMS_LEARNING, version=VERSION, path=REDUCTED_DATA_PA
             perplexity=perplexity,
             learning_rate=learning_rate,
             n_iter=n_iter,
-            n_jobs=3, # only use with Multicore_tSNE:
+            # n_jobs=3, # only use with Multicore_tSNE:
             ).fit_transform(x)
         logging.info("done!")
  
         name = ''.join('_' + str(p) for p in param)
         full_path = ''.join([
             path,
-            'embedded_x_1-',
+            REDUCED_DATA_NAME,
             str(reduction_size_factor),
             name,
             version,
