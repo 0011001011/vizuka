@@ -13,7 +13,7 @@ from vizuka.config import (
         MODEL_PATH,
         RAW_NAME,
         INPUT_FILE_BASE_NAME,
-        REDUCTED_DATA_PATH,
+        REDUCED_DATA_PATH,
         )
 
 predictor_name = 'predict'
@@ -43,8 +43,8 @@ np.savez(
             version,
             extension,
             ]),
-        originals=[raw],
-        columns='image',
+        originals=[[image.reshape(28,28)] for image in raw],
+        columns=['image'],
         )
 
 np.savez(
@@ -67,6 +67,6 @@ np.savez(
         )
 
 shutil.copy(
-        os.path.join(os.path.dirname(__file__), 'embedded_x_1-1_50_1000_random_12000_MNIST_example.npz'),
-        REDUCTED_DATA_PATH,
+        os.path.join(os.path.dirname(__file__), '2Dembedding1_50_1000_random_12000_MNIST_example.npz'),
+        REDUCED_DATA_PATH,
         )

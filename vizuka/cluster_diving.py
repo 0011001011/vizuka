@@ -48,8 +48,6 @@ def plot_logdensity(data, fig, spec):
 def plot_random_images(data, fig, spec):
     if not data:
         return
-    import ipdb
-    ipdb.set_trace()
 
     selected_data = [data[random.randint(0,max(len(data)-1,0))] for _ in range(25)]
     inner = gridspec.GridSpecFromSubplotSpec(5,5,
@@ -173,8 +171,6 @@ class Cluster_viewer(matplotlib.figure.Figure):
                 }
 
         def plot_it(data_name, fig, spec_to_update_, key):
-            import ipdb
-            ipdb.set_trace()
 
             spec_to_update = spec_to_update_[key]
             data = data_to_display[key][data_name]

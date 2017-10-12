@@ -19,7 +19,7 @@ $ vizuka
 $ vizuka --mnist
 # Similar to copy your data and run "vizuka --image:images --version _MNIST_example"
 ```
-You can add human-readable data visualization in data/set/RAW\_NAME+VERSION.npz (default originals\_MNIST\_example.npz) :
+You can add human-readable data visualization in data/set/RAW\_NAME+VERSION.npz (default 'originals\_MNIST\_example.npz') :
 
 ```sh
 $ vizuka -s price:logdensity -s name:wordcloud
@@ -34,7 +34,7 @@ $ vizuka --reduce --use_pca 0.99 # Use PCA to reduce dimension and keep 99% of e
 
 It will search in \_\_package\_\_/data/ the datas but you can force your own with __--path__ argument
 
-* Note that if you are effectively doing big data you should uncomment MulticoreTSNE in vizuka/dim_reduction unless you want to discover t-SNE crashed with a segfault. Instructions for installation can be found in requirements/requirements.apt
+* Note that if you are effectively doing big data you should uncomment MulticoreTSNE in vizuka/dim_reduction.py unless you want to discover t-SNE crashed with a segfault. Instructions for installation can be found in requirements/requirements.apt
 
 What will I get ?
 -----------------

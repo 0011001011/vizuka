@@ -27,7 +27,7 @@ def main():
         DATA_PATH,
         VERSION,
         REDUCTION_SIZE_FACTOR,
-        REDUCTED_DATA_PATH,
+        REDUCED_DATA_PATH,
         PARAMS_LEARNING,
         PARAMS_VIZ,
         MODEL_PATH,
@@ -86,7 +86,7 @@ def main():
 
     MODEL_PATH = os.path.join(args.path, MODEL_PATH)
     INPUT_FILE_BASE_NAME = os.path.join(args.path, INPUT_FILE_BASE_NAME)
-    REDUCTED_DATA_PATH = os.path.join(args.path, REDUCTED_DATA_PATH)
+    REDUCED_DATA_PATH = os.path.join(args.path, REDUCED_DATA_PATH)
     DATA_PATH = os.path.join(args.path, DATA_PATH)
 
     reduce_      = args.reduce
@@ -142,7 +142,7 @@ def main():
         x_transformed, models = data_loader.load_tSNE(
             params                = PARAMS_LEARNING,
             version               = version,
-            path                  = REDUCTED_DATA_PATH,
+            path                  = REDUCED_DATA_PATH,
             reduction_size_factor = REDUCTION_SIZE_FACTOR,
         )
         logging.info("found version:{} with"
@@ -166,7 +166,7 @@ def main():
             x                       = x,
             params                  = PARAMS_LEARNING,
             version                 = version,
-            path                    = REDUCTED_DATA_PATH,
+            path                    = REDUCED_DATA_PATH,
             reduction_size_factor   = REDUCTION_SIZE_FACTOR,
             pca_variance_needed     = pca_variance_needed,
         )

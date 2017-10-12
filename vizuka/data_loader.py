@@ -9,7 +9,8 @@ from vizuka.config import (
         VERSION,
         DEFAULT_PREDICTOR,
         PARAMS_LEARNING,
-        REDUCTED_DATA_PATH,
+        REDUCED_DATA_PATH,
+        REDUCED_DATA_NAME,
         REDUCTION_SIZE_FACTOR,
         INPUT_FILE_BASE_NAME,
         DATA_PATH,
@@ -32,7 +33,7 @@ def load_predict_byname(filename, path=MODEL_PATH):
     logging.info("trying to load {}".format(full_path))
     return np.load(os.path.join(path, filename))['pred']
 
-def load_tSNE(params=PARAMS_LEARNING, version=VERSION, path=REDUCTED_DATA_PATH,
+def load_tSNE(params=PARAMS_LEARNING, version=VERSION, path=REDUCED_DATA_PATH,
               reduction_size_factor=REDUCTION_SIZE_FACTOR):
     """
     Load tSNE representation.
@@ -71,7 +72,7 @@ def load_tSNE(params=PARAMS_LEARNING, version=VERSION, path=REDUCTED_DATA_PATH,
         name = ''.join('_' + str(p) for p in param)
         full_path = ''.join([
             path,
-            'embedded_x_1-',
+            REDUCED_DATA_NAME,
             str(reduction_size_factor),
             name,
             version,
@@ -91,7 +92,7 @@ def load_tSNE(params=PARAMS_LEARNING, version=VERSION, path=REDUCTED_DATA_PATH,
                 models[param] = np.load(full_path)['model']
             except KeyError:
                 logging.info("old version, model not found, only embedded data")
-            logging.info("embeded data=ready")
+            logging.info("embedded data=ready")
         else:
             logging.info("emebedded data = model {} {} {} {}  not found".format(
                 perplexity,
