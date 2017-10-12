@@ -1,4 +1,6 @@
 include README.md
+include vizuka/plugins/*.py
+include vizuka/example/*
 include vizuka/data/*
 include vizuka/data/tSNE/.gitkeep
 include vizuka/data/set/.gitkeep
