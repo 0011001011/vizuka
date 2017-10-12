@@ -1,12 +1,7 @@
-"""
-Similarity calculator
-This module is typically used to find the similartity between
-different clusters.
-"""
 import math
 import numpy as np
 
-def bhattacharyya(dict1, dict2, inside01=True):
+def compute_similarity(dict1, dict2, inside01=True):
     """
     Similarity measure between two empirical distribution
     
@@ -26,9 +21,3 @@ def bhattacharyya(dict1, dict2, inside01=True):
     else:
         return -math.log(s) if s!=0 else -np.inf
 
-
-def all_solid(dict0, dict1, force_inside01=True):
-    return 0
-
-def all_invisible(dict0, dict1, force_inside01=True):
-    return 1

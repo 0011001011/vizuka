@@ -12,7 +12,7 @@ import numpy as np
 import os
 import argparse
 
-from vizuka import dim_reduction
+from vizuka.dimension_reduction.tSNE import tSNE_reduce
 from vizuka import data_loader
 from vizuka import vizualization
 
@@ -162,7 +162,7 @@ def main():
     if force_reduce or reduce_: # if nothing loaded or reduce is forced by arg
         logging.info("t-sne=learning")
 
-        x_transformed, models = dim_reduction.learn_tSNE(
+        x_transformed, models = tSNE_reduce(
             x                       = x,
             params                  = PARAMS_LEARNING,
             version                 = version,

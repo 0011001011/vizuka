@@ -27,7 +27,7 @@ from PyQt5.QtWidgets import (
     QInputDialog,
 )
 
-from vizuka import qt_helpers
+from vizuka.graphics import qt_helpers
 from vizuka.cluster_diving import moar_filters
 
 

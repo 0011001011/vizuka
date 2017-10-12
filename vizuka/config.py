@@ -15,6 +15,8 @@ def path_builder(base_path):
                         'reduced/',
                         'models/',
                         'graph/',
+                        'cache/',
+                        'saved_clusters/',
                         ]
         ]
 
@@ -26,7 +28,9 @@ BASE_PATH       = os.path.join(os.path.dirname(__file__), 'data/')
         REDUCED_DATA_PATH,
         MODEL_PATH,
         GRAPH_PATH,
-        
+        CACHE_PATH,
+        SAVED_CLUSTERS_PATH,
+    
         ) = path_builder(BASE_PATH)
 
 #

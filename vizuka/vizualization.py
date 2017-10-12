@@ -22,18 +22,24 @@ from matplotlib import pyplot as plt
 import pandas as pd
 import wordcloud
 
-from vizuka import viz_helper
-from vizuka import drawing
+from vizuka.helpers import viz_helper
+from vizuka.graphics import drawing
 from vizuka import data_loader
-from vizuka.plugins import similarity
-from vizuka.plugins import clustering
-from vizuka.plugins import heatmaps
-
+from vizuka.similarity.builder import make_frontier
+from vizuka.clustering import (
+        clustering,
+        kMeans,
+        DBSCAN,
+        dummy,
+        )
+from vizuka.heatmap.builder import make_heatmap
 from vizuka.cluster_diving import Cluster_viewer
-from vizuka.qt_handler import Viz_handler
+from vizuka.graphics.qt_handler import Viz_handler
 from vizuka.config import (
-    MODEL_PATH,
-    )
+        MODEL_PATH,
+        CACHE_PATH,
+        SAVED_CLUSTERS_PATH,
+        )
 
 
 class Vizualization:
@@ -79,7 +85,7 @@ class Vizualization:
         self.manual_cluster_color = 'cyan'
         self.output_path = output_path
         self.predictors = os.listdir(model_path)
-        self.saved_clusters = os.listdir(os.path.join(model_path, 'user_clusters'))
+        self.saved_clusters = os.listdir(SAVED_CLUSTERS_PATH)
         self.model_path = model_path
         self.version = version
         
@@ -173,7 +179,7 @@ class Vizualization:
         self.calculate_prediction_projection_arrays()
 
         logging.info('clustering engine=fitting')
-        self.clusterizer = clustering.DummyClusterizer(mesh=self.mesh_centroids)
+        self.clusterizer = dummy.DummyClusterizer(mesh=self.mesh_centroids)
         self.clusterizer.fit(self.projected_input)
         logging.info('clustering engine=ready')
         self.normalize_frontier = True
@@ -578,14 +584,14 @@ class Vizualization:
 
         if method == 'bhattacharyya':
             logging.debug('frontiers: set up to '+method)
-            self.similarity_measure = similarity.bhattacharyya
+            self.similarity_measure = make_frontier(method)
             self.normalize_frontier=True
         elif method =='all':
-            self.similarity_measure = similarity.all_solid
+            self.similarity_measure = make_frontier(method)
             self.normalize_frontier=False
             logging.debug('frontiers: set up to '+method)
         elif method == 'none':
-            self.similarity_measure = similarity.all_invisible
+            self.similarity_measure = make_frontier(method)
             self.normalize_frontier=False
             self.refresh_graph()
             return
@@ -616,7 +622,7 @@ class Vizualization:
             logging.info("path not valid : {}".format(base_path))
             return os.devnull, False
             
-        cache_path = os.path.join(base_path, 'cache')
+        cache_path = CACHE_PATH
         if not os.path.exists(cache_path):
             os.makedirs(cache_path)
         cluster_filename = '_'.join(
@@ -653,13 +659,13 @@ class Vizualization:
             if method is None:
                 return 
             elif method == 'kmeans':
-                self.clusterizer = clustering.KmeansClusterizer(
+                self.clusterizer = kMeans.KmeansClusterizer(
                     n_clusters=self.nb_of_clusters,
                 )
             elif method == 'dbscan':
-                self.clusterizer = clustering.DBSCANClusterizer()
+                self.clusterizer = DBSCAN.DBSCANClusterizer()
             elif method == 'dummy':
-                self.clusterizer = clustering.DummyClusterizer()
+                self.clusterizer = dummy.DummyClusterizer()
             else:
                 logging.info("Sorry but the method for clusterizer was not understood")
                 return
@@ -1082,7 +1088,7 @@ class Vizualization:
                 sharex=self.ax,
                 sharey=self.ax)
         self.add_heatmap(
-                heatmaps.accuracy,
+                make_heatmap('accuracy'),
                 self.heat_accuracy,
                 title='Heatmap: accuracy correct predictions')
         self.axes_needing_borders.append(self.heat_accuracy)
@@ -1093,7 +1099,7 @@ class Vizualization:
                 sharex=self.ax,
                 sharey=self.ax)
         self.add_heatmap(
-                heatmaps.entropy,
+                make_heatmap('entropy'),
                 self.heat_entropy,
                 title='Heatmap: cross-entropy Cluster-All')
         self.axes_needing_borders.append(self.heat_entropy)

@@ -1,10 +1,23 @@
-from setuptools import setup
+from setuptools import setup, find_packages
 import os
+
+data = {
+        'vizuka':
+        [
+            'data/set/.gitkeep',
+            'data/models/.gitkeep',
+            'data/cache/.gitkeep',
+            'data/saved_clusters/.gitkeep',
+            'data/reduced/.gitkeep',
+            'example/2Dembedding1_50_1000_random_12000_MNIST_example.npz',
+        ],
+    }
 
 setup(
         name='Vizuka',
-        version='0.27',
-        packages=['vizuka/'],
+        version='0.27.10',
+        packages=find_packages(),#['vizuka/'],
+        package_data = data,
         entry_points = {
             'console_scripts':['vizuka=vizuka.launch_viz:main'],
             },

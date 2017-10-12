@@ -8,8 +8,8 @@ import logging
 import wordcloud
 from collections import Counter
 
-from vizuka import qt_helpers
-from vizuka.drawing import add_subplot
+from vizuka.graphics import qt_helpers
+from vizuka.graphics import drawing
 
 def plot_density(data, fig, spec):
     if not data:
