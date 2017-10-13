@@ -24,14 +24,9 @@ import wordcloud
 
 from vizuka.helpers import viz_helper
 from vizuka.graphics import drawing
+from vizuka import clustering
 from vizuka import data_loader
 from vizuka.similarity.builder import make_frontier
-from vizuka.clustering import (
-        clustering,
-        kMeans,
-        DBSCAN,
-        dummy,
-        )
 from vizuka.heatmap.builder import make_heatmap
 from vizuka.cluster_diving import Cluster_viewer
 from vizuka.graphics.qt_handler import Viz_handler
@@ -179,8 +174,12 @@ class Vizualization:
         self.calculate_prediction_projection_arrays()
 
         logging.info('clustering engine=fitting')
-        self.clusterizer = dummy.DummyClusterizer(mesh=self.mesh_centroids)
-        self.clusterizer.fit(self.projected_input)
+        self.clusterizer = clustering.make_clusterizer(
+                xs=self.projected_input,
+                nb_of_clusters=self.nb_of_clusters,
+                mesh=self.mesh_centroids,
+                method='dummy',
+                )
         logging.info('clustering engine=ready')
         self.normalize_frontier = True
         
@@ -605,7 +604,7 @@ class Vizualization:
         self.refresh_graph()
         logging.info('frontiers : applied '+method)
 
-    def get_cache_file_name(self, method):
+    def get_clusterizer_cache_file_name(self, method):
         """
         Makes a filename for the pickled object of your clusterizer
         """
@@ -642,40 +641,27 @@ class Vizualization:
         logging.info("no clusterizer in {}".format(cluster_path))
         return cluster_path, False
 
-    def clustering_fit(self, method):
+    def request_clusterizer(self, method):
         """
         Creates the clustering engine depending on the method you require
         Actually different engine use different initialisations
         """
 
         logging.info("cluster: requesting a new " + method + " engine")
-        cache_file_path, loadable = self.get_cache_file_name(method)
+        cache_file_path, loadable = self.get_clusterizer_cache_file_name(method)
 
         if loadable:
             logging.info("loading clusterizer")
             self.clusterizer = clustering.load_cluster(cache_file_path)
         else:
-
-            if method is None:
-                return 
-            elif method == 'kmeans':
-                self.clusterizer = kMeans.KmeansClusterizer(
-                    n_clusters=self.nb_of_clusters,
-                )
-            elif method == 'dbscan':
-                self.clusterizer = DBSCAN.DBSCANClusterizer()
-            elif method == 'dummy':
-                self.clusterizer = dummy.DummyClusterizer()
-            else:
-                logging.info("Sorry but the method for clusterizer was not understood")
-                return
+            self.clusterizer = clustering.make_clusterizer(
+                    xs = self.projected_input,
+                    method = method,
+                    nb_of_clusters=self.nb_of_clusters,
+                    mesh = self.mesh_centroids,
+                    )
             
-            logging.info("requested clusterizer not found in cache ({}), calculating".format(
-                cache_file_path))
-            self.clusterizer.fit(xs=self.projected_input)
             self.clusterizer.save_cluster(cache_file_path)
-            logging.info("clusterizer saved in {}".format(
-                cache_file_path))
 
 
     def request_new_clustering(self, method):
@@ -685,7 +671,7 @@ class Vizualization:
         :param method: clustering engine to use ..seealso:clustering module
         """
         method = method.lower()
-        self.clustering_fit(method)
+        self.request_clusterizer(method)
 
         self.init_clusters()
         self.update_all_heatmaps()
@@ -990,7 +976,7 @@ class Vizualization:
         """
         Basically loads a clusterizer and replays a sequence of leftclicks
         """
-        cache_file_path, _ = self.get_cache_file_name(self.clusterizer.method)
+        cache_file_path, _ = self.get_clusterizer_cache_file_name(self.clusterizer.method)
         self.clusterizer.save_cluster(cache_file_path)
         pickle.dump(
                 (cache_file_path, self.left_clicks),

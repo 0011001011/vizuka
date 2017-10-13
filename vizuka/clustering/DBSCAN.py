@@ -7,7 +7,7 @@ from scipy.spatial import cKDTree
 import logging
 
 from vizuka import vizualization
-from vizuka.clustering.clustering import Clusterizer
+from vizuka.clustering.clusterizer import Clusterizer
 
 
 class DBSCANClusterizer(Clusterizer):

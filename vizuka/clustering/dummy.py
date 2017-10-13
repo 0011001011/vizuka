@@ -1,6 +1,6 @@
 from scipy.spatial import cKDTree
 
-from vizuka.clustering.clustering import Clusterizer
+from vizuka.clustering.clusterizer import Clusterizer
 
 class DummyClusterizer(Clusterizer):
     """

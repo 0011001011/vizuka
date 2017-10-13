@@ -16,11 +16,6 @@ from matplotlib import pyplot as plt
 import logging
 
 
-def load_cluster(path):
-    with open(path, 'rb') as f:
-        return pickle.load(f)
-
-
 class Clusterizer():
 
         def __init__(self, *args, **kwargs):

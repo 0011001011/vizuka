@@ -29,6 +29,7 @@ from PyQt5.QtWidgets import (
 
 from vizuka.graphics import qt_helpers
 from vizuka.cluster_diving import moar_filters
+from vizuka import clustering
 
 
 # logging.basicConfig(level=logging.DEBUG)
@@ -207,10 +208,11 @@ class Viz_handler(Qt_matplotlib_handler):
         )
 
         # add menulist
+        builtin_cl, extra_cl = clustering.list_clusterizer()
         qt_helpers.add_menulist(
             self.window,
             'Clustering method',
-            'Clusterize', ['KMeans', 'DBSCAN', 'Loader', 'Dummy'],
+            'Clusterize', [*builtin_cl.keys(), *extra_cl.keys()],
             self.viz_engine.request_new_clustering,
             dockarea=self.right_dock,
         )
