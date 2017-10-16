@@ -6,7 +6,7 @@ import pickle
 
 from vizuka.clustering import (
         kMeans,
-        DBSCAN,
+        dbscan,
         dummy,
         clusterizer,
         )
@@ -20,7 +20,7 @@ def load_cluster(path):
 def list_clusterizer():
     built_in_clusterizers = {
             'kmeans':kMeans.KmeansClusterizer,
-            'dbscan':DBSCAN.DBSCANClusterizer,
+            'dbscan':dbscan.DBSCANClusterizer,
             'dummy':dummy.DummyClusterizer,
             }
 

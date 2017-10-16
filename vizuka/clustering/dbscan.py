@@ -2,7 +2,7 @@ import pickle
 
 import numpy as np
 from matplotlib import pyplot as plt
-from sklearn.cluster import KMeans, DBSCAN
+from sklearn.cluster import DBSCAN
 from scipy.spatial import cKDTree
 import logging
 
@@ -12,12 +12,19 @@ from vizuka.clustering.clusterizer import Clusterizer
 
 class DBSCANClusterizer(Clusterizer):
 
-    def __init__(self, *args, **kwargs):
+    required_arguments = ['epsilon', 'min_samples']
+
+    def __init__(self, required_arguments):
         """
         Inits a DBSCAN clustering engine from sklearn
         Accepts the same arguments
         """
-        self.engine = DBSCAN(n_jobs=4, eps=1.6, min_samples=30, *args, **kwargs)
+        self.required_arguments = required_arguments
+        self.engine = DBSCAN(
+                n_jobs=4,
+                eps=required_arguments['epsilon'],
+                min_samples=required_arguments['min_samples'],
+                )
         self.method='dbscan'
 
     def fit(self, xs):

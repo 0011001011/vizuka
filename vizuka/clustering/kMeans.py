@@ -2,7 +2,7 @@ import pickle
 
 import numpy as np
 from matplotlib import pyplot as plt
-from sklearn.cluster import KMeans, DBSCAN
+from sklearn.cluster import KMeans
 from scipy.spatial import cKDTree
 import logging
 
