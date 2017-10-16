@@ -36,13 +36,17 @@ It will search in \_\_package\_\_/data/ the datas but you can force your own wit
 
 * Note that if you are effectively doing big data you should uncomment MulticoreTSNE in vizuka/dim_reduction.py unless you want to discover t-SNE crashed with a segfault. Instructions for installation can be found in requirements/requirements.apt
 
+### How to improve ?
+Add your plugins in vizuka/plugins/
+You can define your own heatmaps, clustering engines, cluster viewer (cf 2nd image)
+
 What will I get ?
 -----------------
 
 A nice tool to draw clusters, find details about inside distribution and zoom in.
 Example with MNIST toy dataset (vizuka --mnist): (for real life example please scroll down)
 
-![alt zoomview](docs/zoom_view.png)
+![alt zoomview](docs/main_view.png)
 
 ![alt clusterview](docs/cluster_view.png)
 
@@ -117,47 +121,6 @@ Vizuka needs the following files :
 		 NB:	 this set is automatically generated with tSNE but you can specify your own
 
 ```
-
-Ok cool I have all the data, I also installed everything, I want to do machine learning stuff, now what ?
------------------------------------
-But all your stuff in \_\_package\_\_/data (or anywhere, and specify with __--data__ argument)
-Respect this formatting :
-
-
-* pre-processed transactions:
-    * type: npz
-    * keys:
-        * entry x: pre-processed inputs
-        * entry y_$(OUTPUT_NAME): pre-processed label to be predicted
-        * (optional) entry $(OUTPUT_NAME)_encoder: humanToMachine labels labelling
-    * name: $(INPUT_FILE_BASE_NAME)_x_y$(VERSION).npz
-    * path: $(DATA_PATH)
-    * ex: data/set/preprocessed_x_y_20170825.npz)
-
-* 2D-projections: (optional)
-    * type: npz
-    * keys:
-        * x_2D: array of (float, float) datas
-    * name: embedded_x_1-$(REDUCTION_SIZE_FACTOR)_$(PARAMS[0])_$(PARAMS[1]).$(PARAMS[N]).npz
-    * path: $(REDUCTED_DATA_PATH)
-    * ex: data/reduced/embedded_1-1_50_10000_20170825.npz
-    
-* raw transactions: (optional)
-    * type: npz
-    * keys:
-        * originals: raw transactions
-	* columns: collections of string to explicit nature of the data (human-readable)
-    * name: originals$(VERSION).npz
-    * path: $(DATA_PATH)
-    * ex: originals_20150825.npz
-    
-* predictions: (optional but highy recommended)
-    * type: npz
-    * keys:
-        * pred: predictions
-    * pred: $(PREDICTOR)$(VERSION)
-    * path: $(MODEL_PATH)
-    * ex: metapredict_20170825.npz
 
 Typical use-case :
 ------------------
