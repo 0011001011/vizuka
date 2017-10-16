@@ -18,7 +18,9 @@ import logging
 
 class Clusterizer():
 
-        def __init__(self, *args, **kwargs):
+        required_arguments = []
+
+        def __init__(self, required_arguments={}):
             """
             Builds a clusterizer object e.g: kmeans
             Do not know the datas at this point, just pass it the bare
@@ -29,6 +31,7 @@ class Clusterizer():
             """
             self.engine = None
             self.method=''
+            self.required_arguments = required_arguments
 
         def fit(self, xs):
             """

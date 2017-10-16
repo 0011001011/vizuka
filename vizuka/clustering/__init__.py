@@ -55,10 +55,15 @@ def make_clusterizer(xs, method='kmeans', **kwargs):
 
     if method == 'kmeans':
         clusterizer = clusterizer_builder(
-                kwargs['nb_of_clusters'],
+                required_arguments = {'Number of clusters':int(kwargs['Number of clusters'])},
                 )
     elif method == 'dbscan':
-        clusterizer = clusterizer_builder()
+        clusterizer = clusterizer_builder(
+                required_arguments = {
+                    'epsilon':kwargs['epsilon'],
+                    'min_samples':int(kwargs['min_samples']),
+                    },
+                )
     else:
         clusterizer = clusterizer_builder(
                 mesh=kwargs['mesh'],

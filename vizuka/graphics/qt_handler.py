@@ -13,6 +13,7 @@ import os
 matplotlib.use('Qt5Agg')  # noqa
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
 from matplotlib.backends.backend_qt5agg import NavigationToolbar2QT as NavigationToolbar
+import matplotlib.gridspec as gridspec
 
 from PyQt5 import QtCore, QtWidgets
 from PyQt5.QtWidgets import (
@@ -31,9 +32,9 @@ from vizuka.graphics import qt_helpers
 from vizuka.cluster_diving import moar_filters
 from vizuka import clustering
 from vizuka import similarity
+from vizuka.cluster_viewer import make_plotter
 
 
-# logging.basicConfig(level=logging.DEBUG)
 def onclick_wrapper(onclick):
     """
     This decorator for onclick detects if the mouse event
@@ -46,6 +47,95 @@ def onclick_wrapper(onclick):
         else:
             return lambda x: None
     return wrapper
+
+CLUSTER_PLOTTER = {}
+            
+class Cluster_viewer(matplotlib.figure.Figure):
+
+    def __init__(self, features_to_display, x_raw, x_raw_columns, show_dichotomy=True):
+        super().__init__()
+        self.x_raw = x_raw
+        self.x_raw_columns = x_raw_columns
+        self.show_dichotomy = show_dichotomy # deprecated
+
+        self.features_to_display = features_to_display
+        self.spec_by_name = {}
+        self.cluster_view_selected_indexes = []
+
+        self.spec = gridspec.GridSpec(
+                len(features_to_display.keys()),
+                2, wspace=0.2
+                )
+        
+        for idx,feature_name in enumerate(features_to_display.keys()):
+            for plotter in features_to_display[feature_name]:
+                self.spec_by_name[feature_name+plotter] = {}
+                self.spec_by_name[feature_name+plotter]['good'] = self.spec[idx%2]
+                self.spec_by_name[feature_name+plotter]['bad' ] = self.spec[idx%2+1]
+
+                if plotter not in CLUSTER_PLOTTER.keys():
+                    CLUSTER_PLOTTER[plotter] = make_plotter(plotter)
+       
+
+    def update_cluster_view(self, clicked_cluster, index_by_cluster_label, indexes_good, indexes_bad):
+        """
+        Updates the axes with the data of the clicked cluster
+
+        clicked cluster: the label of the cluster you clicked
+        index_by_cluster_label: indexs of datas indexed by cluster label (set containing int)
+        indexes_good: indexes of all good predictions
+        indexes_bad: indexes of all bad predicitons
+        """
+        self.clear()
+
+        self.cluster_view_selected_indexes += index_by_cluster_label[clicked_cluster]
+
+        selected_xs_raw  ={'all': [self.x_raw[idx] for idx in self.cluster_view_selected_indexes]}
+        if self.show_dichotomy:
+            selected_xs_raw['good'] = [self.x_raw[idx] for idx in self.cluster_view_selected_indexes if idx in indexes_good]
+            selected_xs_raw['bad' ] = [self.x_raw[idx] for idx in self.cluster_view_selected_indexes if idx in indexes_bad ]
+        
+        columns_to_display = [list(self.x_raw_columns).index(i) for i in self.features_to_display]
+        data_to_display = {
+                'all':
+                        {
+                        self.x_raw_columns[i]:[x[i] for x in selected_xs_raw['all']]
+                        for i in columns_to_display
+                        }
+                    }
+        if self.show_dichotomy:
+            data_to_display['good'] = {
+                self.x_raw_columns[i]:[x[i] for x in selected_xs_raw['good']]
+                for i in columns_to_display
+                }
+            data_to_display['bad'] = {
+                self.x_raw_columns[i]:[x[i] for x in selected_xs_raw['bad']]
+                for i in columns_to_display
+                }
+
+        def plot_it(plotter, data_to_display, data_name, fig, spec_to_update_, key):
+
+            spec_to_update = spec_to_update_[key]
+            data = data_to_display[key][data_name]
+            axe = plotter(data, fig, spec_to_update)
+            if 'log' in data_to_display[key][data_name]:
+                data_name += ' - log'
+            data_name +=  ' - {} predictions'.format(key)
+
+            if axe:
+                axe.set_title(data_name)
+
+
+        for key in ['good', 'bad']:
+            for data_name in self.features_to_display:
+                for plotter_name in self.features_to_display[data_name]:
+                    plotter = CLUSTER_PLOTTER[plotter_name]
+                    spec_to_update = self.spec_by_name[data_name+plotter_name]
+                    plot_it(plotter, data_to_display, data_name, self, spec_to_update, key) 
+        
+    def reset(self):
+        self.clear()
+        self.cluster_view_selected_indexes = []
 
 
 class Qt_matplotlib_handler():
@@ -210,11 +300,12 @@ class Viz_handler(Qt_matplotlib_handler):
 
         # add menulist
         builtin_cl, extra_cl = clustering.list_clusterizer()
+        self.available_clustering_engines = {**builtin_cl, **extra_cl}
         qt_helpers.add_menulist(
             self.window,
             'Clustering method',
-            'Clusterize', [*builtin_cl.keys(), *extra_cl.keys()],
-            self.viz_engine.request_new_clustering,
+            'Clusterize', [*self.available_clustering_engines.keys()],
+            self.request_new_clustering,
             dockarea=self.right_dock,
         )
 
@@ -243,13 +334,6 @@ class Viz_handler(Qt_matplotlib_handler):
             self.viz_engine.load_clusterization,
             self.right_dock,
         )
-        self.textboxs['nb_of_clusters'] = qt_helpers.add_text_panel(
-            self.window,
-            'Number of clusters (default:120)',
-            self.textbox_function_n_clusters,
-            self.right_dock,
-        )
-
     def save_clusters(self):
         text, validated = QInputDialog.getText(
                 self.window,
@@ -260,15 +344,6 @@ class Viz_handler(Qt_matplotlib_handler):
                 text = "clusters"
             self.viz_engine.save_clusterization(text+'.pkl')
 
-    def textbox_function_n_clusters(self):
-        """
-        Wrapper for textbox, to change nb_of_clusters
-        without specifying parameters
-        """
-        n_str = self.textboxs['nb_of_clusters'].text()
-        n = int(n_str)
-        self.viz_engine.nb_of_clusters = n
-    
     def export(self):
         text, validated = QInputDialog.getText(
                 self.window,
@@ -278,3 +353,13 @@ class Viz_handler(Qt_matplotlib_handler):
             if text == '':
                 text = "export.csv"
         self.viz_engine.export(text)
+
+    def request_new_clustering(self, clustering_engine_name):
+        self.clustering_params={}
+        for requested_param in self.available_clustering_engines[clustering_engine_name].required_arguments:
+            text, validated = QInputDialog.getText(
+                    self.window,
+                    "YOLO", requested_param+' ?'
+                    )
+            self.clustering_params[requested_param]=float(text)
+        return self.viz_engine.request_new_clustering(clustering_engine_name)

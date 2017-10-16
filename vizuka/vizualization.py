@@ -28,7 +28,7 @@ from vizuka import clustering
 from vizuka import similarity
 from vizuka import data_loader
 from vizuka import heatmap
-from vizuka.cluster_diving import Cluster_viewer
+from vizuka.graphics.qt_handler import Cluster_viewer
 from vizuka.graphics.qt_handler import Viz_handler
 from vizuka.config import (
         MODEL_PATH,
@@ -655,8 +655,8 @@ class Vizualization:
             self.clusterizer = clustering.make_clusterizer(
                     xs = self.projected_input,
                     method = method,
-                    nb_of_clusters=self.nb_of_clusters,
                     mesh = self.mesh_centroids,
+                    **self.viz_handler.clustering_params,
                     )
             
             self.clusterizer.save_cluster(cache_file_path)
