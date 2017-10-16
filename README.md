@@ -188,3 +188,4 @@ Real life example
 =================
 
 ![alt zoomview](docs/zoom_view.png)
+![alt clusterview](docs/cluster_view-mana.png)
