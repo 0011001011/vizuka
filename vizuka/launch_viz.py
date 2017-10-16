@@ -49,6 +49,12 @@ def main():
         '--reduce', action="store_true",
          help='launch a full dimension reduction')
     parser.add_argument(
+        '--heatmap1',
+         help='Specify the 1st heatmap to show')
+    parser.add_argument(
+        '--heatmap2',
+         help='Specify the 2nd heatmap to show')
+    parser.add_argument(
         '--use_pca', 
          help='force a PCA dimensional reduction, needs a minimum variance ratio explained')
     parser.add_argument(
@@ -71,6 +77,8 @@ def main():
          help='use MNIST dataset')
     
     parser.set_defaults(
+            heatmap1='accuracy',
+            heatmap2='entropy',
             no_plot=False, 
             no_vizualize=False,
             version=VERSION,
@@ -97,6 +105,8 @@ def main():
     features_name_to_display = args.feature_to_show
     pca_variance_needed = args.use_pca
     force_no_predict = args.force_no_predict
+    heatmap1    = args.heatmap1
+    heatmap2    = args.heatmap2
     
     if args.mnist:
         from vizuka.example import load_mnist
@@ -238,6 +248,7 @@ def main():
             nb_of_clusters=120,
             features_name_to_filter  = features_name_to_filter,
             features_name_to_display = features_name_to_display,
+            heatmaps_requested = [heatmap1, heatmap2],
             output_path=os.path.join('output.csv'),
             model_path=MODEL_PATH,
             version=version,

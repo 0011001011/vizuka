@@ -54,7 +54,9 @@ def make_clusterizer(xs, method='kmeans', **kwargs):
     clusterizer_builder = available_clusterizers.get(method, None)
 
     if method == 'kmeans':
-        clusterizer = clusterizer_builder(kwargs['nb_of_clusters'])
+        clusterizer = clusterizer_builder(
+                kwargs['nb_of_clusters'],
+                )
     elif method == 'dbscan':
         clusterizer = clusterizer_builder()
     else:
@@ -64,4 +66,3 @@ def make_clusterizer(xs, method='kmeans', **kwargs):
     
     clusterizer.fit(xs)
     return clusterizer
-

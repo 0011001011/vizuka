@@ -25,9 +25,9 @@ import wordcloud
 from vizuka.helpers import viz_helper
 from vizuka.graphics import drawing
 from vizuka import clustering
+from vizuka import similarity
 from vizuka import data_loader
-from vizuka.similarity.builder import make_frontier
-from vizuka.heatmap.builder import make_heatmap
+from vizuka import heatmap
 from vizuka.cluster_diving import Cluster_viewer
 from vizuka.graphics.qt_handler import Viz_handler
 from vizuka.config import (
@@ -59,6 +59,7 @@ class Vizualization:
             nb_of_clusters=120,
             features_name_to_filter=[],
             features_name_to_display={},
+            heatmaps_requested = ['entropy', 'accuracy'],
             class_decoder=(lambda x: x), class_encoder=(lambda x: x),
             output_path='output.csv',
             model_path=MODEL_PATH,
@@ -98,6 +99,7 @@ class Vizualization:
         self.nb_of_clusters = nb_of_clusters
         self.class_decoder = class_decoder
         self.special_class = str(special_class)
+        self.heatmaps_requested = heatmaps_requested
         
         self.features_name_to_filter = features_name_to_filter
         self.correct_class_to_display = {}
@@ -581,16 +583,12 @@ class Vizualization:
                     child.remove()
                     logging.info("removing a line collection")
 
+        self.similarity_measure = similarity.make_frontier(method).compare
         if method == 'bhattacharyya':
-            logging.debug('frontiers: set up to '+method)
-            self.similarity_measure = make_frontier(method)
             self.normalize_frontier=True
         elif method =='all':
-            self.similarity_measure = make_frontier(method)
             self.normalize_frontier=False
-            logging.debug('frontiers: set up to '+method)
         elif method == 'none':
-            self.similarity_measure = make_frontier(method)
             self.normalize_frontier=False
             self.refresh_graph()
             return
@@ -690,12 +688,15 @@ class Vizualization:
 
     def update_all_heatmaps(self):
         """
-        Get all heatmaps registered by add_heatmap and draw them from scratch
+        Get all heatmaps registered by request_heatmap and draw them from scratch
         """
-        for (heatmap_builder, axe, title) in self.heatmaps:
+        for (this_heatmap, axe, title) in self.heatmaps:
             axe.clear()
             axe.axis('off')
-            heatmap_color = heatmap_builder(self)
+
+            this_heatmap.update_colors(vizualization=self)
+            heatmap_color = this_heatmap.get_all_colors()
+
             logging.info("heatmaps: drawing in "+str(axe))
             im = axe.imshow(
                     heatmap_color,
@@ -715,7 +716,7 @@ class Vizualization:
             axe.set_ylim(-self.amplitude / 2, self.amplitude / 2)
             axe.axis('off')
             axe.set_title(title)
-            logging.info('heatmap, axe, title {} {} {}'.format(heatmap_builder, axe, title))
+            logging.info('heatmap, axe, title {} {} {}'.format(this_heatmap, axe, title))
 
         self.refresh_graph()
 
@@ -928,15 +929,21 @@ class Vizualization:
         summary.auto_set_font_size(False)
         summary.set_fontsize(8)
     
-    def add_heatmap(self, heatmap_builder, axe, title):
+    def request_heatmap(self, method, axe, title):
         """
         Draw a heatmap based on a heatmap_builder on an axe
 
         :param heatmap_builder: a Vizualization parameterless method which returns patches
         :param axe: matplotlib axe object in which the heatmap will be plotted
         """
+        heatmap_constructor = heatmap.make_heatmap(
+                method=method,
+                )
+        this_heatmap = heatmap_constructor(
+                vizualization=self,
+                )
 
-        self.heatmaps.append((heatmap_builder, axe, title))
+        self.heatmaps.append((this_heatmap, axe, title))
 
     def export(self, output_path, format='csv'):
         """
@@ -1020,6 +1027,7 @@ class Vizualization:
         """
         Plot the Vizualization, define axes, add scatterplot, buttons, etc..
         """
+        self.init_clusters()
         self.main_fig = matplotlib.figure.Figure()
         #self.cluster_view = matplotlib.figure.Figure()
 
@@ -1066,32 +1074,31 @@ class Vizualization:
         # draw heatmap
         logging.info("heatmap=calculating")
         # self.cluster_view = self.main_fig.add_subplot(gs[1,3])
+        
 
         self.heatmaps = []
         
-        self.heat_accuracy = self.main_fig.add_subplot(
+        self.heatmap0 = self.main_fig.add_subplot(
                 gs[1,3],
                 sharex=self.ax,
                 sharey=self.ax)
-        self.add_heatmap(
-                make_heatmap('accuracy'),
-                self.heat_accuracy,
+        self.request_heatmap(
+                method=self.heatmaps_requested[0],
+                axe=self.heatmap0,
                 title='Heatmap: accuracy correct predictions')
-        self.axes_needing_borders.append(self.heat_accuracy)
+        self.axes_needing_borders.append(self.heatmap0)
         
 
-        self.heat_entropy = self.main_fig.add_subplot(
+        self.heatmap1 = self.main_fig.add_subplot(
                 gs[0,3],
                 sharex=self.ax,
                 sharey=self.ax)
-        self.add_heatmap(
-                make_heatmap('entropy'),
-                self.heat_entropy,
+        self.request_heatmap(
+                method=self.heatmaps_requested[1],
+                axe=self.heatmap1,
                 title='Heatmap: cross-entropy Cluster-All')
-        self.axes_needing_borders.append(self.heat_entropy)
+        self.axes_needing_borders.append(self.heatmap1)
         
-        self.init_clusters()
-
         self.update_all_heatmaps()
         logging.info("heatmap=ready")
 

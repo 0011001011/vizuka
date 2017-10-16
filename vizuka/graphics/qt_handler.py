@@ -30,6 +30,7 @@ from PyQt5.QtWidgets import (
 from vizuka.graphics import qt_helpers
 from vizuka.cluster_diving import moar_filters
 from vizuka import clustering
+from vizuka import similarity
 
 
 # logging.basicConfig(level=logging.DEBUG)
@@ -216,11 +217,13 @@ class Viz_handler(Qt_matplotlib_handler):
             self.viz_engine.request_new_clustering,
             dockarea=self.right_dock,
         )
+
+        builtin_fr, extra_fr = similarity.list_similarity()
         qt_helpers.add_menulist(
             self.window,
             'Clusters borders',
             'Delimits',
-            ['Bhattacharyya', 'All', 'None'],
+            [*builtin_fr.keys(), *extra_fr.keys()],
             self.viz_engine.request_new_frontiers,
             self.right_dock,
         )

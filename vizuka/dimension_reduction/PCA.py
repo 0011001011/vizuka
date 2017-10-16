@@ -56,4 +56,3 @@ def PCA_reduce(x, variance_needed=PCA_MIN_VARIANCE):
         )
 
     return x_reduced
-
