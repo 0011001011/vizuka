@@ -40,47 +40,52 @@ def main():
 
     parser = argparse.ArgumentParser()
     parser.add_argument(
+        '--mnist', action='store_true',
+         help='download, fit, and vizualize MNIST dataset')
+    parser.add_argument(
+            '--show-required-files', action='store_true',
+            help='show all the required files for optimal use',
+            )
+    parser.add_argument(
+        '-p', '--path',
+         help='change the location of your data/ folder, containing set/ reducted/ graph/ models/')
+    parser.add_argument(
         '-f', '--feature_to_filter', action='append',
-         help='Adds a feature listed in originals.npz["columns"] to the filters list')
+         help='Adds a feature listed in raw_data.npz["columns"] to the filters list')
     parser.add_argument(
         '-s', '--feature_to_show', action='append',
-         help='Adds a feature listed in originals.npz["columns"] to the cluster view')
+        help='Usage : -s MY_COLUMN_NAME:PLOTTER with PLOTTER being a value in %. Adds this non-preprocessed/human-readable feature to the cluster view'.format())
     parser.add_argument(
-        '--reduce', action="store_true",
+        '-r', '--reduce', action="store_true",
          help='launch a full dimension reduction')
     parser.add_argument(
-        '--heatmap1',
+        '-h1', '--heatmap1',
          help='Specify the 1st heatmap to show')
     parser.add_argument(
-        '--heatmap2',
+        '-h2', '--heatmap2',
          help='Specify the 2nd heatmap to show')
     parser.add_argument(
         '--use_pca', 
          help='force a PCA dimensional reduction, needs a minimum variance ratio explained')
     parser.add_argument(
-        '--version', type=str,
+        '-v', '--version', type=str,
         help='(optional) specify a version of the files to load/generate, currently: '+VERSION)
     parser.add_argument(
-        '--force_no_predict', action="store_true",
-        help='do not load a predictions file : vizualize as if you predicted with 100% accuracy')
+        '--force-no-predict', action="store_true",
+        help='(not recommended) do not load a predictions file : vizualize as if you predicted with 100\% accuracy')
     parser.add_argument(
-        '--no_vizualize', action="store_true",
-         help='do not prepare a nice data vizualization')
+        '--no-vizualize', action="store_true",
+         help='(for debug) do not prepare a nice data vizualization')
     parser.add_argument(
-        '--no_plot', action="store_true",
-         help='do not show a nice data vizualization (but prepare it nonetheless)')
-    parser.add_argument(
-        '--path',
-         help='(optional) location of your data/ folder, containing set/ reducted/ graph/ models/')
-    parser.add_argument(
-        '--mnist', action='store_true',
-         help='use MNIST dataset')
+        '--no-plot', action="store_true",
+         help='(for debug) do not show a nice data vizualization (but prepare it nonetheless)')
     
     parser.set_defaults(
             heatmap1='accuracy',
             heatmap2='entropy',
             no_plot=False, 
             no_vizualize=False,
+            show_required_files=False,
             version=VERSION,
             path=os.path.dirname(__file__),
             feature_to_filter=[],
@@ -105,8 +110,41 @@ def main():
     features_name_to_display = args.feature_to_show
     pca_variance_needed = args.use_pca
     force_no_predict = args.force_no_predict
+    show_required_files=args.show_required_files
     heatmap1    = args.heatmap1
     heatmap2    = args.heatmap2
+
+    if args.show_required_files:
+        print(
+        'VERSION: string that identifies your dataset (default is MNIST_example)\n\n'
+        '\nVizuka needs the following files :\n\n'
+        '\t + data/set/preprocessed_inputs_VERSION.npz\n'
+        '\t ------------------------------------------\n'
+        '\t\t x:\t preprocessed inputs\n'
+        '\t\t y:\t outputs to be predicted\n'
+        '\t\t NB:\t this is the only mandatory file, the following is highly recommended:\n'
+        '\n\n'
+        '\t + data/models/predict_VERSION.npz -> optional but recommended\n'
+        '\t -------------------------------------------------------------\n'
+        '\t\t pred:\t predictions returned by your algorithm\n'
+        '\t\t NB:\t should be same formatting as in preprocessed_inputs_VERSION["y"])\n'
+        '\n\n'
+        '\t + raw_data.npz -> optional\n'
+        '\t --------------------------\n'
+        '\t\t x:\t\t array of inputs BEFORE preprocessing\n'
+        '\t\t\t\t\t probably human-readbable, thus useful for vizualization\n'
+        '\t\t columns:\t the name of the columns variable in x\n'
+        '\t\t NB:\t this file is used if you run vizuka with\n'
+        '\t\t\t    --feature-name-to-display COLUMN_NAME:PLOTTER COLUMN_NAME2:PLOTTER2 or\n'
+        '\t\t\t    --feature-name-to-filter COLUMN_NAME1 COLUMN_NAME2 (see help for details)\n'
+        '\n\n'
+        '\t + reduced/2Dembedding_PARAMS_VERSION.npz -> reaaaally optional\n'
+        '\t --------------------------------------------------------------\n'
+        '\t\t x2D:\t projections of the preprocessed inputs x in a 2D space\n'
+        '\t\t NB:\t this set is automatically generated with tSNE but you can specify your own\n'
+        )
+        return
+
     
     if args.mnist:
         from vizuka.example import load_mnist

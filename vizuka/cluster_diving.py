@@ -10,105 +10,10 @@ from collections import Counter
 
 from vizuka.graphics import qt_helpers
 from vizuka.graphics import drawing
+from vizuka.cluster_viewer import make_plotter
 
-def plot_density(data, fig, spec):
-    if not data:
-        return
-    axe = plt.Subplot(fig, spec)
 
-    data = [float(d) for d in data]
-    bins = 100 # int(len(data)/10)
-    hist, bins = np.histogram(data, bins=bins)
-    width = .7 *(bins[1] - bins[0])
-    center = (bins[:-1] + bins[1:])/2
-    
-    axe.set_yscale('linear')
-    axe.bar(center, hist, align='center', width=width)
-    
-    fig.add_subplot(axe)
-    return axe
-
-def plot_logdensity(data, fig, spec):
-    if not data:
-        return
-    axe = plt.Subplot(fig, spec)
-
-    data = [float(d) for d in data]
-    bins = 100 # int(len(data)/10)
-    hist, bins = np.histogram(data, bins=bins)
-    width = .7 *(bins[1] - bins[0])
-    center = (bins[:-1] + bins[1:])/2
-    
-    axe.set_yscale('log')
-    axe.bar(center, hist, align='center', width=width)
-    
-    fig.add_subplot(axe)
-    return axe
-
-def plot_random_images(data, fig, spec):
-    if not data:
-        return
-
-    selected_data = [data[random.randint(0,max(len(data)-1,0))] for _ in range(25)]
-    inner = gridspec.GridSpecFromSubplotSpec(5,5,
-                    subplot_spec=spec)
-    for idx, inner_spec in enumerate(inner):
-        axe = plt.Subplot(fig, inner_spec)
-        axe.imshow(selected_data[idx])
-        fig.add_subplot(axe)
-    return axe
-
-def plot_wordcloud(data, fig, spec):
-    if not data:
-        return
-    axe = plt.Subplot(fig, spec)
-
-    # ok fuck let's be stupid for testing purpose
-    data = [str(d) for d in data]
-    words_freq = Counter(sum([phrase.split(' ') for phrase in data], []))
-    del words_freq['']
-    wc = wordcloud.WordCloud()
-    
-    wc.fit_words(words_freq)
-    wc.background_color = 'white'
-    wc.scale=10 # for better resolution
-    wc.relative_scaling = .5 # for sizing words not only on ranks but also reative freq
-
-    axe.axis('off')
-    axe.imshow(wc.to_array())
-    fig.add_subplot(axe)
-    return axe
-
-def plot_counter(data, fig, spec):
-    if not data:
-        return
-    axe = plt.Subplot(fig, spec)
-
-    c = Counter(data)
-    x = [l for l in c.keys()]
-    y = [c[l] for l in x]
-
-    
-    order = np.argsort(y)
-    y = [y[i] for i in order]
-    x = [x[i] for i in order]
-
-    graduation = np.linspace(0, len(y), len(y))
-    axe.bar(height=y, left=graduation)
-    axe.set_xticks(graduation)
-    axe.set_xticklabels([str(i) for i in x])
-    fig.add_subplot(axe)
-
-    return axe
-
-CLUSTER_PLOTTER = {
-        'logdensity': plot_logdensity,
-        'density': plot_density,
-        'wordcloud': plot_wordcloud,
-        'counter': plot_counter,
-        'images': plot_random_images,
-        }
-
+CLUSTER_PLOTTER = {}
             
 class Cluster_viewer(matplotlib.figure.Figure):
 
@@ -132,6 +37,9 @@ class Cluster_viewer(matplotlib.figure.Figure):
                 self.spec_by_name[feature_name+plotter] = {}
                 self.spec_by_name[feature_name+plotter]['good'] = self.spec[idx%2]
                 self.spec_by_name[feature_name+plotter]['bad' ] = self.spec[idx%2+1]
+
+                if plotter not in CLUSTER_PLOTTER.keys():
+                    CLUSTER_PLOTTER[plotter] = make_plotter(plotter)
        
 
     def update_cluster_view(self, clicked_cluster, index_by_cluster_label, indexes_good, indexes_bad):
@@ -170,10 +78,12 @@ class Cluster_viewer(matplotlib.figure.Figure):
                 for i in columns_to_display
                 }
 
-        def plot_it(data_name, fig, spec_to_update_, key):
+        def plot_it(plotter, data_to_display, data_name, fig, spec_to_update_, key):
 
             spec_to_update = spec_to_update_[key]
             data = data_to_display[key][data_name]
+            import ipdb
+            ipdb.set_trace()
             axe = plotter(data, fig, spec_to_update)
             if 'log' in data_to_display[key][data_name]:
                 data_name += ' - log'
@@ -188,7 +98,7 @@ class Cluster_viewer(matplotlib.figure.Figure):
                 for plotter_name in self.features_to_display[data_name]:
                     plotter = CLUSTER_PLOTTER[plotter_name]
                     spec_to_update = self.spec_by_name[data_name+plotter_name]
-                    plot_it(data_name, self, spec_to_update, key) 
+                    plot_it(plotter, data_to_display, data_name, self, spec_to_update, key) 
         
     def reset(self):
         self.clear()

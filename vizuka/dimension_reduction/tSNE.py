@@ -92,6 +92,7 @@ def tSNE_reduce(x, params=PARAMS_LEARNING, version=VERSION, path=REDUCED_DATA_PA
             REDUCED_DATA_NAME,
             str(reduction_size_factor),
             name,
+            '_',
             version,
             '.npz',
         ])

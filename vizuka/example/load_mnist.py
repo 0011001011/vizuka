@@ -43,7 +43,7 @@ np.savez(
             version,
             extension,
             ]),
-        originals=[[image.reshape(28,28)] for image in raw],
+        x=[[image.reshape(28,28)] for image in raw],
         columns=['image'],
         )
 

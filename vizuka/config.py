@@ -38,17 +38,17 @@ BASE_PATH       = os.path.join(os.path.dirname(__file__), 'data/')
 #
 
 # File containing data to be t-SNEed
-INPUT_FILE_BASE_NAME = 'preprocessed_inputs'
-RAW_NAME = 'originals'
+INPUT_FILE_BASE_NAME = 'preprocessed_inputs_'
+RAW_NAME = 'raw_data_'
 
 # t-SNEDed data
 REDUCED_DATA_NAME  = '2Dembedding'
 
 # default RN for predictions
-DEFAULT_PREDICTOR = 'predict'
+DEFAULT_PREDICTOR = 'predict_'
 
 # A version is a string added to the end of each filename
-VERSION = '_MNIST_example'
+VERSION = 'MNIST_example'
 
 
 #

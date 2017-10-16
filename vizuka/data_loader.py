@@ -22,7 +22,7 @@ def load_predict(path=MODEL_PATH, version=VERSION, namePredictor=DEFAULT_PREDICT
     """
     Simply load the predictions associated with the VERSION data
     """
-    logging.info("trying to load {}".format(path + namePredictor + version + '.npz'))
+    logging.info("trying to load {}".format(path + namePredictor +'_'+ version + '.npz'))
     return np.load(path + namePredictor + version + '.npz')['pred']
 
 def load_predict_byname(filename, path=MODEL_PATH):
@@ -75,6 +75,7 @@ def load_tSNE(params=PARAMS_LEARNING, version=VERSION, path=REDUCED_DATA_PATH,
             REDUCED_DATA_NAME,
             str(reduction_size_factor),
             name,
+            '_',
             version,
             '.npz',
         ])
@@ -107,7 +108,7 @@ def load_raw(version, path):
     raw_filename = os.path.join(path, RAW_NAME + version + '.npz')
     if os.path.exists(raw_filename):
         raw_ = np.load(raw_filename)
-        return raw_["originals"], raw_["columns"]
+        return raw_["x"], raw_["columns"]
     else:
         return None
 
