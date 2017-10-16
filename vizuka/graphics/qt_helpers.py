@@ -143,7 +143,6 @@ def add_text_panel(window, name, update, dockarea):
     :param name:i  diplayed name of Widget
     :param update: function to bind returnPressed event of textpanel
     """
-    # ipdb.set_trace()
     root = window
     panel = QWidget()
     hbox = QHBoxLayout(panel)

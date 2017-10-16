@@ -21,8 +21,6 @@ class RandomImages(Plotter):
         """
         if not data:
             return
-        import ipdb
-        ipdb.set_trace()
 
         selected_data = [data[random.randint(0,max(len(data)-1,0))] for _ in range(25)]
         inner = gridspec.GridSpecFromSubplotSpec(5,5,

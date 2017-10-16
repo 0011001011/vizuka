@@ -82,8 +82,6 @@ class Cluster_viewer(matplotlib.figure.Figure):
 
             spec_to_update = spec_to_update_[key]
             data = data_to_display[key][data_name]
-            import ipdb
-            ipdb.set_trace()
             axe = plotter(data, fig, spec_to_update)
             if 'log' in data_to_display[key][data_name]:
                 data_name += ' - log'
