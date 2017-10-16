@@ -1,4 +1,13 @@
 include README.md
+recursive-include vizuka *.py
+include *.py
+include vizuka/graphics/*.py
+include vizuka/clustering/*.py
+include vizuka/dimension_reduction/*.py
+include vizuka/heatmap/*.py
+include vizuka/helpers/*.py
+include vizuka/similarity_frontier/*.py
+include vizuka/example/*.npz
 include vizuka/data/*
 include vizuka/data/tSNE/.gitkeep
 include vizuka/data/set/.gitkeep

@@ -8,30 +8,47 @@ import os
 # ALL DEFAULT PATH
 #
 
-BASE_PATH       = os.path.join('data/')
 
-DATA_PATH       = os.path.join(BASE_PATH, 'set/')
-REDUCTED_DATA_PATH  = os.path.join(BASE_PATH, 'reducted/')
-MODEL_PATH      = os.path.join(BASE_PATH, 'models/')
-GRAPH_PATH      = os.path.join(BASE_PATH, 'graph/')
+def path_builder(base_path):
+    return [ os.path.join(base_path, relative) for relative in [
+                        'set/',
+                        'reduced/',
+                        'models/',
+                        'graph/',
+                        'cache/',
+                        'saved_clusters/',
+                        ]
+        ]
 
+# Build all path from one base
+BASE_PATH       = os.path.join(os.path.dirname(__file__), 'data/')
+      
+(
+        DATA_PATH,
+        REDUCED_DATA_PATH,
+        MODEL_PATH,
+        GRAPH_PATH,
+        CACHE_PATH,
+        SAVED_CLUSTERS_PATH,
+    
+        ) = path_builder(BASE_PATH)
 
 #
 # ALL DEFAULT FILENAME
 #
 
 # File containing data to be t-SNEed
-INPUT_FILE_BASE_NAME = 'preprocessed_inputs'
-RAW_NAME = 'originals'
+INPUT_FILE_BASE_NAME = 'preprocessed_inputs_'
+RAW_NAME = 'raw_data_'
+
+# t-SNEDed data
+REDUCED_DATA_NAME  = '2Dembedding'
 
 # default RN for predictions
-DEFAULT_PREDICTOR = 'adv_meta_23-08predict'
+DEFAULT_PREDICTOR = 'predict_'
 
 # A version is a string added to the end of each filename
-VERSION = '_20170925'
-
-# data output name (labels)
-OUTPUT_NAME = 'account'
+VERSION = 'MNIST_example'
 
 
 #
@@ -41,18 +58,18 @@ OUTPUT_NAME = 'account'
 # t-SNE parameters
 # best tuple so far is (50,1000,pca,15000)
 PARAMS_LEARNING = {
-           'perplexities'  : [40,50,65,80],
+           'perplexities'  : [50, 75],
                                          # roughly the number of neighbors in cluster
                                          # https://lvdmaaten.github.io/publications/papers/JMLR_2008.pdf
                                          # p4
-           'learning_rates': [800, 1000],
+           'learning_rates': [1000],
            'inits'         : ['random'], #deprecated, use pca_variance_needed instead
            'n_iters'       : [12000]
          }
 
 # t-SNE parameters for the reduced data we will draw
 PARAMS_VIZ = {
-           'perplexity'  : 65,
+           'perplexity'  : 50,
            'learning_rate': 1000,
            'init'         : 'random', #deprecated, use pca_variance_needed instead
            'n_iter'       : 12000,

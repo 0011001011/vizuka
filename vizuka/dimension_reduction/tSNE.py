@@ -1,67 +1,25 @@
-"""
-Here is the code summoned to reduce the dimension of your
-precious data, and also to load it.
-We use t-SNE and, if you want, PCA just before it.
-
-..note:: tSNE from sklearn is not the best but is standard
-I suggest you to uncomment 'from MulticoreTSNE import TSNE as tsne'
-as it will be much faster and won't crash if you use too much RAM.
-However this needs extra-install steps :
--> cf https://github.com/DmitryUlyanov/Multicore-TSNE
-"""
-
 import itertools
 import os
 import logging
 
 import numpy as np
-from sklearn.decomposition import PCA
-#from MulticoreTSNE import MulticoreTSNE as tsne
+# from MulticoreTSNE import MulticoreTSNE as tsne
 from sklearn.manifold import TSNE as tsne
 
+from vizuka import dimension_reduction
 from vizuka.config import (
     INPUT_FILE_BASE_NAME,
     DATA_PATH,
     VERSION,
     REDUCTION_SIZE_FACTOR,
-    REDUCTED_DATA_PATH,
+    REDUCED_DATA_PATH,
+    REDUCED_DATA_NAME,
     PARAMS_LEARNING,
-    OUTPUT_NAME,
     PCA_MIN_VARIANCE,
 )
 
 
-
-def reduce_with_PCA(x, variance_needed=PCA_MIN_VARIANCE):
-    """
-    Reduce your dataset x with PCA
-    variance_needed: how much of the original variance you want to capture
-    """
-    
-    logging.info("starting PCA dimensional reduction, needs an explained variance of {}%".format(
-        variance_needed*100)
-        )
-    pca = PCA(svd_solver='randomized')
-    pca.fit(x)
-
-    nb_dim_to_keep = 0
-    variance_explained = 0
-
-    while variance_explained < variance_needed:
-        variance_explained += pca.explained_variance_ratio_[nb_dim_to_keep]
-        nb_dim_to_keep += 1
-
-    x_pcaed = pca.fit_transform(x)
-    x_reduced = x_pcaed[:,:nb_dim_to_keep]
-    
-    logging.info("PCA successfull, {} dimensions (axis) where kept after orthnormalization".format(
-        nb_dim_to_keep)
-        )
-
-    return x_reduced
-
-
-def learn_tSNE(x, params=PARAMS_LEARNING, version=VERSION, path=REDUCTED_DATA_PATH,
+def tSNE_reduce(x, params=PARAMS_LEARNING, version=VERSION, path=REDUCED_DATA_PATH,
                reduction_size_factor=REDUCTION_SIZE_FACTOR, pca_variance_needed=0.9):
     """
     Learn tSNE representation.
@@ -101,7 +59,7 @@ def learn_tSNE(x, params=PARAMS_LEARNING, version=VERSION, path=REDUCTED_DATA_PA
     )
     
     if pca_variance_needed:
-        x = reduce_with_PCA(x, variance_needed=pca_variance_needed)
+        x = dimension_reduction.PCA.PCA_reduce(x, variance_needed=pca_variance_needed)
 
     for perplexity, learning_rate, init, n_iter in concatenated_iterator:
  
@@ -119,20 +77,22 @@ def learn_tSNE(x, params=PARAMS_LEARNING, version=VERSION, path=REDUCTED_DATA_PA
             n_iter=n_iter
         )'''  # in a desperate move to save RAM
         logging.info("learning model %s %s %s %s", str(perplexity), str(learning_rate), str(init), str(n_iter))
+
         x_transformed[param] = tsne(
             perplexity=perplexity,
             learning_rate=learning_rate,
             n_iter=n_iter,
-            # only use with Multicore_tSNE:   n_jobs=12,
-        ).fit_transform(x)
+            # n_jobs=3, # only use with Multicore_tSNE:
+            ).fit_transform(x)
         logging.info("done!")
  
         name = ''.join('_' + str(p) for p in param)
         full_path = ''.join([
             path,
-            'embedded_x_1-',
+            REDUCED_DATA_NAME,
             str(reduction_size_factor),
             name,
+            '_',
             version,
             '.npz',
         ])
@@ -143,11 +103,3 @@ def learn_tSNE(x, params=PARAMS_LEARNING, version=VERSION, path=REDUCTED_DATA_PA
         )  # model=models[param])
  
     return x_transformed, models
-
-
-if __name__ == '__main__':
-
-    logging.basicConfig(level=logging.DEBUG)
-    x, y, encoder, decoder = data_loader.load_preprocessed()
-    x_transformed, models = learn_tSNE(x)
-

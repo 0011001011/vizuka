@@ -22,17 +22,19 @@ from matplotlib import pyplot as plt
 import pandas as pd
 import wordcloud
 
-from vizuka import viz_helper
-from vizuka import similarity
-from vizuka.qt_handler import Viz_handler
+from vizuka.helpers import viz_helper
+from vizuka.graphics import drawing
 from vizuka import clustering
-from vizuka import drawing
-from vizuka import heatmaps
+from vizuka import similarity
 from vizuka import data_loader
+from vizuka import heatmap
 from vizuka.cluster_diving import Cluster_viewer
+from vizuka.graphics.qt_handler import Viz_handler
 from vizuka.config import (
-    MODEL_PATH,
-    )
+        MODEL_PATH,
+        CACHE_PATH,
+        SAVED_CLUSTERS_PATH,
+        )
 
 
 class Vizualization:
@@ -57,6 +59,7 @@ class Vizualization:
             nb_of_clusters=120,
             features_name_to_filter=[],
             features_name_to_display={},
+            heatmaps_requested = ['entropy', 'accuracy'],
             class_decoder=(lambda x: x), class_encoder=(lambda x: x),
             output_path='output.csv',
             model_path=MODEL_PATH,
@@ -78,7 +81,7 @@ class Vizualization:
         self.manual_cluster_color = 'cyan'
         self.output_path = output_path
         self.predictors = os.listdir(model_path)
-        self.saved_clusters = os.listdir(os.path.join(model_path, 'user_clusters'))
+        self.saved_clusters = os.listdir(SAVED_CLUSTERS_PATH)
         self.model_path = model_path
         self.version = version
         
@@ -96,6 +99,7 @@ class Vizualization:
         self.nb_of_clusters = nb_of_clusters
         self.class_decoder = class_decoder
         self.special_class = str(special_class)
+        self.heatmaps_requested = heatmaps_requested
         
         self.features_name_to_filter = features_name_to_filter
         self.correct_class_to_display = {}
@@ -172,8 +176,12 @@ class Vizualization:
         self.calculate_prediction_projection_arrays()
 
         logging.info('clustering engine=fitting')
-        self.clusterizer = clustering.DummyClusterizer(mesh=self.mesh_centroids)
-        self.clusterizer.fit(self.projected_input)
+        self.clusterizer = clustering.make_clusterizer(
+                xs=self.projected_input,
+                nb_of_clusters=self.nb_of_clusters,
+                mesh=self.mesh_centroids,
+                method='dummy',
+                )
         logging.info('clustering engine=ready')
         self.normalize_frontier = True
         
@@ -371,6 +379,7 @@ class Vizualization:
             # reboot vizualization
             self.left_clicks = set()
             self.reset_summary()
+            self.cluster_view.reset()
             self.reset_viz()
 
     def reset_viz(self):
@@ -574,16 +583,12 @@ class Vizualization:
                     child.remove()
                     logging.info("removing a line collection")
 
+        self.similarity_measure = similarity.make_frontier(method).compare
         if method == 'bhattacharyya':
-            logging.debug('frontiers: set up to '+method)
-            self.similarity_measure = similarity.bhattacharyya
             self.normalize_frontier=True
         elif method =='all':
-            self.similarity_measure = similarity.all_solid
             self.normalize_frontier=False
-            logging.debug('frontiers: set up to '+method)
         elif method == 'none':
-            self.similarity_measure = similarity.all_invisible
             self.normalize_frontier=False
             self.refresh_graph()
             return
@@ -597,7 +602,7 @@ class Vizualization:
         self.refresh_graph()
         logging.info('frontiers : applied '+method)
 
-    def get_cache_file_name(self, method):
+    def get_clusterizer_cache_file_name(self, method):
         """
         Makes a filename for the pickled object of your clusterizer
         """
@@ -614,7 +619,7 @@ class Vizualization:
             logging.info("path not valid : {}".format(base_path))
             return os.devnull, False
             
-        cache_path = os.path.join(base_path, 'cache')
+        cache_path = CACHE_PATH
         if not os.path.exists(cache_path):
             os.makedirs(cache_path)
         cluster_filename = '_'.join(
@@ -623,6 +628,7 @@ class Vizualization:
                     version,
                     clustering_method
                     ]])
+        cluster_filename+='.pkl'
 
         cluster_path = os.path.join(cache_path, cluster_filename)
 
@@ -633,40 +639,27 @@ class Vizualization:
         logging.info("no clusterizer in {}".format(cluster_path))
         return cluster_path, False
 
-    def clustering_fit(self, method):
+    def request_clusterizer(self, method):
         """
         Creates the clustering engine depending on the method you require
         Actually different engine use different initialisations
         """
 
         logging.info("cluster: requesting a new " + method + " engine")
-        cache_file_path, loadable = self.get_cache_file_name(method)
+        cache_file_path, loadable = self.get_clusterizer_cache_file_name(method)
 
         if loadable:
             logging.info("loading clusterizer")
             self.clusterizer = clustering.load_cluster(cache_file_path)
         else:
-
-            if method is None:
-                return 
-            elif method == 'kmeans':
-                self.clusterizer = clustering.KmeansClusterizer(
-                    n_clusters=self.nb_of_clusters,
-                )
-            elif method == 'dbscan':
-                self.clusterizer = clustering.DBSCANClusterizer()
-            elif method == 'dummy':
-                self.clusterizer = clustering.DummyClusterizer()
-            else:
-                logging.info("Sorry but the method for clusterizer was not understood")
-                return
+            self.clusterizer = clustering.make_clusterizer(
+                    xs = self.projected_input,
+                    method = method,
+                    nb_of_clusters=self.nb_of_clusters,
+                    mesh = self.mesh_centroids,
+                    )
             
-            logging.info("requested clusterizer not found in cache ({}), calculating".format(
-                cache_file_path))
-            self.clusterizer.fit(xs=self.projected_input)
             self.clusterizer.save_cluster(cache_file_path)
-            logging.info("clusterizer saved in {}".format(
-                cache_file_path))
 
 
     def request_new_clustering(self, method):
@@ -676,7 +669,7 @@ class Vizualization:
         :param method: clustering engine to use ..seealso:clustering module
         """
         method = method.lower()
-        self.clustering_fit(method)
+        self.request_clusterizer(method)
 
         self.init_clusters()
         self.update_all_heatmaps()
@@ -695,12 +688,15 @@ class Vizualization:
 
     def update_all_heatmaps(self):
         """
-        Get all heatmaps registered by add_heatmap and draw them from scratch
+        Get all heatmaps registered by request_heatmap and draw them from scratch
         """
-        for (heatmap_builder, axe, title) in self.heatmaps:
+        for (this_heatmap, axe, title) in self.heatmaps:
             axe.clear()
             axe.axis('off')
-            heatmap_color = heatmap_builder(self)
+
+            this_heatmap.update_colors(vizualization=self)
+            heatmap_color = this_heatmap.get_all_colors()
+
             logging.info("heatmaps: drawing in "+str(axe))
             im = axe.imshow(
                     heatmap_color,
@@ -720,7 +716,7 @@ class Vizualization:
             axe.set_ylim(-self.amplitude / 2, self.amplitude / 2)
             axe.axis('off')
             axe.set_title(title)
-            logging.info('heatmap, axe, title {} {} {}'.format(heatmap_builder, axe, title))
+            logging.info('heatmap, axe, title {} {} {}'.format(this_heatmap, axe, title))
 
         self.refresh_graph()
 
@@ -911,7 +907,6 @@ class Vizualization:
                 ).most_common(max_row)
 
         row_labels = np.array(most_common_classes)[:,0]
-        print(row_labels)
         values = [
             [
                 '{0:.2f}'.format(self.accuracy_by_class[c]*100)+"%",
@@ -927,22 +922,28 @@ class Vizualization:
 
         summary = ax.table(
             cellText=values,
-            rowLabels=[r[:6] for r in row_labels],
+            rowLabels=[' '+str(r[:6])+' ' for r in row_labels],
             colLabels=cols,
             loc='center',
         )
         summary.auto_set_font_size(False)
         summary.set_fontsize(8)
     
-    def add_heatmap(self, heatmap_builder, axe, title):
+    def request_heatmap(self, method, axe, title):
         """
         Draw a heatmap based on a heatmap_builder on an axe
 
         :param heatmap_builder: a Vizualization parameterless method which returns patches
         :param axe: matplotlib axe object in which the heatmap will be plotted
         """
+        heatmap_constructor = heatmap.make_heatmap(
+                method=method,
+                )
+        this_heatmap = heatmap_constructor(
+                vizualization=self,
+                )
 
-        self.heatmaps.append((heatmap_builder, axe, title))
+        self.heatmaps.append((this_heatmap, axe, title))
 
     def export(self, output_path, format='csv'):
         """
@@ -982,7 +983,7 @@ class Vizualization:
         """
         Basically loads a clusterizer and replays a sequence of leftclicks
         """
-        cache_file_path, _ = self.get_cache_file_name(self.clusterizer.method)
+        cache_file_path, _ = self.get_clusterizer_cache_file_name(self.clusterizer.method)
         self.clusterizer.save_cluster(cache_file_path)
         pickle.dump(
                 (cache_file_path, self.left_clicks),
@@ -1026,6 +1027,7 @@ class Vizualization:
         """
         Plot the Vizualization, define axes, add scatterplot, buttons, etc..
         """
+        self.init_clusters()
         self.main_fig = matplotlib.figure.Figure()
         #self.cluster_view = matplotlib.figure.Figure()
 
@@ -1072,32 +1074,31 @@ class Vizualization:
         # draw heatmap
         logging.info("heatmap=calculating")
         # self.cluster_view = self.main_fig.add_subplot(gs[1,3])
+        
 
         self.heatmaps = []
         
-        self.heat_accuracy = self.main_fig.add_subplot(
+        self.heatmap0 = self.main_fig.add_subplot(
                 gs[1,3],
                 sharex=self.ax,
                 sharey=self.ax)
-        self.add_heatmap(
-                heatmaps.accuracy,
-                self.heat_accuracy,
+        self.request_heatmap(
+                method=self.heatmaps_requested[0],
+                axe=self.heatmap0,
                 title='Heatmap: accuracy correct predictions')
-        self.axes_needing_borders.append(self.heat_accuracy)
+        self.axes_needing_borders.append(self.heatmap0)
         
 
-        self.heat_entropy = self.main_fig.add_subplot(
+        self.heatmap1 = self.main_fig.add_subplot(
                 gs[0,3],
                 sharex=self.ax,
                 sharey=self.ax)
-        self.add_heatmap(
-                heatmaps.entropy,
-                self.heat_entropy,
+        self.request_heatmap(
+                method=self.heatmaps_requested[1],
+                axe=self.heatmap1,
                 title='Heatmap: cross-entropy Cluster-All')
-        self.axes_needing_borders.append(self.heat_entropy)
+        self.axes_needing_borders.append(self.heatmap1)
         
-        self.init_clusters()
-
         self.update_all_heatmaps()
         logging.info("heatmap=ready")
 

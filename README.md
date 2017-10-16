@@ -1,7 +1,7 @@
 Data vizualization
 ==================
 
-This is a collection of tools to represent and navigate through the high-dimensional data. The algorithm t-SNE has been used to construct the 2D space so some choices and feature of the visualization may reflect that. The module should be agnostic of the data provided.
+This is a collection of tools to represent and navigate through the high-dimensional data. The algorithm t-SNE is default to construct the 2D space. The module should be agnostic of the data provided. It ships with MNIST.
 
 Usage
 -----
@@ -9,42 +9,40 @@ Usage
 ```sh
 $ pip install vizuka
 ```
-or clone the repo
+or clone the repo :)
 
 ### How to run?
 
-Simply run
 ```sh
 $ vizuka
-# Similar to :
-$ python3 $PYTHONPATH/vizuka/launch_viz.py
-
+# For a quick working example run :
+$ vizuka --mnist
+# Similar to copy your data and run "vizuka --image:images --version _MNIST_example"
 ```
-You can add human-readable data visualization :
+You can add human-readable data visualization in data/set/RAW\_NAME+VERSION.npz (default 'originals\_MNIST\_example.npz') :
 
 ```sh
 $ vizuka -s price:logdensity -s name:wordcloud
+# --feature-to-show raw_variable_name:{wordcloud|counter|density|logdensity|images}
 ```
 
-It assumes you already have your 2D data, you can force for tSNE+PCA reduction :
+It assumes you already have your 2D data, projection will be done if launched for the first time (not for MNIST toy example)
+You can force for PCA reduction prior to t-SNE :
 ```sh
 $ vizuka --reduce --use_pca 0.99 # Use PCA to reduce dimension and keep 99% of explained variance, then tSNE
 ```
 
 It will search in \_\_package\_\_/data/ the datas but you can force your own with __--path__ argument
 
-* Note that if you are effectively doing big data you should uncomment MulticoreTSNE in vizuka/dim_reduction unless you want to discover t-SNE crashed with a segfault. Instructions for installation can be found in requirements/requirements.apt
+* Note that if you are effectively doing big data you should uncomment MulticoreTSNE in vizuka/dim_reduction.py unless you want to discover t-SNE crashed with a segfault. Instructions for installation can be found in requirements/requirements.apt
 
 What will I get ?
 -----------------
 
-Working examples : draw clusters, find details about inside distribution and zoom in:
+A nice tool to draw clusters, find details about inside distribution and zoom in.
+Example with MNIST toy dataset (vizuka --mnist): (for real life example please scroll down)
+
 ![alt zoomview](docs/zoom_view.png)
-
-Here is the view you get when you launch it :
-![alt mainview](docs/main_view.png)
-
-And if you specify a set of non-preprocessed inputs to associate with your training data you can also view them in details in a per-cluster view :
 
 ![alt clusterview](docs/cluster_view.png)
 
@@ -83,6 +81,42 @@ vizuka needs the following files to be put in \_\_package\_\_/data:
 * your predictions (optional but recommended)
 * raw transactions (optional) which will be used to display additional human-understandable info.
 
+
+```sh
+$ vizuka --show-required-files
+
+VERSION: string that identifies your dataset (default is vizuka --version MNIST_example)
+Vizuka needs the following files :
+
+	 + data/set/preprocessed_inputs_VERSION.npz
+	 ------------------------------------------
+		 x:	 preprocessed inputs
+		 y:	 outputs to be predicted
+		 NB:	 this is the only mandatory file, the following is highly recommended:
+
+
+	 + data/models/predict_VERSION.npz -> optional but recommended
+	 -------------------------------------------------------------
+		 pred:	 predictions returned by your algorithm
+		 NB:	 should be same formatting as in preprocessed_inputs_VERSION["y"])
+
+
+	 + raw_data.npz -> optional
+	 --------------------------
+		 x:		 array of inputs BEFORE preprocessing
+					 probably human-readbable, thus useful for vizualization
+		 columns:	 the name of the columns variable in x
+		 NB:	 this file is used if you run vizuka with
+			    --feature-name-to-display COLUMN_NAME:PLOTTER COLUMN_NAME2:PLOTTER2 or
+			    --feature-name-to-filter COLUMN_NAME1 COLUMN_NAME2 (see help for details)
+
+
+	 + reduced/2Dembedding_PARAMS_VERSION.npz -> reaaaally optional
+	 --------------------------------------------------------------
+		 x2D:	 projections of the preprocessed inputs x in a 2D space
+		 NB:	 this set is automatically generated with tSNE but you can specify your own
+
+```
 
 Ok cool I have all the data, I also installed everything, I want to do machine learning stuff, now what ?
 -----------------------------------
@@ -149,3 +183,9 @@ Default parameters
 ------------------
 
 See config.py
+
+Real life example
+=================
+
+![alt zoomview](docs/zoom_view.png)
+![alt clusterview](docs/cluster_view-mana.png)

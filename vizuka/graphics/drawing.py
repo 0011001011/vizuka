@@ -105,6 +105,7 @@ def apply_borders(vizualization, normalize_frontier, frontier_builder, *args):
             label_left_neighbor = centroids_cluster_by_index[index-1]
             if label_left_neighbor != current_centroid_label:
                 if (label_left_neighbor, current_centroid_label) not in frontier:
+                    
                     current_frontier = frontier_builder(
                                 vizualization.nb_of_points_by_class_by_cluster[label_left_neighbor],
                                 vizualization.nb_of_points_by_class_by_cluster[current_centroid_label]

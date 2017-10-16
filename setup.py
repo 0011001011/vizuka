@@ -1,14 +1,27 @@
-from setuptools import setup
+from setuptools import setup, find_packages
 import os
+
+data = {
+        'vizuka':
+        [
+            'data/set/.gitkeep',
+            'data/models/.gitkeep',
+            'data/cache/.gitkeep',
+            'data/saved_clusters/.gitkeep',
+            'data/reduced/.gitkeep',
+            'example/2Dembedding1_50_1000_random_12000_MNIST_example.npz',
+        ],
+    }
 
 setup(
         name='Vizuka',
-        version='0.25',
-        packages=['vizuka/'],
+        version='0.27.13',
+        packages=find_packages(),#['vizuka/'],
+        package_data = data,
         entry_points = {
             'console_scripts':['vizuka=vizuka.launch_viz:main'],
             },
-        description='Represents your high-dimensional datas in a 2D space and play wih it',
+        description='Represents your high-dimensional datas in a 2D space and play with it',
         long_description = open(os.path.join(os.path.dirname(__file__),'README.md')).read(),
         install_requires = open(os.path.join(os.path.dirname(__file__), 'vizuka/requirements/requirements.txt')).read(),
         license = 'GPL V3',
