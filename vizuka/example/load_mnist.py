@@ -16,7 +16,7 @@ from vizuka.config import (
         REDUCED_DATA_PATH,
         )
 
-predictor_name = 'predict'
+predictor_name = 'predict_'
 version = 'MNIST_example'
 extension = '.npz'
 
