@@ -9,13 +9,13 @@ data = {
             'data/cache/.gitkeep',
             'data/saved_clusters/.gitkeep',
             'data/reduced/.gitkeep',
-            'example/2Dembedding1_50_1000_random_12000_MNIST_example.npz',
+            'example/2Dembedding_50_1000_12000_MNIST_example.npz',
         ],
     }
 
 setup(
         name='Vizuka',
-        version='0.29',
+        version='0.29.4',
         packages=find_packages(),#['vizuka/'],
         package_data = data,
         entry_points = {

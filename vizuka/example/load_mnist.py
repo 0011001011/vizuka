@@ -17,7 +17,7 @@ from vizuka.config import (
         )
 
 predictor_name = 'predict'
-version = '_MNIST_example'
+version = 'MNIST_example'
 extension = '.npz'
 
 logging.info("Downloading MNIST")
