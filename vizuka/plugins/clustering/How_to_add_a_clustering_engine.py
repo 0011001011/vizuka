@@ -9,6 +9,7 @@
 #
 # Below is a simple example, with kmeans
 # If you need special parameters, pass them in vizualization.py (search "make_clusterizer")
+# If these special parameters are hyperparameters see "required_arguments" below
 #
 #
 ##########################################################################################
@@ -26,14 +27,19 @@
 #
 # class KmeansClusterizer(Clusterizer):
 #
-#     def __init__(self, n_clusters=120, *args, **kwargs):
+#     required_arguments = ['Number of clusters']
+#     # will be asked in popup dialog when running clustering
+# 
+#     def __init__(self, required_arguments={'Number of clusters':15}):
 #         """
 #         Uses sklearn kmeans, accepts same arguments.
 #         Default nb of cluster : 120
 #         """
-#         self.engine = KMeans(n_clusters=n_clusters, *args, **kwargs)
+#         self.engine = KMeans(
+#                 n_clusters=required_arguments['Number of clusters'],
+#                 )
 #         self.method='kmeans'
-#
+# 
 #     def fit(self, xs):
 #         """
 #         Fit the datas and find clusterization adapted to the data provided

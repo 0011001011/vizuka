@@ -36,7 +36,7 @@ def list_clusterizer():
     return built_in_clusterizers, extra_cluterizers
     
 
-def make_clusterizer(xs, method='kmeans', **kwargs):
+def make_clusterizer(xs, method='dummy', **kwargs):
     """
     Clusterize the data with specified algorithm
     Naively assume you pass the right parameters for the right algo
@@ -53,21 +53,11 @@ def make_clusterizer(xs, method='kmeans', **kwargs):
     
     clusterizer_builder = available_clusterizers.get(method, None)
 
-    if method == 'kmeans':
-        clusterizer = clusterizer_builder(
-                required_arguments = {'Number of clusters':int(kwargs['Number of clusters'])},
-                )
-    elif method == 'dbscan':
-        clusterizer = clusterizer_builder(
-                required_arguments = {
-                    'epsilon':kwargs['epsilon'],
-                    'min_samples':int(kwargs['min_samples']),
-                    },
-                )
-    else:
-        clusterizer = clusterizer_builder(
-                mesh=kwargs['mesh'],
-                )
+    clusterizer = clusterizer_builder(
+            required_arguments = {
+                param:kwargs[param] for param in clusterizer_builder.required_arguments
+                },
+            )
     
     clusterizer.fit(xs)
     return clusterizer

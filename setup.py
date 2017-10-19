@@ -15,11 +15,14 @@ data = {
 
 setup(
         name='Vizuka',
-        version='0.27.13',
+        version='0.29',
         packages=find_packages(),#['vizuka/'],
         package_data = data,
         entry_points = {
-            'console_scripts':['vizuka=vizuka.launch_viz:main'],
+            'console_scripts':[
+                'vizuka=vizuka.launch_viz:main',
+                'vizuka-reduce=vizuka.launch_reduce:main',
+                ],
             },
         description='Represents your high-dimensional datas in a 2D space and play with it',
         long_description = open(os.path.join(os.path.dirname(__file__),'README.md')).read(),

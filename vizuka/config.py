@@ -52,30 +52,19 @@ VERSION = 'MNIST_example'
 
 
 #
-# ALL LEARNING PARAMETERS
+#  LEARNING PARAMETERS
 #
 
-# t-SNE parameters
-# best tuple so far is (50,1000,pca,15000)
-PARAMS_LEARNING = {
-           'perplexities'  : [50, 75],
-                                         # roughly the number of neighbors in cluster
-                                         # https://lvdmaaten.github.io/publications/papers/JMLR_2008.pdf
-                                         # p4
-           'learning_rates': [1000],
-           'inits'         : ['random'], #deprecated, use pca_variance_needed instead
-           'n_iters'       : [12000]
-         }
-
-# t-SNE parameters for the reduced data we will draw
-PARAMS_VIZ = {
-           'perplexity'  : 50,
+# Dimension reduction default parameters :
+DEFAULT_PROJECTOR = 'tsne'
+PROJECTION_DEFAULT_PARAMS = {
+        'tsne': {
+            'perplexity'  : 50,
            'learning_rate': 1000,
-           'init'         : 'random', #deprecated, use pca_variance_needed instead
            'n_iter'       : 12000,
-           }
-
-PCA_MIN_VARIANCE = 0.9  # 90% of explained_variance in test case
-
-# 30 for OVH, 50 for local, 15 for epinal
-REDUCTION_SIZE_FACTOR = 1
+           },
+        'pca': {
+            'nb_dimension' : 2,
+            'min_ratio_variance_explained':-1,
+            },
+        }

@@ -20,7 +20,7 @@ class KmeansClusterizer(Clusterizer):
         Default nb of cluster : 120
         """
         self.engine = KMeans(
-                n_clusters=required_arguments['Number of clusters'],
+                n_clusters=int(required_arguments['Number of clusters']),
                 )
         self.method='kmeans'
 

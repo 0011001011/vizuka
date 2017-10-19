@@ -19,6 +19,7 @@ import logging
 class Clusterizer():
 
         required_arguments = []
+        # List of parameters needed for the clustering engine (asked in dialog popup)
 
         def __init__(self, required_arguments={}):
             """

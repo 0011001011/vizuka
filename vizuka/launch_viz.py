@@ -12,9 +12,10 @@ import numpy as np
 import os
 import argparse
 
-from vizuka.dimension_reduction.tSNE import tSNE_reduce
+from vizuka import dimension_reduction
 from vizuka import data_loader
 from vizuka import vizualization
+from vizuka import launch_reduce
 
 
 def main():
@@ -26,13 +27,13 @@ def main():
     from vizuka.config import (
         DATA_PATH,
         VERSION,
-        REDUCTION_SIZE_FACTOR,
         REDUCED_DATA_PATH,
-        PARAMS_LEARNING,
-        PARAMS_VIZ,
+        REDUCED_DATA_NAME,
         MODEL_PATH,
         INPUT_FILE_BASE_NAME,
         RAW_NAME,
+        PROJECTION_DEFAULT_PARAMS,
+        DEFAULT_PROJECTOR,
     )
 
 
@@ -69,7 +70,7 @@ def main():
          help='force a PCA dimensional reduction, needs a minimum variance ratio explained')
     parser.add_argument(
         '-v', '--version', type=str,
-        help='(optional) specify a version of the files to load/generate, currently: '+VERSION)
+        help='(optional) specify a version of the files to load/generate (see vizuka --show_required_files), currently: '+VERSION)
     parser.add_argument(
         '--force-no-predict', action="store_true",
         help='(not recommended) do not load a predictions file : vizualize as if you predicted with 100\% accuracy')
@@ -178,66 +179,36 @@ def main():
             file_base_name   = INPUT_FILE_BASE_NAME,
             path             = DATA_PATH,
             version          = version,
-            reduction_factor = REDUCTION_SIZE_FACTOR,
             )
 
     logging.info('raw_data=loaded')
 
-    x_transformed = {}
+    x_2D = []
     if not reduce_:
-        logging.info("t-sne=loading")
-
-        x_transformed, models = data_loader.load_tSNE(
-            params                = PARAMS_LEARNING,
+        x_2D = data_loader.load_projection(
+            algorithm_name        = DEFAULT_PROJECTOR,
+            parameters            = PROJECTION_DEFAULT_PARAMS[DEFAULT_PROJECTOR],
             version               = version,
             path                  = REDUCED_DATA_PATH,
-            reduction_size_factor = REDUCTION_SIZE_FACTOR,
+            base_filename         = REDUCED_DATA_NAME,
         )
-        logging.info("found version:{} with"
-                     "{} different sets of reducted data".format(
-                            version, len(x_transformed)
-                            )
-                     )
 
-        logging.info('t-sne=ready')
-
-    if not x_transformed:
+    if not x_2D.size:
         logging.info("no reduced data found! Needs to learn some dimension reduction..")
         force_reduce = True
     else:
         force_reduce = False
 
     if force_reduce or reduce_: # if nothing loaded or reduce is forced by arg
-        logging.info("t-sne=learning")
 
-        x_transformed, models = tSNE_reduce(
-            x                       = x,
-            params                  = PARAMS_LEARNING,
+        x_2D = launch_reduce.do_reduce(
+            algorithm_name          = DEFAULT_PROJECTOR,
+            parameters              = PROJECTION_DEFAULT_PARAMS[DEFAULT_PROJECTOR],
             version                 = version,
-            path                    = REDUCED_DATA_PATH,
-            reduction_size_factor   = REDUCTION_SIZE_FACTOR,
-            pca_variance_needed     = pca_variance_needed,
+            data_path               = DATA_PATH,
+            reduced_path            = REDUCED_DATA_PATH,
         )
-
-        logging.info('t-sne=ready')
     
-    param_to_vizualize = (
-            PARAMS_VIZ['perplexity'],
-            PARAMS_VIZ['learning_rate'],
-            PARAMS_VIZ['init'],
-            PARAMS_VIZ['n_iter'],
-            )
-
-    if param_to_vizualize in x_transformed.keys():
-        x_2D = x_transformed[param_to_vizualize]
-    else:
-        random_param_to_load = list(x_transformed.keys())[0]
-        logging.info("PARAM_VIZ specified in config.py not found, but other data exists"
-                     " will load {} instead (chosen randomly)".format(random_param_to_load)
-                     )
-        x_2D = x_transformed[random_param_to_load]
-
-
     ###############
     # PREDICT
     if force_no_predict:
