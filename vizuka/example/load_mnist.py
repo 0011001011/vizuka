@@ -67,6 +67,6 @@ np.savez(
         )
 
 shutil.copy(
-        os.path.join(os.path.dirname(__file__), '2Dembedding1_50_1000_random_12000_MNIST_example.npz'),
+        os.path.join(os.path.dirname(__file__), '2Dembedding_50_1000_12000_MNIST_example.npz'),
         REDUCED_DATA_PATH,
         )
