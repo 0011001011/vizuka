@@ -13,17 +13,15 @@ class DummyClusterizer(Clusterizer):
     hum.. empty yes.
     """
 
-    required_arguments = ['mesh']
-
-    def __init__(self, required_arguments={'mesh':[]}):
+    def __init__(self, mesh=[]):
         """
         Inits the "engine" by giving it a resolution.
         The resolution will be the square root of the
         nb of clusters.
         """
-        self.required_arguments = required_arguments
+        self.register_parameters(parameters={})
 
-        self.kdtree = cKDTree(self.required_arguments['mesh'])
+        self.kdtree = cKDTree(mesh)
         self.engine = None
         self.method='dummy'
 

@@ -25,6 +25,7 @@ def main():
     """
     
     from vizuka.config import (
+        BASE_PATH,
         DATA_PATH,
         VERSION,
         REDUCED_DATA_PATH,
@@ -88,7 +89,7 @@ def main():
             no_vizualize=False,
             show_required_files=False,
             version=VERSION,
-            path=os.path.dirname(__file__),
+            path=os.path.join(os.path.dirname(__file__),BASE_PATH),
             feature_to_filter=[],
             feature_to_show=[],
             use_pca = 0,
@@ -97,11 +98,12 @@ def main():
             )
 
     args = parser.parse_args()
-
-    MODEL_PATH = os.path.join(args.path, MODEL_PATH)
+    
+    path                 = args.path
+    MODEL_PATH           = os.path.join(args.path, MODEL_PATH)
     INPUT_FILE_BASE_NAME = os.path.join(args.path, INPUT_FILE_BASE_NAME)
-    REDUCED_DATA_PATH = os.path.join(args.path, REDUCED_DATA_PATH)
-    DATA_PATH = os.path.join(args.path, DATA_PATH)
+    REDUCED_DATA_PATH    = os.path.join(args.path, REDUCED_DATA_PATH)
+    DATA_PATH            = os.path.join(args.path, DATA_PATH)
 
     reduce_      = args.reduce
     no_vizualize = args.no_vizualize
@@ -259,7 +261,7 @@ def main():
             features_name_to_display = features_name_to_display,
             heatmaps_requested = [heatmap1, heatmap2],
             output_path=os.path.join('output.csv'),
-            model_path=MODEL_PATH,
+            base_path=path,
             version=version,
         )
 

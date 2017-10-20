@@ -25,12 +25,14 @@ import wordcloud
 from vizuka.helpers import viz_helper
 from vizuka.graphics import drawing
 from vizuka import clustering
-from vizuka import similarity
+from vizuka import frontier
 from vizuka import data_loader
 from vizuka import heatmap
 from vizuka.graphics.qt_handler import Cluster_viewer
 from vizuka.graphics.qt_handler import Viz_handler
 from vizuka.config import (
+        path_builder,
+        BASE_PATH,
         MODEL_PATH,
         CACHE_PATH,
         SAVED_CLUSTERS_PATH,
@@ -62,7 +64,7 @@ class Vizualization:
             heatmaps_requested = ['entropy', 'accuracy'],
             class_decoder=(lambda x: x), class_encoder=(lambda x: x),
             output_path='output.csv',
-            model_path=MODEL_PATH,
+            base_path=BASE_PATH,
             version='',
             ):
         """
@@ -79,10 +81,20 @@ class Vizualization:
         self.last_time = {}
 
         self.manual_cluster_color = 'cyan'
+        
+        (
+                self.data_path,
+                self.reduced_data_path,
+                self.model_path,
+                self.graph_path,
+                self.cache_path, 
+                self.saved_clusters_path,
+                
+                ) = path_builder(base_path)
+
+        self.predictors = os.listdir(self.model_path)
         self.output_path = output_path
-        self.predictors = os.listdir(model_path)
-        self.saved_clusters = os.listdir(SAVED_CLUSTERS_PATH)
-        self.model_path = model_path
+        self.saved_clusters = os.listdir(self.saved_clusters_path)
         self.version = version
         
         def str_with_default_value(value):
@@ -379,7 +391,8 @@ class Vizualization:
             # reboot vizualization
             self.left_clicks = set()
             self.reset_summary()
-            self.cluster_view.reset()
+            if self.cluster_view:
+                self.cluster_view.reset()
             self.reset_viz()
 
     def reset_viz(self):
@@ -388,6 +401,8 @@ class Vizualization:
         ..note:: does not touch the summary array, for this use self.reset_summary()
         """
         logging.info("scatterplot: removing specific objects")
+
+        self.left_clicks = set()
         for ax in self.axes_needing_borders:
             for i in ax.get_children():
                 if isinstance(i, matplotlib.collections.PathCollection):
@@ -583,7 +598,9 @@ class Vizualization:
                     child.remove()
                     logging.info("removing a line collection")
 
-        self.similarity_measure = similarity.make_frontier(method).compare
+        similarity = frontier.make_frontier(method)
+        self.similarity_measure = similarity.compare
+
         if method == 'bhattacharyya':
             self.normalize_frontier=True
         elif method =='all':
@@ -602,74 +619,42 @@ class Vizualization:
         self.refresh_graph()
         logging.info('frontiers : applied '+method)
 
-    def get_clusterizer_cache_file_name(self, method):
-        """
-        Makes a filename for the pickled object of your clusterizer
-        """
-        if os.path.exists(method):
-            return method, True
-        base_path, nb_of_clusters, clustering_method, version = (
-            self.model_path,
-            self.nb_of_clusters,
-            self.version,
-            method,
-        )
-        if not os.path.exists(base_path):
-            # if the base path isn't valid (for whatever reason, saves into dev/null)
-            logging.info("path not valid : {}".format(base_path))
-            return os.devnull, False
-            
-        cache_path = CACHE_PATH
-        if not os.path.exists(cache_path):
-            os.makedirs(cache_path)
-        cluster_filename = '_'.join(
-                [str(x) for x in [
-                    nb_of_clusters,
-                    version,
-                    clustering_method
-                    ]])
-        cluster_filename+='.pkl'
-
-        cluster_path = os.path.join(cache_path, cluster_filename)
-
-        if os.path.exists(cluster_path):
-            logging.info("loading the clusterizer in {}".format(cluster_path))
-            return (cluster_path), True
-        
-        logging.info("no clusterizer in {}".format(cluster_path))
-        return cluster_path, False
-
-    def request_clusterizer(self, method):
+    def request_clusterizer(self, method, params):
         """
         Creates the clustering engine depending on the method you require
         Actually different engine use different initialisations
+
+        :param params: the parameters as a dict, of the clustering
+        :param method: the name of the clustering engine
         """
-
         logging.info("cluster: requesting a new " + method + " engine")
-        cache_file_path, loadable = self.get_clusterizer_cache_file_name(method)
+        self.clusterizer = clustering.make_clusterizer(
+                method = method,
+                mesh = self.mesh_centroids,
+                **params,
+                )
 
-        if loadable:
-            logging.info("loading clusterizer")
-            self.clusterizer = clustering.load_cluster(cache_file_path)
+        if self.clusterizer.loadable(version=self.version):
+            logging.info("cluster: found cached clustering, loading..")
+            self.clusterizer = self.clusterizer.load_cluster(version=self.version)
+            logging.info("cluster: ready")
         else:
-            self.clusterizer = clustering.make_clusterizer(
-                    xs = self.projected_input,
-                    method = method,
-                    mesh = self.mesh_centroids,
-                    **self.viz_handler.clustering_params,
-                    )
+            logging.info("cluster: fitting the clusters")
+            self.clusterizer.fit(self.projected_input)
+            logging.info("cluster: saving the clusters")
+            self.clusterizer.save_cluster(version=self.version)
+            logging.info("cluster: ready")
             
-            self.clusterizer.save_cluster(cache_file_path)
-
-
-    def request_new_clustering(self, method):
+    def request_new_clustering(self, method, params):
         """
         Init and fit a new clustering engin, then update the heatmaps
 
         :param method: clustering engine to use ..seealso:clustering module
+        :param params: a dict with the parameters
         """
+
         method = method.lower()
-        self.request_clusterizer(method)
+        self.request_clusterizer(method, params)
 
         self.init_clusters()
         self.update_all_heatmaps()
@@ -978,30 +963,53 @@ class Vizualization:
             logging.info('exporting: done')
         else:
             logging.info("nothing to export, no raw data provided!")
+    
 
-    def save_clusterization(self, name_clusters='clusters.pkl'):
+    def make_clusterization_name(self, name_clusters):
         """
-        Basically loads a clusterizer and replays a sequence of leftclicks
+        Filename containing the saved session
         """
-        cache_file_path, _ = self.get_clusterizer_cache_file_name(self.clusterizer.method)
-        self.clusterizer.save_cluster(cache_file_path)
+        return name_clusters + '_' + self.version + '.pkl'
+
+    def save_clusterization(self, name_clusters='clusters'):
+        """
+        Basically saves a clusterizer and replays a sequence of leftclicks
+        """
+        print(name_clusters)
+        if (' ' in name_clusters) or ('.' in name_clusters):
+            self.viz_handler.pop_dialog("Please do not use space or '.' in name!")
+            return
+
+        filename  = self.make_clusterization_name(name_clusters)
+        session   = (self.version, self.clusterizer.get_name(), self.left_clicks) 
+        full_path = os.path.join(self.saved_clusters_path, filename)
+
+        logging.info("user clusters: saving in {}".format(full_path))
         pickle.dump(
-                (cache_file_path, self.left_clicks),
-                open(os.path.join(self.model_path, 'user_clusters', name_clusters), 'wb')
+                session,
+                open(full_path, 'wb')
                 )
         self.viz_handler.user_cluster_menulist.add_items([name_clusters])
 
-    def load_clusterization(self, name):
+    def load_clusterization(self, name_clusters):
         """
-        Basically saves clustering engine and sequence of left_clicks
+        Basically loads clustering engine and sequence of left_clicks
         """
+        cache_filename = self.make_clusterization_name(name_clusters)
+
+        version_to_load, clusterizer_name, left_clicks_to_reproduce = pickle.load(
+                open(os.path.join(self.saved_clusters_path, cache_filename), 'rb'),
+                )
+        
+        if version_to_load != self.version:
+            self.viz_handler.pop_dialog(
+                    "Impossible to load clusters : bad VERSION (dataset do not match)")
+            return
+        
+        method, params = clustering.clusterizer.Clusterizer.get_param_from_name(clusterizer_name)
         self.reset_viz()
         self.left_clicks = set()
-
-        cache_file_path, left_clicks_to_reproduce = pickle.load(
-                open(os.path.join(self.model_path, 'user_clusters', name), 'rb'),
-                )
-        self.request_new_clustering(cache_file_path)
+        self.request_new_clustering(method, params)
         self.reset_summary()
 
         for left_click in left_clicks_to_reproduce:

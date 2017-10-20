@@ -12,20 +12,27 @@ from vizuka.clustering.clusterizer import Clusterizer
 
 class DBSCANClusterizer(Clusterizer):
 
-    required_arguments = ['epsilon', 'min_samples']
-
-    def __init__(self, required_arguments):
+    def __init__(self, epsilon=1.5, min_samples=30):
         """
         Inits a DBSCAN clustering engine from sklearn
         Accepts the same arguments
         """
-        self.required_arguments = required_arguments
-        self.engine = DBSCAN(
-                n_jobs=4,
-                eps=required_arguments['epsilon'],
-                min_samples=required_arguments['min_samples'],
+        self.epsilon     = float(epsilon)
+        self.min_samples = int(float(min_samples))
+
+        self.register_parameters(
+                parameters={
+                    'epsilon'    : self.epsilon,
+                    'min_samples': self.min_samples}
                 )
+
         self.method='dbscan'
+
+        self.engine = DBSCAN(
+                n_jobs      = 4,
+                eps         = self.epsilon,
+                min_samples = self.min_samples,
+                )
 
     def fit(self, xs):
         """

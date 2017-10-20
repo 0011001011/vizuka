@@ -26,12 +26,13 @@ from PyQt5.QtWidgets import (
     QDockWidget,
     QLineEdit,
     QInputDialog,
+    QMessageBox,
 )
 
 from vizuka.graphics import qt_helpers
 from vizuka.cluster_diving import moar_filters
 from vizuka import clustering
-from vizuka import similarity
+from vizuka import frontier
 from vizuka.cluster_viewer import make_plotter
 
 
@@ -309,7 +310,7 @@ class Viz_handler(Qt_matplotlib_handler):
             dockarea=self.right_dock,
         )
 
-        builtin_fr, extra_fr = similarity.list_similarity()
+        builtin_fr, extra_fr = frontier.list_frontiers()
         qt_helpers.add_menulist(
             self.window,
             'Clusters borders',
@@ -334,6 +335,13 @@ class Viz_handler(Qt_matplotlib_handler):
             self.viz_engine.load_clusterization,
             self.right_dock,
         )
+
+    def pop_dialog(self, msg):
+        popup = QMessageBox(self.window)
+        popup.setText(msg)
+        logging.info("Alert: {}".format(msg))
+
+
     def save_clusters(self):
         text, validated = QInputDialog.getText(
                 self.window,
@@ -342,7 +350,7 @@ class Viz_handler(Qt_matplotlib_handler):
         if validated:
             if text == '':
                 text = "clusters"
-            self.viz_engine.save_clusterization(text+'.pkl')
+            self.viz_engine.save_clusterization(text)
 
     def export(self):
         text, validated = QInputDialog.getText(
@@ -356,10 +364,11 @@ class Viz_handler(Qt_matplotlib_handler):
 
     def request_new_clustering(self, clustering_engine_name):
         self.clustering_params={}
-        for requested_param in self.available_clustering_engines[clustering_engine_name].required_arguments:
+        for requested_param in clustering.get_required_arguments(clustering_engine_name):
             text, validated = QInputDialog.getText(
                     self.window,
                     "YOLO", requested_param+' ?'
                     )
             self.clustering_params[requested_param]=float(text)
-        return self.viz_engine.request_new_clustering(clustering_engine_name)
+
+        return self.viz_engine.request_new_clustering(clustering_engine_name, self.clustering_params)

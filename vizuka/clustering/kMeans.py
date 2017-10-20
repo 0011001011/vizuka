@@ -12,17 +12,20 @@ from vizuka.clustering.clusterizer import Clusterizer
 
 class KmeansClusterizer(Clusterizer):
 
-    required_arguments = ['Number of clusters']
-
-    def __init__(self, required_arguments={'Number of clusters':15}):
+    def __init__(self, number_of_clusters=15):
         """
         Uses sklearn kmeans, accepts same arguments.
         Default nb of cluster : 120
         """
-        self.engine = KMeans(
-                n_clusters=int(required_arguments['Number of clusters']),
-                )
+        self.register_parameters(
+                parameters={'number_of_clusters':number_of_clusters})
+
         self.method='kmeans'
+        self.number_of_clusters = number_of_clusters
+
+        self.engine = KMeans(
+                n_clusters=int(float(self.number_of_clusters)),
+                )
 
     def fit(self, xs):
         """

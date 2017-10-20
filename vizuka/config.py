@@ -63,6 +63,7 @@ PROJECTION_DEFAULT_PARAMS = {
            'learning_rate': 1000,
            'n_iter'       : 12000,
            },
+
         'pca': {
             'nb_dimension' : 2,
             'min_ratio_variance_explained':-1,

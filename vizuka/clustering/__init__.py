@@ -3,6 +3,7 @@ import pkgutil
 import inspect
 import importlib
 import pickle
+import logging
 
 from vizuka.clustering import (
         kMeans,
@@ -13,9 +14,13 @@ from vizuka.clustering import (
 
 from vizuka.plugins import clustering as clustering_plugins
 
-def load_cluster(path):
-    with open(path, 'rb') as f:
-        return pickle.load(f)
+def get_required_arguments(method):
+    if method=='dummy':
+        return []
+    else:
+        builtin, extra = list_clusterizer()
+        available_clusterizers = {**builtin, **extra}
+        return inspect.getargspec(available_clusterizers[method]).args[1:]
 
 def list_clusterizer():
     built_in_clusterizers = {
@@ -36,7 +41,7 @@ def list_clusterizer():
     return built_in_clusterizers, extra_cluterizers
     
 
-def make_clusterizer(xs, method='dummy', **kwargs):
+def make_clusterizer(method='dummy', **kwargs):
     """
     Clusterize the data with specified algorithm
     Naively assume you pass the right parameters for the right algo
@@ -52,12 +57,10 @@ def make_clusterizer(xs, method='dummy', **kwargs):
     available_clusterizers = {**built_in_clusterizers, **extra_clusterizers}
     
     clusterizer_builder = available_clusterizers.get(method, None)
-
-    clusterizer = clusterizer_builder(
-            required_arguments = {
-                param:kwargs[param] for param in clusterizer_builder.required_arguments
-                },
-            )
     
-    clusterizer.fit(xs)
+    required_parameters = inspect.getargspec(clusterizer_builder).args
+    given_parameters    = {name:value for name,value in kwargs.items() if name in required_parameters}
+    logging.info("clusterizer: building a clustering engine with parameters:\n{}".format(given_parameters))
+    clusterizer = clusterizer_builder(**given_parameters)
+    
     return clusterizer
