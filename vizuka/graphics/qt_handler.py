@@ -339,7 +339,7 @@ class Viz_handler(Qt_matplotlib_handler):
     def pop_dialog(self, msg):
         popup = QMessageBox(self.window)
         popup.setText(msg)
-        logging.info("Alert: {}".format(msg))
+        popup.exec_()
 
 
     def save_clusters(self):

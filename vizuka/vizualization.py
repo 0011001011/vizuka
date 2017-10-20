@@ -303,7 +303,6 @@ class Vizualization:
     def conciliate_filters(self, filters):
         
         to_display = set(range(len(self.projected_input)))
-        print(filters)
 
         if filters["GROUND_TRUTH"]:
             filtered = filters["GROUND_TRUTH"]
@@ -975,7 +974,6 @@ class Vizualization:
         """
         Basically saves a clusterizer and replays a sequence of leftclicks
         """
-        print(name_clusters)
         if (' ' in name_clusters) or ('.' in name_clusters):
             self.viz_handler.pop_dialog("Please do not use space or '.' in name!")
             return

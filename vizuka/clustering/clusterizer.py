@@ -33,7 +33,6 @@ class Clusterizer():
             method = blocks[0]
             for block in blocks[1:]:
                 if block:
-                    print(block)
                     name, value  = block.split(NAME_VALUE_SEPARATOR)
                     params[name] = value
             return method, params

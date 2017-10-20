@@ -149,7 +149,6 @@ def apply_borders(vizualization, normalize_frontier, frontier_builder, *args):
                 }
 
     lines = []
-    print(normalized_frontier)
 
     logging.info('borders: generating graphic lines')
     for index, (x, y) in enumerate(vizualization.mesh_centroids):
