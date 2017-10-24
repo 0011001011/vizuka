@@ -12,7 +12,6 @@ import numpy as np
 import os
 import argparse
 
-from vizuka import dimension_reduction
 from vizuka import data_loader
 from vizuka import vizualization
 from vizuka import launch_reduce
@@ -32,11 +31,9 @@ def main():
         REDUCED_DATA_NAME,
         MODEL_PATH,
         INPUT_FILE_BASE_NAME,
-        RAW_NAME,
         PROJECTION_DEFAULT_PARAMS,
         DEFAULT_PROJECTOR,
     )
-
 
     logging.basicConfig(level=logging.DEBUG)
 
@@ -67,7 +64,7 @@ def main():
         '-h2', '--heatmap2',
          help='Specify the 2nd heatmap to show')
     parser.add_argument(
-        '--use_pca', 
+        '--use_pca',
          help='force a PCA dimensional reduction, needs a minimum variance ratio explained')
     parser.add_argument(
         '-v', '--version', type=str,
@@ -83,18 +80,18 @@ def main():
          help='(for debug) do not show a nice data vizualization (but prepare it nonetheless)')
     
     parser.set_defaults(
-            heatmap1='accuracy',
-            heatmap2='entropy',
-            no_plot=False, 
-            no_vizualize=False,
-            show_required_files=False,
-            version=VERSION,
-            path=os.path.join(os.path.dirname(__file__),BASE_PATH),
-            feature_to_filter=[],
-            feature_to_show=[],
-            use_pca = 0,
-            force_no_predict = False,
-            mnist=False,
+            heatmap1 ='accuracy',
+            heatmap2 ='entropy',
+            use_pca  = 0,
+            no_plot             =False,
+            no_vizualize        =False,
+            show_required_files =False,
+            force_no_predict    =False,
+            mnist               =False,
+            version =VERSION,
+            path    =os.path.join(os.path.dirname(__file__),BASE_PATH),
+            feature_to_filter =[],
+            feature_to_show   =[],
             )
 
     args = parser.parse_args()

@@ -21,7 +21,7 @@ def path_builder(base_path):
         ]
 
 # Build all path from one base
-BASE_PATH       = os.path.join(os.path.dirname(__file__), 'data/')
+BASE_PATH = os.path.join(os.path.dirname(__file__), 'data/')
       
 (
         DATA_PATH,
@@ -42,7 +42,7 @@ INPUT_FILE_BASE_NAME = 'preprocessed_inputs_'
 RAW_NAME = 'raw_data_'
 
 # t-SNEDed data
-REDUCED_DATA_NAME  = '2Dembedding'
+REDUCED_DATA_NAME = '2Dembedding'
 
 # default RN for predictions
 DEFAULT_PREDICTOR = 'predict_'

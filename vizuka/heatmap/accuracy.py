@@ -6,7 +6,6 @@ associated colors.
 If you want to provide new ones dont forget to register them in qt_handler
 """
 
-import numpy as np
 import logging
 
 from vizuka.heatmap import heatmap

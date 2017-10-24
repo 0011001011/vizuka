@@ -1,8 +1,6 @@
-import os
 import pkgutil
 import inspect
 import importlib
-import pickle
 
 from vizuka.dimension_reduction import (
         projector,

@@ -11,7 +11,7 @@ except:
     from sklearn.manifold import TSNE as tsne_algorithm
     using_multicore_tsne = False
     multicore_parameters = {}
-    logging.info('dimension_reduction = Using slow tSNE (see requirements/requirements.apt')
+    logging.info('dimension_reduction = ALERT: Using slow tSNE, potential segfault if dataset too big (see requirements/requirements.apt')
 
 from vizuka.dimension_reduction import (
         projector,

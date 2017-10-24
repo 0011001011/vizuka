@@ -33,7 +33,6 @@ class Projector():
             name = ''.join('_' + str(param) for param in self.parameters)
             return ''.join([path, filename, name, '_', version, '.npz'])
      
-
         def load_projection(self, version=VERSION, base_filename=REDUCED_DATA_NAME, path=REDUCED_DATA_PATH):
             full_path = self.get_savename(version, base_filename, path)
             if os.path.exists(full_path):
@@ -43,7 +42,6 @@ class Projector():
                 logging.info("Nothing found in {}!".format(full_path))
                 return np.array([])
 
-        
         def save_projection(self, version=VERSION, base_filename=REDUCED_DATA_NAME, path=REDUCED_DATA_PATH):
             """
             Save the projection in standard location with appropriate name,

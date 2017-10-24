@@ -1,12 +1,9 @@
-import pickle
-
 import numpy as np
 from matplotlib import pyplot as plt
 from sklearn.cluster import DBSCAN
 from scipy.spatial import cKDTree
 import logging
 
-from vizuka import vizualization
 from vizuka.clustering.clusterizer import Clusterizer
 
 

@@ -10,20 +10,11 @@ However this needs extra-install steps :
 -> cf https://github.com/DmitryUlyanov/Multicore-TSNE
 """
 
-import itertools
-import os
 import logging
 
 import numpy as np
 from sklearn.decomposition import PCA as PCA_algorithm
 
-from vizuka.config import (
-    INPUT_FILE_BASE_NAME,
-    DATA_PATH,
-    VERSION,
-    REDUCED_DATA_PATH,
-    REDUCED_DATA_NAME,
-)
 from vizuka.dimension_reduction import projector
 
 

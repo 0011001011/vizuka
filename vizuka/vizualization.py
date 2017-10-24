@@ -6,10 +6,7 @@ See class Vizualization
 """
 import sys
 import os
-import time
 import logging
-import math
-import itertools
 from collections import Counter
 import pickle
 
@@ -20,7 +17,6 @@ matplotlib.use('Qt5Agg')  # noqa
 from matplotlib.gridspec import GridSpec
 from matplotlib import pyplot as plt
 import pandas as pd
-import wordcloud
 
 from vizuka.helpers import viz_helper
 from vizuka.graphics import drawing
@@ -33,9 +29,6 @@ from vizuka.graphics.qt_handler import Viz_handler
 from vizuka.config import (
         path_builder,
         BASE_PATH,
-        MODEL_PATH,
-        CACHE_PATH,
-        SAVED_CLUSTERS_PATH,
         )
 
 

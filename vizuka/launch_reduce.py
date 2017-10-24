@@ -7,7 +7,6 @@ from vizuka import config
 
 from vizuka.config import (
     VERSION,
-    REDUCED_DATA_PATH,
     INPUT_FILE_BASE_NAME,
     DATA_PATH,
     BASE_PATH,
@@ -68,9 +67,9 @@ def main():
 
     parser.set_defaults(
             algorithm = 'tsne',
-            parameters    = {},
-            path      = BASE_PATH,
-            version   = VERSION,
+            parameters  = {},
+            path        = BASE_PATH,
+            version     = VERSION,
             )
 
     args = parser.parse_args()

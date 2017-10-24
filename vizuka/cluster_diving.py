@@ -1,15 +1,9 @@
-import numpy as np
 import matplotlib
-from matplotlib import pyplot as plt
 import matplotlib.gridspec as gridspec
-import random
 
 import logging
-import wordcloud
-from collections import Counter
 
 from vizuka.graphics import qt_helpers
-from vizuka.graphics import drawing
 from vizuka.cluster_viewer import make_plotter
 
 
