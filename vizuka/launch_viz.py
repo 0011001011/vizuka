@@ -185,7 +185,7 @@ def main():
 
     logging.info('raw_data=loaded')
 
-    x_2D = []
+    x_2D = np.array([])
     if not reduce_:
         x_2D = data_loader.load_projection(
             algorithm_name        = DEFAULT_PROJECTOR,

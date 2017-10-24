@@ -1,19 +1,17 @@
-import itertools
-import os
-import logging
-
 import numpy as np
-# from MulticoreTSNE import MulticoreTSNE as tsne_algorithm
-from sklearn.manifold import TSNE as tsne_algorithm
 
-from vizuka.config import (
-    VERSION,
-    REDUCED_DATA_PATH,
-    REDUCED_DATA_NAME,
-)
+try:
+    from MulticoreTSNE import MulticoreTSNE as tsne_algorithm
+    using_multicore_tsne = True
+    multicore_parameters = {'n_jobs':3}
+
+except:
+    from sklearn.manifold import TSNE as tsne_algorithm
+    using_multicore_tsne = False
+    multicore_parameters = {}
+
 from vizuka.dimension_reduction import (
         projector,
-        tsne,
         )
 
 
@@ -26,12 +24,12 @@ class tSNE(projector.Projector):
         self.n_iter         = n_iter
 
         self.parameters = [perplexity, learning_rate, n_iter]
-
+        
         self.engine = tsne_algorithm(
             perplexity    = self.perplexity,
             learning_rate = self.learning_rate,
             n_iter        = self.n_iter,
-            # n_jobs=3, # only use with Multicore_tSNE !
+            **multicore_parameters,
             )
         self.projections = []
 

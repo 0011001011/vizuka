@@ -1,12 +1,8 @@
+# If you want to have a faster tsne follow these instructions :
+
 apt-get install cmake
 git clone https://github.com/DmitryUlyanov/Multicore-TSNE.git
 cd Multicore-TSNE/
 pip install --no-cache-dir .
 
-############################################################
-# Now uncomment : (in vizuka/dimension_reduction/tsne.py)
-#
-# from MulticoreTSNE import MulticoreTSNE as tsne_algorithm
-# n_jobs=3,
-#
-############################################################
+# package will be automatically loaded instead of the easy-to-install-but-slow sklearn version

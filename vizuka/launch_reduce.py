@@ -82,7 +82,7 @@ def main():
     version        = args.version
 
     for raw_param in parameters:
-        if ':' not in raw_name:
+        if ':' not in raw_param:
             raise TypeError('parameter -p not used correctly! see --help')
         param_name, param_value = raw_param.split(':')
         parameters[param_name:param_value]
