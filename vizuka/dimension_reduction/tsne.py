@@ -38,4 +38,4 @@ class tSNE(projector.Projector):
 
     def project(self, x):
         self.projections = self.engine.fit_transform(x)
-        return y
+        return self.projections
