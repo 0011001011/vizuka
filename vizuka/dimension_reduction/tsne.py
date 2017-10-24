@@ -1,14 +1,17 @@
 import numpy as np
+import logging
 
 try:
     from MulticoreTSNE import MulticoreTSNE as tsne_algorithm
     using_multicore_tsne = True
     multicore_parameters = {'n_jobs':3}
+    logging.info('dimension_reduction = Using fast tSNE')
 
 except:
     from sklearn.manifold import TSNE as tsne_algorithm
     using_multicore_tsne = False
     multicore_parameters = {}
+    logging.info('dimension_reduction = Using slow tSNE (see requirements/requirements.apt')
 
 from vizuka.dimension_reduction import (
         projector,
