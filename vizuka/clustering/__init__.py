@@ -14,13 +14,13 @@ from vizuka.clustering import (
 
 from vizuka.plugins import clustering as clustering_plugins
 
-def get_required_arguments(method):
-    if method=='dummy':
+def get_required_arguments(method_name):
+    if method_name=='dummy':
         return []
     else:
         builtin, extra = list_clusterizer()
         available_clusterizers = {**builtin, **extra}
-        return inspect.getargspec(available_clusterizers[method]).args[1:]
+        return inspect.getargspec(available_clusterizers[method_name]).args[1:]
 
 def list_clusterizer():
     built_in_clusterizers = {

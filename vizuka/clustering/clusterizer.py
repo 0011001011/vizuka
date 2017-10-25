@@ -16,10 +16,11 @@ import logging
 
 from matplotlib import pyplot as plt
 
-from vizuka.config import CACHE_PATH
-
-NAME_VALUE_SEPARATOR = '::'
-PARAMETERS_SEPARATOR = '#'
+from vizuka.config import (
+        CACHE_PATH,
+        NAME_VALUE_SEPARATOR,
+        PARAMETERS_SEPARATOR,
+        )
 
 class Clusterizer():
 

@@ -12,7 +12,6 @@ class DBSCANClusterizer(Clusterizer):
     def __init__(self, epsilon=1.5, min_samples=30):
         """
         Inits a DBSCAN clustering engine from sklearn
-        Accepts the same arguments
         """
         self.epsilon     = float(epsilon)
         self.min_samples = int(float(min_samples))
