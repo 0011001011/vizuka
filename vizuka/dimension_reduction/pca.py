@@ -18,7 +18,7 @@ from vizuka.dimension_reduction import projector
 
 class PCA(projector.Projector):
 
-    def __init__(self, nb_dimension=2, min_ratio_variance_explained=-1):
+    def __init__(self, nb_dimension=2, min_ratio_variance_explained=0):
         """"
         Prepare a PCA projection, to a 2-dimensional space or
         with to a space with the minimum number of dimension
@@ -35,7 +35,7 @@ class PCA(projector.Projector):
         
         self.register_parameters(
                 parameters={
-                    'nb_dimension'                : nb_dimensions,
+                    'nb_dimension'                : nb_dimension,
                     'min_ratio_variance_explained': min_ratio_variance_explained
                     }
                 )
@@ -48,27 +48,28 @@ class PCA(projector.Projector):
         Projects :param x:
         ..seealso: __init__
         """
-        logging.info(   "starting PCA dimensional reduction,",
-                        "needs an explained variance of {}\%".format(
-                                self.parameters['min_ratio_variance_explained']*100)
+        logging.info("dimension_reduction = starting PCA dimensional reduction")
+        if self.parameters['min_ratio_variance_explained'] > -1:
+            logging.info("dimension_reduction = needs an explained variance of {}\%".format(
+                                    self.parameters['min_ratio_variance_explained']*100)
                         )
 
         self.engine.fit(x)
 
-        if self.parameters['min_ratio_variance_explained']:
+        if self.parameters['min_ratio_variance_explained']>0:
             variance_explained = 0.
             nb_dim_to_keep     = 0
 
             while variance_explained < self.parameters['min_ratio_variance_explained']:
-                variance_explained += pca.explained_variance_ratio_[nb_dim_to_keep]
+                variance_explained += self.engine.explained_variance_ratio_[nb_dim_to_keep]
                 nb_dim_to_keep += 1
         else:
             nb_dim_to_keep = self.parameters['nb_dimension']
 
-        x_pcaed          = pca.fit_transform(x)
+        x_pcaed          = self.engine.fit_transform(x)
         self.projections = x_pcaed[:,:nb_dim_to_keep]
 
-        logging.info(   "PCA successfull,",
+        logging.info(   "PCA successfull,"
                         "{} dimensions (axis) where kept after orthnormalization".format(
                                 nb_dim_to_keep)
                         )

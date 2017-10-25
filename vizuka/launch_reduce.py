@@ -33,7 +33,7 @@ def do_reduce(algorithm_name, parameters, version, data_path, reduced_path):
             )
 
     algo.project(x)                                   # do the dimension projection
-    algo.save(version=version, path=reduced_path)     # save the result
+    algo.save_projection(version=version, path=reduced_path)     # save the result
 
 def main():
     """
