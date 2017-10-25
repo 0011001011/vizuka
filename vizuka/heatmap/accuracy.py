@@ -14,13 +14,15 @@ class AccuracyHeatmap(heatmap.Heatmap):
 
     def __init__(self, vizualization):
         """
-        Prepare an 'accuracy' heatmap (good predictions / total effectif). One color by cluster !
+        Prepare an 'accuracy' heatmap (good predictions / total effectif).
+        One color by cluster !
 
-        Heatmap showing the accuracy of the prediction, 3 colors are actually used :
+        Heatmap showing the accuracy of the prediction,
+        3 colors are actually used :
             - red for bad prediction
             - blue for correct
-            - green for special_class which is a special label defined at the Vizualization.__init__
-            (typically the label "0")
+            - green for special_class which is a special label defined
+              at the Vizualization.__init__ (typically the label "0")
 
         All colors are mixed linearly
 
@@ -32,8 +34,9 @@ class AccuracyHeatmap(heatmap.Heatmap):
     
     def update_colors(self, vizualization):
         """
-        Updates all the colors from a new vizualization object (containing all infos about
-        predictions, true class, clusters, etc...)
+        Updates all the colors from a new vizualization object
+        (containing all infos about predictions, true class,
+        clusters, etc...)
         """
         self.all_colors = [[0 for _ in range(vizualization.resolution)] for _ in range(vizualization.resolution) ]
         centroids_cluster_by_index = vizualization.clusterizer.predict(vizualization.mesh_centroids)
