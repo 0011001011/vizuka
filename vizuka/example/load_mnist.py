@@ -67,6 +67,6 @@ np.savez(
         )
 
 shutil.copy(
-        os.path.join(os.path.dirname(__file__), '2Dembedding_50_1000_12000_MNIST_example.npz'),
+        os.path.join(os.path.dirname(__file__), 'tsne#MNIST_example#perplexity::50#learning_rate::1000#n_iter::12000.npz'),
         REDUCED_DATA_PATH,
         )
