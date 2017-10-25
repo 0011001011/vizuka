@@ -11,9 +11,9 @@ class Wordcloud(Plotter):
 
     def __call__(self, data, fig, spec):
         """
-        Plots some random images found in the :param data: list given
+        Finds occurrence of each word and draw a wordcloud
 
-        :param: data is a list of the observations
+        :param: data is a list of the observations (list of sentences)
         :param: fig is the Figure on which the axe will be drawn
         :param:spec is the GridSpec for the axe
 
@@ -23,7 +23,6 @@ class Wordcloud(Plotter):
             return
         axe = plt.Subplot(fig, spec)
 
-        # ok fuck let's be stupid for testing purpose
         data = [str(d) for d in data]
         words_freq = Counter(sum([phrase.split(' ') for phrase in data], []))
         del words_freq['']

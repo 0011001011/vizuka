@@ -22,11 +22,14 @@ class RandomImages(Plotter):
         if not data:
             return
 
-        selected_data = [data[random.randint(0,max(len(data)-1,0))] for _ in range(25)]
-        inner = gridspec.GridSpecFromSubplotSpec(5,5,
+        length = max(len(data)-1,0)
+        selected_data = [data[random.randint(0,length)] for _ in range(25)]
+        inner = gridspec.GridSpecFromSubplotSpec(
+                        5,5,
                         subplot_spec=spec)
         for idx, inner_spec in enumerate(inner):
             axe = plt.Subplot(fig, inner_spec)
             axe.imshow(selected_data[idx])
             fig.add_subplot(axe)
+
         return axe

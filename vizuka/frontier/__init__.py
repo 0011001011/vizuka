@@ -14,6 +14,13 @@ from vizuka.plugins import frontier as frontier_plugins
 
 
 def list_frontiers():
+    """
+    List all frontiers available (in vizuka/plugin/frontier
+    and vizuka/frontier)
+
+    :return: a dict {method_name:frontier_calculator}
+    """
+
     built_in_similarity= {
             'bhattacharyya' :bhattacharyya.Bhattacharyya,
             'all'           :deterministic.AllFrontiers,
@@ -34,6 +41,9 @@ def list_frontiers():
     
 
 def make_frontier(method):
+    """
+    Returns the associated frontier calculator
+    """
     built_in_similarity, extra_similarity = list_frontiers()
     available_similarity = {**built_in_similarity, **extra_similarity}
     

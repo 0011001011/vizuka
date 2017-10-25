@@ -34,13 +34,10 @@ def list_plotter():
 
 def make_plotter(method):
     """
-    Returns an axe with the data plotted as you requested
+    Returns the plotter function, which represents data
 
-    :param: data is a list of the observations
-    :param: fig is the Figure on which the axe will be drawn
-    :param:spec is the GridSpec for the axe
-
-    :return: the axe with the visualization
+    :param method: the name of the plotter (..seealo:: list_plotter)
+    ..seealso::  vizuka.cluster_viewer.plotter
     """
     
     built_in_plotters, extra_plotters = list_plotter()
