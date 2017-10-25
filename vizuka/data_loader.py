@@ -5,6 +5,7 @@ import itertools
 import numpy as np
 
 from vizuka import dimension_reduction
+from vizuka.dimension_reduction.projector import Projector
 from vizuka.config import (
         MODEL_PATH,
         VERSION,
@@ -33,85 +34,24 @@ def load_predict_byname(filename, path=MODEL_PATH):
     logging.info("trying to load {}".format(full_path))
     return np.load(os.path.join(path, filename))['pred']
 
-def load_projection(algorithm_name, parameters, version, base_filename, path):
+def list_projections(reduced_path):
+    """
+    Returns a list containing [(algo_name, parameters),..] found in :param reduced_path:
+    """
+    files = [filename for filename in os.listdir(reduced_path) if ".npz" in filename]
+    return  [Projector.get_param_from_name(filename[:-4]) for filename in files]
+
+def load_projection(algorithm_name, parameters, version, path):
     logging.info("data_loader=loading projection:\n\talgorithm:{}\n\tparameters:{}".format(
                         algorithm_name,
                         parameters,
                         ))
     algo_builder = dimension_reduction.make_projector(algorithm_name)
     algo = algo_builder(**parameters)
-    projection = algo.load_projection(version=version, base_filename=base_filename, path=path)
+    projection = algo.load_projection(version=version, path=path)
 
     logging.info("data_loader=ready")
     return projection
-    
-def load_tSNE(
-        params=PROJECTION_DEFAULT_PARAMS['tsne'],
-        version=VERSION,
-        path=REDUCED_DATA_PATH,
-        ):
-    """
-    Load tSNE representation.
-
-    :param params: dict of multiples t-SNE parameters of the representations
-    we want
-                   load every combination available
-                   .. seealso:: sklearn.manifold.TSNE()
-    :type params: {
-                    'perplexities':array(int),
-                    'learning_rates':array(int),
-                    'n_iter':array(int),
-                    }
-    :param version: version of data to load (e.g: _20170614)
-    :param path: location of the 2D representation to load
-    is divided (tsne is greedy)
-
-    :return: Embedded data in 2D space, and t-SNE model
-    :rtype:  dict{params:(float,float)}, dict({params:tsne.model})
-    """
-
-    perplexities = params['perplexities']
-    learning_rates = params['learning_rates']
-    n_iters = params['n_iters']
-
-    x_transformed = {}
-    models = {}
-
-    for perplexity, learning_rate, n_iter in itertools.product(
-            perplexities, learning_rates, n_iters):
-
-        param = (perplexity, learning_rate, n_iter)
-        name = ''.join('_' + str(p) for p in param)
-        full_path = ''.join([
-            path,
-            REDUCED_DATA_NAME,
-            name,
-            '_',
-            version,
-            '.npz',
-        ])
-        logging.info("embedded data= loading %s %s %s %s from %s",
-                     str(perplexity),
-                     str(learning_rate),
-                     str(n_iter),
-                     full_path,
-                     )
-        if os.path.exists(full_path):
-            x_transformed[param] = np.load(full_path)['x_2D']
-        
-            try:
-                models[param] = np.load(full_path)['model']
-            except KeyError:
-                logging.info("old version, model not found, only embedded data")
-            logging.info("embedded data=ready")
-        else:
-            logging.info("emebedded data = model {} {} {}  not found".format(
-                perplexity,
-                learning_rate,
-                n_iter
-                )
-            )
-    return x_transformed, models
 
 def load_raw(version, path):
     raw_filename = os.path.join(path, RAW_NAME + version + '.npz')

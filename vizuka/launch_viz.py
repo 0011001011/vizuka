@@ -16,6 +16,8 @@ from vizuka import data_loader
 from vizuka import vizualization
 from vizuka import launch_reduce
 
+logger = logging.getLogger()
+logger.setLevel(logging.WARN)
 
 def main():
 
@@ -35,8 +37,6 @@ def main():
         DEFAULT_PROJECTOR,
     )
 
-    logging.basicConfig(level=logging.DEBUG)
-
     parser = argparse.ArgumentParser()
     parser.add_argument(
         '--mnist', action='store_true',
@@ -54,9 +54,6 @@ def main():
     parser.add_argument(
         '-s', '--feature_to_show', action='append',
         help='Usage : -s MY_COLUMN_NAME:PLOTTER with PLOTTER being a value in %. Adds this non-preprocessed/human-readable feature to the cluster view'.format())
-    parser.add_argument(
-        '-r', '--reduce', action="store_true",
-         help='launch a full dimension reduction')
     parser.add_argument(
         '-h1', '--heatmap1',
          help='Specify the 1st heatmap to show')
@@ -78,6 +75,9 @@ def main():
     parser.add_argument(
         '--no-plot', action="store_true",
          help='(for debug) do not show a nice data vizualization (but prepare it nonetheless)')
+    parser.add_argument(
+            '--verbose', action="store_true",
+            help="verbose mode")
     
     parser.set_defaults(
             heatmap1 ='accuracy',
@@ -92,6 +92,7 @@ def main():
             path    =os.path.join(os.path.dirname(__file__),BASE_PATH),
             feature_to_filter =[],
             feature_to_show   =[],
+            verbose = False,
             )
 
     args = parser.parse_args()
@@ -102,7 +103,6 @@ def main():
     REDUCED_DATA_PATH    = os.path.join(args.path, REDUCED_DATA_PATH)
     DATA_PATH            = os.path.join(args.path, DATA_PATH)
 
-    reduce_      = args.reduce
     no_vizualize = args.no_vizualize
     no_plot      = args.no_plot
     version      = args.version
@@ -113,6 +113,10 @@ def main():
     show_required_files=args.show_required_files
     heatmap1    = args.heatmap1
     heatmap2    = args.heatmap2
+    verbose     = args.verbose
+
+    if verbose:
+        logger.setLevel(logging.DEBUG)
 
     if args.show_required_files:
         print(
@@ -167,8 +171,8 @@ def main():
         new_fntd[k] = plotters
     features_name_to_display = new_fntd
 
-    logging.info("Starting script")
-    logging.info("raw_data=loading")
+    logger.info("Starting script")
+    logger.info("raw_data=loading")
     (
         x,
         y,
@@ -180,33 +184,44 @@ def main():
             version          = version,
             )
 
-    logging.info('raw_data=loaded')
+    logger.info('raw_data=loaded')
 
-    x_2D = np.array([])
-    if not reduce_:
-        x_2D = data_loader.load_projection(
-            algorithm_name        = DEFAULT_PROJECTOR,
-            parameters            = PROJECTION_DEFAULT_PARAMS[DEFAULT_PROJECTOR],
-            version               = version,
-            path                  = REDUCED_DATA_PATH,
-            base_filename         = REDUCED_DATA_NAME,
-        )
+    projections_available = data_loader.list_projections(REDUCED_DATA_PATH)
 
-    if not x_2D.size:
-        logging.info("no reduced data found! Needs to learn some dimension reduction..")
-        force_reduce = True
-    else:
-        force_reduce = False
+    if len(projections_available)==0:
+        logger.warn("No reduced data found! Please use vizuka-reduce to generate some")
+        return
 
-    if force_reduce or reduce_: # if nothing loaded or reduce is forced by arg
+    choice_list, choice_dict = "", {}
 
-        x_2D = launch_reduce.do_reduce(
-            algorithm_name          = DEFAULT_PROJECTOR,
-            parameters              = PROJECTION_DEFAULT_PARAMS[DEFAULT_PROJECTOR],
-            version                 = version,
-            data_path               = DATA_PATH,
-            reduced_path            = REDUCED_DATA_PATH,
-        )
+    for i,(method, version_, params), in enumerate(projections_available):
+        param_str = ''.join(["\t\t\t{}: {}\n".format(name, value) for name, value in params.items()])
+        choice_list+="\t - {}: \t{}\n\t\tparameters:\n{}\n".format(i, method, param_str)
+        choice_dict[i]=method
+    choice = input( "Projections available: (generate more with vizuka-reduce)"
+                    ")\n"+choice_list+"\t? > ")
+    try:
+        choice_int=int(choice)
+    except:
+        logging.warn("Please enter a valid integer !\nABORTING")
+        return
+    
+    selected_method      = choice_dict[choice_int]
+    selected_projections, selected_version, selected_params = projections_available[choice_int]
+
+    if selected_version != version:
+        logging.warn(
+                "Mismatch between file VERSION ({}) and requested VERSION ({})".format(
+                selected_version, version))
+        logging.warn("See --version\nABORTING")
+        return
+
+    x_2D = data_loader.load_projection(
+        algorithm_name        =   selected_method,
+        parameters            =   selected_params,
+        version               =           version,
+        path                  = REDUCED_DATA_PATH,
+    )
     
     ###############
     # PREDICT
@@ -214,14 +229,14 @@ def main():
         x_predicted = y
     else:
         try:
-            logging.info('predictions=loading')
+            logger.info('predictions=loading')
             x_predicted = data_loader.load_predict(
                 path=MODEL_PATH,
                 version=version,
             )
-            logging.info('RNpredictions=ready')
+            logger.info('RNpredictions=ready')
         except FileNotFoundError:
-            logging.info((
+            logger.info((
                     "Nothing found in {}, no predictions to vizualize\n"
                     "if this is intended you can force the vizualization"
                     "with --force_no_predict :\n{}\n"
@@ -230,10 +245,10 @@ def main():
     
     raw = data_loader.load_raw(version, DATA_PATH)
     if raw:
-        logging.info("loading raw transactions for analysis..")
+        logger.info("loading raw transactions for analysis..")
         raw_data, raw_columns = raw
     else:
-        logging.info('no raw data provided, all cluster vizualization disabled! (-s and -f options)')
+        logger.info('no raw data provided, all cluster vizualization disabled! (-s and -f options)')
         raw_data    = []
         raw_columns = []
         features_name_to_filter  = []

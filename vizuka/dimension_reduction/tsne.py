@@ -22,16 +22,20 @@ class tSNE(projector.Projector):
 
     def __init__(self, perplexity, learning_rate, n_iter):
         
-        self.perplexity     = perplexity
-        self.learning_rate  = learning_rate
-        self.n_iter         = n_iter
+        self.method         = 'tsne'
 
-        self.parameters = [perplexity, learning_rate, n_iter]
-        
+        self.register_parameters(
+                parameters = {
+                    'perplexity'   : perplexity,
+                    'learning_rate': learning_rate,
+                    'n_iter'       : n_iter,
+                    }
+                )
+
         self.engine = tsne_algorithm(
-            perplexity    = self.perplexity,
-            learning_rate = self.learning_rate,
-            n_iter        = self.n_iter,
+            perplexity    = self.parameters['perplexity'],
+            learning_rate = self.parameters['learning_rate'],
+            n_iter        = self.parameters['n_iter'],
             **multicore_parameters,
             )
         self.projections = []

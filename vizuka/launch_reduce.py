@@ -13,6 +13,9 @@ from vizuka.config import (
     PROJECTION_DEFAULT_PARAMS,
 )
 
+logger = logging.getLogger()
+logger.setLevel(logging.WARN)
+
 def do_reduce(algorithm_name, parameters, version, data_path, reduced_path):
     """
     Project the data in :param data_path: (version :param version:)
@@ -36,8 +39,6 @@ def main():
     """
     Loads parameters and run do_reduce
     """
-
-    logging.basicConfig(level=logging.DEBUG)
 
     builtin_projectors, extra_projectors = dimension_reduction.list_projectors()
 
@@ -64,9 +65,12 @@ def main():
              ' and set/ (the raw and preprocessed data)'
              'default to {}'.format(DATA_PATH)
         )
+    parser.add_argument(
+            '--verbose', action="store_true",
+            help="verbose mode")
 
     parser.set_defaults(
-            algorithm = 'tsne',
+            algorithm = 'manual',
             parameters  = {},
             path        = BASE_PATH,
             version     = VERSION,
@@ -79,6 +83,24 @@ def main():
     algorithm_name = args.algorithm
     parameters     = args.parameters
     version        = args.version
+    verbose        = args.verbose
+    
+    if verbose:
+        logger.setLevel(logging.DEBUG)
+    
+    if algorithm_name == 'manual':
+        choice_list, choice_dict = "", {}
+        for i,method in enumerate([*builtin_projectors, *extra_projectors]):
+            choice_list+="\t\t - ({}): {}\n".format(i, method)
+            choice_dict[i]=method
+        choice = input("No algorithm specified (-a or --algorithm)\n\tChoices available are:\n"+choice_list+"\t? > ")
+        try:
+            choice_int=int(choice)
+        except:
+            logger.warn("Please enter a valid integer !")
+            return
+        algorithm_name = choice_dict[choice_int]
+              
 
     for raw_param in parameters:
         if ':' not in raw_param:
@@ -90,8 +112,11 @@ def main():
     for default_param_name, default_param_value in default_params.items():
         if default_param_name not in parameters:
             parameters[default_param_name] = default_param_value
-            logging.info('parameter {} not specified, using default value: {}'.format(
+            logger.info('parameter {} not specified, using default value: {}'.format(
                                 default_param_name, default_param_value)
                             )
 
     do_reduce(algorithm_name, parameters, version, data_path, reduced_path)
+
+if __name__=='__main__':
+    main()

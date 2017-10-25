@@ -11,6 +11,12 @@ from vizuka.dimension_reduction import (
 from vizuka.plugins import dimension_reduction as projector_plugins
 
 def list_projectors():
+    """
+    List all projector available (in vizuka/plugin/dimension_reduction
+    and vizuka/dimension_reduction)
+
+    :return: a dict {method_name:projector_class}
+    """
     built_in_projectors = {
             'pca':pca.PCA,
             'tsne':tsne.tSNE,
@@ -30,9 +36,10 @@ def list_projectors():
 
 def make_projector(method='tsne', **kwargs):
     """
-    Return a projector function
+    Return a projector contructor
 
     :param method: the name of the algo
+    :param kwargs: additional argument (e.g: perplexity for tsne)
     """
     
     built_in_projectors, extra_projectors = list_projectors()

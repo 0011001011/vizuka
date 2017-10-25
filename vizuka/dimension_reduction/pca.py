@@ -9,10 +9,8 @@ as it will be much faster and won't crash if you use too much RAM.
 However this needs extra-install steps :
 -> cf https://github.com/DmitryUlyanov/Multicore-TSNE
 """
-
 import logging
 
-import numpy as np
 from sklearn.decomposition import PCA as PCA_algorithm
 
 from vizuka.dimension_reduction import projector
@@ -22,7 +20,7 @@ class PCA(projector.Projector):
 
     def __init__(self, nb_dimension=2, min_ratio_variance_explained=-1):
         """"
-        Prepare a PCA projection, to a d-dimensional space or
+        Prepare a PCA projection, to a 2-dimensional space or
         with to a space with the minimum number of dimension
         required to have a :param min_ratio_variance_explained:
         ratio of explained variance, if specified.
@@ -33,9 +31,14 @@ class PCA(projector.Projector):
         [0,1] it will adjust the number of dimensions for the projection's
         explained variance ratio to match this param
         """
-        self.min_ratio_variance_explained = min_ratio_variance_explained
-        self.nb_dimension = nb_dimension
-        self.parameters = [nb_dimension, min_ratio_variance_explained]
+        self.method='pca'
+        
+        self.register_parameters(
+                parameters={
+                    'nb_dimension'                : nb_dimensions,
+                    'min_ratio_variance_explained': min_ratio_variance_explained
+                    }
+                )
         
         self.engine = PCA_algorithm(svd_solver='randomized')
 
@@ -47,20 +50,20 @@ class PCA(projector.Projector):
         """
         logging.info(   "starting PCA dimensional reduction,",
                         "needs an explained variance of {}\%".format(
-                                self.min_ratio_variance_explained*100)
+                                self.parameters['min_ratio_variance_explained']*100)
                         )
 
         self.engine.fit(x)
 
-        if self.min_ratio_variance_explained:
+        if self.parameters['min_ratio_variance_explained']:
             variance_explained = 0.
             nb_dim_to_keep     = 0
 
-            while variance_explained < self.min_ratio_variance_explained:
+            while variance_explained < self.parameters['min_ratio_variance_explained']:
                 variance_explained += pca.explained_variance_ratio_[nb_dim_to_keep]
                 nb_dim_to_keep += 1
         else:
-            nb_dim_to_keep = self.nb_dimension
+            nb_dim_to_keep = self.parameters['nb_dimension']
 
         x_pcaed          = pca.fit_transform(x)
         self.projections = x_pcaed[:,:nb_dim_to_keep]

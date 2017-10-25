@@ -69,3 +69,7 @@ PROJECTION_DEFAULT_PARAMS = {
             'min_ratio_variance_explained':-1,
             },
         }
+
+NAME_VALUE_SEPARATOR = '::'
+PARAMETERS_SEPARATOR = '#'
+
