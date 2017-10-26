@@ -20,7 +20,7 @@ or clone the repo :)
 $ vizuka
 # For a quick working example run :
 $ vizuka --mnist
-# Similar to copy your data and run "vizuka --image:images --version _MNIST_example"
+# Similar to copy your data and run "vizuka --image:images --version MNIST_example"
 $ vizuka --show-required-files
 # To show the format of files you need to launch a data viz 
 ```
@@ -32,15 +32,16 @@ $ vizuka -s price:logdensity -s name:wordcloud
 ```
 
 It assumes you already have your 2D data, projection will be done if launched for the first time (not for MNIST toy example)
-You can force for PCA reduction prior to t-SNE :
 ```sh
-$ vizuka --reduce --use_pca 0.99
-# Use PCA to reduce dimension and keep 99% of explained variance, then tSNE
+$ vizuka-reduce --algorithm tsne --parameters perplexity:50 learning_rate:1000
+# similar to vizuka-reduce actually
+# or 
+$ vizuka-reduce --algorithm pca # which is quite bad
 ```
 
 It will search in \_\_package\_\_/data/ the datas but you can force your own with __--path__ argument
 
-* Note that if you are effectively doing big data you should **uncomment MulticoreTSNE** in vizuka/dimension\_reduction/tSNE.py unless you want to discover t-SNE crashed with a segfault. Instructions for installation can be found in requirements/requirements.apt
+* Note that if you are effectively doing big data you should install **MulticoreTSNE** in vizuka/dimension\_reduction/tSNE.py unless you want to discover t-SNE crashed with a segfault. Instructions for installation can be found in requirements/requirements.apt
 
 I want to add a specific tool to this visualization ? // how to contribute ?
 ----------------
