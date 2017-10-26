@@ -5,12 +5,13 @@ from it.
 """
 
 import logging
+import os
+import argparse
 
 import matplotlib
 matplotlib.use('Qt5Agg')  # noqa
 import numpy as np
-import os
-import argparse
+from pyfiglet import Figlet
 
 from vizuka import data_loader
 from vizuka import vizualization
@@ -36,6 +37,8 @@ def main():
         PROJECTION_DEFAULT_PARAMS,
         DEFAULT_PROJECTOR,
     )
+
+    print(Figlet().renderText('Vizuka'))
 
     parser = argparse.ArgumentParser()
     parser.add_argument(
@@ -196,10 +199,10 @@ def main():
 
     for i,(method, version_, params), in enumerate(projections_available):
         param_str = ''.join(["\t\t\t{}: {}\n".format(name, value) for name, value in params.items()])
-        choice_list+="\t - {}: \t{}\n\t\tparameters:\n{}\n".format(i, method, param_str)
+        choice_list+="\t [{}]: \t{}\n\t\tparameters:\n{}\n".format(i, method, param_str)
         choice_dict[i]=method
     choice = input( "Projections available: (generate more with vizuka-reduce)"
-                    ")\n"+choice_list+"\t? > ")
+                    ")\n"+choice_list+"\t[?] > ")
     try:
         choice_int=int(choice)
     except:

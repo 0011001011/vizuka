@@ -1,5 +1,6 @@
 import argparse
 import logging
+from pyfiglet import Figlet
 
 from vizuka import dimension_reduction
 from vizuka import data_loader
@@ -39,6 +40,8 @@ def main():
     """
     Loads parameters and run do_reduce
     """
+
+    print(Figlet().renderText('Vizuka'))
 
     builtin_projectors, extra_projectors = dimension_reduction.list_projectors()
 
@@ -84,6 +87,8 @@ def main():
     parameters     = args.parameters
     version        = args.version
     verbose        = args.verbose
+
+    logging.warn("Loading data labeled {} (cf --version)".format(version))
     
     if verbose:
         logger.setLevel(logging.DEBUG)
@@ -91,9 +96,9 @@ def main():
     if algorithm_name == 'manual':
         choice_list, choice_dict = "", {}
         for i,method in enumerate([*builtin_projectors, *extra_projectors]):
-            choice_list+="\t\t - ({}): {}\n".format(i, method)
+            choice_list+="\t\t [{}]: {}\n".format(i, method)
             choice_dict[i]=method
-        choice = input("No algorithm specified (-a or --algorithm)\n\tChoices available are:\n"+choice_list+"\t? > ")
+        choice = input("No algorithm specified (-a or --algorithm)\n\tChoices available are:\n"+choice_list+"\t[?] > ")
         try:
             choice_int=int(choice)
         except:
