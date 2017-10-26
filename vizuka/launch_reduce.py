@@ -27,11 +27,14 @@ def do_reduce(algorithm_name, parameters, version, data_path, reduced_path):
     algo = algo_builder(**parameters)
 
 
-    (x, _ ,_ ,_ ) = data_loader.load_preprocessed(
+    (x, _ ,_ ,_, loaded, preprocessed_filename ) = data_loader.load_preprocessed(
             file_base_name   = INPUT_FILE_BASE_NAME,
             path             = data_path,
             version          = version,
             )
+    if not loaded:
+        logging.warn("\nNo data found\nCorresponding file not found: {}\nPlease check --show-required-files".format(preprocessed_filename))
+        return
 
     algo.project(x)                                   # do the dimension projection
     algo.save_projection(version=version, path=reduced_path)     # save the result
@@ -88,7 +91,7 @@ def main():
     version        = args.version
     verbose        = args.verbose
 
-    logging.warn("Loading data labeled {} (cf --version)".format(version))
+    print("VERSION: Loading dataset labeled {} (cf --version)".format(version))
     
     if verbose:
         logger.setLevel(logging.DEBUG)

@@ -34,11 +34,11 @@ def load_predict_byname(filename, path=MODEL_PATH):
     logging.info("trying to load {}".format(full_path))
     return np.load(os.path.join(path, filename))['pred']
 
-def list_projections(reduced_path):
+def list_projections(reduced_path, version):
     """
     Returns a list containing [(algo_name, parameters),..] found in :param reduced_path:
     """
-    files = [filename for filename in os.listdir(reduced_path) if ".npz" in filename]
+    files = [filename for filename in os.listdir(reduced_path) if (".npz" in filename) and (version in filename)]
     return  [Projector.get_param_from_name(filename[:-4]) for filename in files]
 
 def load_projection(algorithm_name, parameters, version, path):
@@ -81,12 +81,19 @@ def load_preprocessed(
                 (actually it is the opposite e.g: {604600:[False, True, False, .., False]})
 
     :return: (input for t-SNE, classes, encoder (humantomachine class possible_outputs_list),
-    decoder (machinetohuman possible_outputs_list))
+    decoder (machinetohuman possible_outputs_list), loaded, path_of_filename)
 
     Note that encoder/decoder are assumed trivial if no encoder are found in npz
 
     """
-    xy = np.load(path + INPUT_FILE_BASE_NAME + version + '.npz')
+    full_path = os.path.join(path, INPUT_FILE_BASE_NAME + version + '.npz')
+    if not os.path.exists(full_path):
+        loaded = False
+        return np.array([]), np.array([]), lambda x:x, lambda x:x, loaded, full_path
+    else:
+        xy = np.load(full_path)
+        loaded = True
+
     x, y = xy['x'], xy['y']
     
     class_encoder = {y: y for y in set(y)}
@@ -96,9 +103,9 @@ def load_preprocessed(
     if 'y' in xy.keys():
         y = xy['y']
         del xy
-        return (np.array(x), np.array(y), class_encoder, class_decoder)
+        return (np.array(x), np.array(y), class_encoder, class_decoder, loaded, full_path)
     elif 'y' + '_decoded' in xy.keys():
         y_decoded = xy['y' + '_decoded']
         del xy
-        return (np.array(x), np.array(y_decoded), class_encoder, class_decoder)
+        return (np.array(x), np.array(y_decoded), class_encoder, class_decoder, loaded, full_path)
 
