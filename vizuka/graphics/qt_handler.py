@@ -169,8 +169,14 @@ class Qt_matplotlib_handler():
         """
         Refresh the matplotlib plots
         """
-        for p in self.plottings:
-            p.canvas.draw()
+        for plotting in self.plottings:
+            try:
+                plotting.canvas.draw()
+            except ValueError as e:
+                # This exception is raised when nothing to be draw
+                logging.warn(e)
+                for i in self.figure.get_axes():
+                    i.clear()
                 
     
     @onclick_wrapper
