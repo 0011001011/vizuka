@@ -85,7 +85,7 @@ class Vizualization:
                 
                 ) = path_builder(base_path)
 
-        self.predictors = os.listdir(self.model_path)
+        self.predictors = [name for name in os.listdir(self.model_path) if version in name]
         self.output_path = output_path
         self.saved_clusters = os.listdir(self.saved_clusters_path)
         self.version = version
@@ -96,9 +96,12 @@ class Vizualization:
             return str(value)
 
         self.correct_outputs = [str_with_default_value(correct_output) for correct_output in correct_outputs]
+        self.correct_outputs_original = self.correct_outputs
         self.prediction_outputs = [str_with_default_value(predicted_output) for predicted_output in predicted_outputs]
+        self.prediction_outputs_original = self.prediction_outputs
         
         self.projected_input = projected_input
+        self.projected_input_original = self.projected_input
         self.x_raw = raw_inputs
         self.x_raw_columns = raw_inputs_columns
         self.nb_of_clusters = nb_of_clusters
@@ -126,8 +129,8 @@ class Vizualization:
         self.possible_outputs_list.sort()
         # logging.info("correct outputs : %", self.correct_outputs)
         self.projection_points_list_by_correct_output = {y: [] for y in self.correct_outputs}
-        self.nb_of_individual_by_true_output = {}
         self.index_by_true_output = {class_:[] for class_ in self.possible_outputs_list}
+        self.nb_of_individual_by_true_output = {}
 
         for index, projected_input in enumerate(self.projected_input):
             self.projection_points_list_by_correct_output[self.correct_outputs[index]].append(projected_input)
@@ -160,7 +163,7 @@ class Vizualization:
 
         # Get the real possible_outputs_list found in true y
 
-        self.amplitude = viz_helper.find_amplitude(self.projected_input)
+        self.amplitude = viz_helper.find_amplitude(self.projected_input_original)
 
         mesh = np.meshgrid(
                 np.arange(
@@ -182,7 +185,7 @@ class Vizualization:
 
         logging.info('clustering engine=fitting')
         self.clusterizer = clustering.make_clusterizer(
-                xs=self.projected_input,
+                xs=self.projected_input_original,
                 nb_of_clusters=self.nb_of_clusters,
                 mesh=self.mesh_centroids,
                 method='dummy',
@@ -218,10 +221,6 @@ class Vizualization:
                     self.projected_input,
                     )
 
-    
-        # Sort good/bad/not predictions in t-SNE space
-        logging.info("projections=listing")
-        
         self.accuracy_by_class = viz_helper.get_accuracy_by_class(
                 self.index_by_true_output,
                 self.correct_outputs,
@@ -237,6 +236,7 @@ class Vizualization:
         """
 
         self.prediction_outputs = data_loader.load_predict_byname(filename, path=self.model_path)
+        self.prediction_outputs_originals = self.prediction_outputs
         self.calculate_prediction_projection_arrays()
 
         self.print_global_summary(self.global_summary_axe)
@@ -293,19 +293,57 @@ class Vizualization:
         # self.display_by_filter()
         self.conciliate_filters(self.filters)
 
+    def load_only_some_indexes(self, indexes):
+        self.prediction_outputs = [self.prediction_outputs_original[i] for i in indexes]
+        self.projected_input    = [self.projected_input_original[i]     for i in indexes]
+        self.correct_outputs    = [self.correct_outputs_original[i]     for i in indexes]
+
+        self.projection_points_list_by_correct_output = {y: [] for y in self.correct_outputs}
+        self.index_by_true_output = {class_:[] for class_ in self.possible_outputs_list}
+        
+        for index, projected_input in enumerate(self.projected_input):
+            self.projection_points_list_by_correct_output[self.correct_outputs[index]].append(projected_input)
+            self.index_by_true_output[self.correct_outputs[index]].append(index)
+
+        # convert dict values to np.array
+        for possible_output in self.projection_points_list_by_correct_output:
+            self.projection_points_list_by_correct_output[possible_output] = np.array(
+                self.projection_points_list_by_correct_output[possible_output])
+            self.nb_of_individual_by_true_output[possible_output] = len(
+                self.projection_points_list_by_correct_output[possible_output])
+
+        self.calculate_prediction_projection_arrays()
+        self.init_clusters()
+        
+        self.print_global_summary(self.global_summary_axe)
+
+    
+    def filters_active(self):
+        """
+        True if some filters are active
+        """
+
+        additional_filters_active = False
+        other_filters = {k:v for k,v in self.filters.items() if k!="PREDICTIONS" and k!="GROUND_TRUTH"}
+        for col in other_filters: # other filters are column number identifying features
+            additional_filters_active = additional_filters_active or other_filters[col]
+
+        return self.filters["GROUND_TRUTH"] or self.filters["PREDICTIONS"] or additional_filters_active
+        
+
     def conciliate_filters(self, filters):
         
-        to_display = set(range(len(self.projected_input)))
+        to_display = set(range(len(self.projected_input_original)))
 
         if filters["GROUND_TRUTH"]:
             filtered = filters["GROUND_TRUTH"]
             to_display = to_display.intersection(set([
-                    idx for idx, class_ in enumerate(self.correct_outputs) if class_ in filtered]))
+                    idx for idx, class_ in enumerate(self.correct_outputs_original) if class_ in filtered]))
             
         if filters["PREDICTIONS"]:
             filtered = filters["PREDICTIONS"]
             to_display = to_display.intersection(set([
-                    idx for idx, class_ in enumerate(self.prediction_outputs) if class_ in filtered]))
+                    idx for idx, class_ in enumerate(self.prediction_outputs_original) if class_ in filtered]))
         other_filters = {k:v for k,v in filters.items() if k!="PREDICTIONS" and k!="GROUND_TRUTH"}
         for col in other_filters: # other filters are column number identifying features
             if other_filters[col]:
@@ -313,7 +351,9 @@ class Vizualization:
                     idx for idx, x in enumerate(self.x_raw) if x[col] not in other_filters[col]]))
 
         viz_helper.remove_pathCollection(self.ax)
-
+        
+        self.load_only_some_indexes(to_display)
+        """
         drawing.draw_scatterplot_from_indexes(
                 to_display,
                 self.index_bad_predicted,
@@ -322,7 +362,13 @@ class Vizualization:
                 self.projected_input,
                 self.ax,
                 )
-                
+        """        
+        drawing.draw_scatterplot(
+                self.ax,
+                self.well_predicted_projected_points_array,
+                self.misspredicted_projected_points_array,
+                self.not_predicted_projected_points_array
+                )
         self.refresh_graph()
 
     #######################################
@@ -626,13 +672,13 @@ class Vizualization:
                 **params,
                 )
 
-        if self.clusterizer.loadable(version=self.version):
+        if self.filters_active() and self.clusterizer.loadable(version=self.version):
             logging.info("cluster: found cached clustering, loading..")
             self.clusterizer = self.clusterizer.load_cluster(version=self.version)
             logging.info("cluster: ready")
         else:
             logging.info("cluster: fitting the clusters")
-            self.clusterizer.fit(self.projected_input)
+            self.clusterizer.fit(self.projected_input_original)
             logging.info("cluster: saving the clusters")
             self.clusterizer.save_cluster(version=self.version)
             logging.info("cluster: ready")
