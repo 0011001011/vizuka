@@ -221,11 +221,11 @@ def main():
         choice_list+="\t [{}]: \t{}\n\t\tparameters:\n{}\n".format(i, method, param_str)
         choice_dict[i]=method
     choice = input( "Projections datasets available: (generate more with vizuka-reduce)"
-                    ")\n"+choice_list+"\t[?] > ")
+            ")\n"+choice_list+"Which dataset number to load?\n\n\t[?] > ")
     try:
         choice_int=int(choice)
-    except:
-        logging.warn("Please enter a valid integer !\nABORTING")
+    except ValueError:
+        logging.warn("Please enter a valid dataset number! (e.g: 0)\nABORTING")
         return
     
     selected_method      = choice_dict[choice_int]
