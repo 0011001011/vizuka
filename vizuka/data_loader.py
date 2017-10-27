@@ -24,7 +24,7 @@ def load_predict(path=MODEL_PATH, version=VERSION, namePredictor=DEFAULT_PREDICT
     Simply load the predictions associated with the VERSION data
     """
     logging.info("trying to load {}".format(path + namePredictor +'_'+ version + '.npz'))
-    return np.load(path + namePredictor + version + '.npz')['pred']
+    return np.load(path + namePredictor + version + '.npz')['y']
 
 def load_predict_byname(filename, path=MODEL_PATH):
     """
@@ -32,7 +32,7 @@ def load_predict_byname(filename, path=MODEL_PATH):
     """
     full_path = os.path.join(path, filename)
     logging.info("trying to load {}".format(full_path))
-    return np.load(os.path.join(path, filename))['pred']
+    return np.load(os.path.join(path, filename))['y']
 
 def list_projections(reduced_path, version):
     """

@@ -144,7 +144,7 @@ def main():
         '===================\n'
         '\t + data/models/predict_VERSION.npz -> optional but recommended\n'
         '\t -------------------------------------------------------------\n'
-        '\t\t pred:\t predictions returned by your algorithm\n'
+        '\t\t y:\t predictions returned by your algorithm\n'
         '\t\t NB:\t should be same formatting as in preprocessed_inputs_VERSION["y"])\n'
         '\n\n'
         '\t + data/set/raw_data.npz -> optional\n'
@@ -249,9 +249,9 @@ def main():
                 path=MODEL_PATH,
                 version=version,
             )
-            logger.info('RNpredictions=ready')
+            logger.info('predictions=ready')
         except FileNotFoundError:
-            logger.info((
+            logger.warn((
                     "Nothing found in {}, no predictions to vizualize\n"
                     "if this is intended you can force the vizualization"
                     "with --force_no_predict :\n{}\n"

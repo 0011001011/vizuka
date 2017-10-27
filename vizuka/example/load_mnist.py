@@ -32,7 +32,7 @@ y = [str(int(y)) for y in mnist['target']]
 print("mnist=Fitting a stupid logistic regression")
 l = LogisticRegression()
 l.fit(x,y)
-pred = l.predict(x)
+predictions = l.predict(x)
 
 
 print("mnist=Saving all files in vizuka/data/*.npz")
@@ -62,7 +62,7 @@ np.savez(
             version,
             extension,
             ]),
-        pred=pred,
+        y=predictions,
         )
 
 shutil.copy(
