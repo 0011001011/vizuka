@@ -41,11 +41,10 @@ BASE_PATH = os.path.join(os.path.dirname(__file__), 'data/')
 INPUT_FILE_BASE_NAME = 'preprocessed_inputs_'
 RAW_NAME = 'raw_data_'
 
-# t-SNEDed data
-REDUCED_DATA_NAME = '2Dembedding'
-
 # default RN for predictions
 DEFAULT_PREDICTOR = 'predict_'
+
+# PROJECTIONS DATA will have a named generated from the algo projector parameters
 
 # A version is a string added to the end of each filename
 VERSION = 'MNIST_example'
