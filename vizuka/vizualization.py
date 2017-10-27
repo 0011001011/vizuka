@@ -316,6 +316,8 @@ class Vizualization:
         self.init_clusters()
         
         self.print_global_summary(self.global_summary_axe)
+        self.update_all_heatmaps()
+        self.print_summary(self.summary_axe)
 
     
     def filters_active(self):
@@ -391,7 +393,6 @@ class Vizualization:
 
         self.summary_axe.clear()
         self.summary_axe.axis('off')
-        
 
         if left_click:
             self.do_left_click((x,y))
@@ -412,8 +413,8 @@ class Vizualization:
         # find associated cluster and gather data
         clicked_cluster = self.clusterizer.predict([(x,y)])[0]
         self.delimit_cluster(clicked_cluster, color=self.manual_cluster_color)
-        self.update_summary(clicked_cluster)
 
+        self.update_summary(clicked_cluster)
         self.print_summary(self.summary_axe)
         
         # shows additional info if requested (argument -s)
@@ -672,15 +673,16 @@ class Vizualization:
                 **params,
                 )
 
-        if self.filters_active() and self.clusterizer.loadable(version=self.version):
+        if (not self.filters_active()) and self.clusterizer.loadable(version=self.version):
             logging.info("cluster: found cached clustering, loading..")
             self.clusterizer = self.clusterizer.load_cluster(version=self.version)
             logging.info("cluster: ready")
         else:
             logging.info("cluster: fitting the clusters")
             self.clusterizer.fit(self.projected_input_original)
-            logging.info("cluster: saving the clusters")
-            self.clusterizer.save_cluster(version=self.version)
+            if not self.filters_active():
+                logging.info("cluster: saving the clusters")
+                self.clusterizer.save_cluster(version=self.version)
             logging.info("cluster: ready")
             
     def request_new_clustering(self, method, params):
@@ -903,15 +905,19 @@ class Vizualization:
                  '#class (#class/#all_class)',
                  'common mistakes'
                  ]
-
+        
+        axe.clear()
         summary = axe.table(
             cellText=values,
             rowLabels=row_labels,
             colLabels=cols,
             loc='center',
         )
+        
         summary.auto_set_font_size(False)
         summary.set_fontsize(8)
+        axe.axis('off')
+
         logging.info("Details=loaded")
         
     def print_global_summary(self, ax, max_row=9):
@@ -930,18 +936,16 @@ class Vizualization:
                 ).most_common(max_row)
 
         row_labels = np.array(most_common_classes)[:,0]
-        values = [
-            [
-                '{0:.2f}'.format(self.accuracy_by_class[c]*100)+"%",
-                (
-                    '{0:.0f} ({1:.2f}%)'.format(
-                        self.nb_of_individual_by_true_output[c],
-                        self.nb_of_individual_by_true_output[c] / float(len(self.projected_input)) * 100
-                        )
-                    ),
-            ]
-            for c in row_labels
-        ]
+        values = []
+        for c in row_labels:
+            accuracy = self.accuracy_by_class[c]*100
+            effectif = self.nb_of_individual_by_true_output[c]
+            if len(self.projected_input) == 0:
+                proportion_effectif = 0
+            else:
+                proportion_effectif = effectif / float(len(self.projected_input)) * 100
+
+            values.append(['{0:.2f}'.format(accuracy)+"%", '{0:.0f} ({1:.2f}%)'.format(effectif, proportion_effectif)])
 
         summary = ax.table(
             cellText=values,
