@@ -1013,7 +1013,7 @@ class Vizualization:
         """
         Filename containing the saved session
         """
-        return name_clusters + '_' + self.version + '.pkl'
+        return name_clusters + '#' + self.version + '.pkl'
 
     def save_clusterization(self, name_clusters='clusters'):
         """
@@ -1024,7 +1024,7 @@ class Vizualization:
             return
 
         filename  = self.make_clusterization_name(name_clusters)
-        session   = (self.version, self.clusterizer.get_name(), self.left_clicks) 
+        session   = (self.version, self.clusterizer, self.left_clicks) 
         full_path = os.path.join(self.saved_clusters_path, filename)
 
         logging.info("user clusters: saving in {}".format(full_path))
@@ -1038,10 +1038,10 @@ class Vizualization:
         """
         Basically loads clustering engine and sequence of left_clicks
         """
-        cache_filename = self.make_clusterization_name(name_clusters)
+        full_path = os.path.join(self.saved_clusters_path, name_clusters)
 
-        version_to_load, clusterizer_name, left_clicks_to_reproduce = pickle.load(
-                open(os.path.join(self.saved_clusters_path, cache_filename), 'rb'),
+        version_to_load, clusterizer, left_clicks_to_reproduce = pickle.load(
+                open(full_path, 'rb'),
                 )
         
         if version_to_load != self.version:
@@ -1049,10 +1049,10 @@ class Vizualization:
                     "Impossible to load clusters : bad VERSION (dataset do not match)")
             return
         
-        method, params = clustering.clusterizer.Clusterizer.get_param_from_name(clusterizer_name)
         self.reset_viz()
         self.left_clicks = set()
-        self.request_new_clustering(method, params)
+        self.clusterizer = clusterizer
+        self.init_clusters()
         self.reset_summary()
 
         for left_click in left_clicks_to_reproduce:
