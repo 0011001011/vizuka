@@ -4,6 +4,7 @@ import inspect
 
 from vizuka.plugins import cluster_viewer as plotter_plugins
 from vizuka.cluster_viewer import (
+        plotter,
         image,
         density,
         counter,

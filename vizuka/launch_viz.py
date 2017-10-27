@@ -16,6 +16,8 @@ from pyfiglet import Figlet
 from vizuka import data_loader
 from vizuka import vizualization
 from vizuka import launch_reduce
+from vizuka import cluster_viewer
+from vizuka import heatmap
 
 logger = logging.getLogger()
 logger.setLevel(logging.WARN)
@@ -40,10 +42,16 @@ def main():
 
     print(Figlet().renderText('Vizuka'))
 
+    plotters_builtin, plotters_extra = cluster_viewer.list_plotter()
+    plotters_available = {**plotters_builtin, **plotters_extra}
+    
+    heatmaps_builtin, heatmaps_extra = heatmap.list_heatmap()
+    heatmaps_available = {**heatmaps_builtin, **heatmaps_extra}
+
     parser = argparse.ArgumentParser()
     parser.add_argument(
         '--mnist', action='store_true',
-         help='download, fit, and vizualize MNIST dataset')
+         help='download, fit, and vizualize MNIST dataset.')
     parser.add_argument(
             '--show-required-files', action='store_true',
             help='show all the required files for optimal use',
@@ -56,22 +64,21 @@ def main():
          help='Adds a feature listed in raw_data.npz["columns"] to the filters list')
     parser.add_argument(
         '-s', '--feature_to_show', action='append',
-        help='Usage : -s MY_COLUMN_NAME:PLOTTER with PLOTTER being a value in %. Adds this non-preprocessed/human-readable feature to the cluster view'.format())
+        help='-s MY_COLUMN_NAME:PLOTTER with COLUMN_NAME with value in'
+             ' data/set/raw_data.npz["columns"] (see --show-required-files)'
+             ' and PLOTTER being a value in {}. Adds this non-preprocessed/human-readable feature to the cluster view'.format(list(plotters_available.keys())))
     parser.add_argument(
         '-h1', '--heatmap1',
-         help='Specify the 1st heatmap to show')
+        help='Specify the 1st heatmap to show, heatmaps available:{}'.format(list(heatmaps_available.keys())))
     parser.add_argument(
         '-h2', '--heatmap2',
          help='Specify the 2nd heatmap to show')
     parser.add_argument(
-        '--use_pca',
-         help='force a PCA dimensional reduction, needs a minimum variance ratio explained')
-    parser.add_argument(
         '-v', '--version', type=str,
-        help='(optional) specify a version of the files to load/generate (see vizuka --show_required_files), currently: '+VERSION)
+        help='(optional) specify a version of the files to load/generate (see vizuka --show-required-files), currently: '+VERSION)
     parser.add_argument(
         '--force-no-predict', action="store_true",
-        help='(not recommended) do not load a predictions file : vizualize as if you predicted with 100\% accuracy')
+        help='(not recommended) do not load a predictions file : vizualize as if you predicted with 100percent accuracy')
     parser.add_argument(
         '--no-vizualize', action="store_true",
          help='(for debug) do not prepare a nice data vizualization')
@@ -85,7 +92,6 @@ def main():
     parser.set_defaults(
             heatmap1 ='accuracy',
             heatmap2 ='entropy',
-            use_pca  = 0,
             no_plot             =False,
             no_vizualize        =False,
             show_required_files =False,
@@ -111,7 +117,6 @@ def main():
     version      = args.version
     features_name_to_filter  = args.feature_to_filter
     features_name_to_display = args.feature_to_show
-    pca_variance_needed = args.use_pca
     force_no_predict = args.force_no_predict
     show_required_files=args.show_required_files
     heatmap1    = args.heatmap1
@@ -157,7 +162,7 @@ def main():
         '\t ------------------------------------------------------------------------\n'
         '\t\t x2D:\t projections of the preprocessed inputs x in a 2D space\n'
         '\t\t NB:\t this set is automatically generated with tSNE but you can specify your own\n'
-        '\t\t NB:  generated with default parameters and t-SNE algo by vizuka, manually with vizuka-reduce'
+        '\t\t NB:  generated with default parameters and t-SNE, manually with vizuka-reduce'
         )
         return
 
@@ -169,8 +174,7 @@ def main():
 
     
     new_fntd = {}
-    error_msg  = 'Argument should be feature_name:plotter with plotter'
-    error_msg += '\nin (logdensity, density, wordcloud, counter)'
+    error_msg  = 'Argument should be COLUMN_NAME:PLOTTER with plotter in {}'.format(list(plotters_available.keys()))
     e = Exception(error_msg)
     for feature_name in features_name_to_display:
         if ':' not in feature_name:
@@ -184,7 +188,7 @@ def main():
     features_name_to_display = new_fntd
 
     logger.info("Starting script")
-    logger.info("raw_data=loading")
+    logger.info("preprocessed_dataset=loading")
 
     (
         x,
@@ -202,12 +206,12 @@ def main():
         logging.warn("No data found\nCorresponding file not found: {}\nPlease check --show-required-files".format(preprocessed_filename))
         return
 
-    logger.info('raw_data=loaded')
+    logger.info('preprocessed_dataset=loaded')
 
     projections_available = data_loader.list_projections(REDUCED_DATA_PATH, version=version)
 
     if len(projections_available)==0:
-        logger.warn("No reduced data found! Please use vizuka-reduce to generate some")
+        logger.warn("2D_dataset=No reduced data found! Please use vizuka-reduce to generate some")
         return
 
     choice_list, choice_dict = "", {}
@@ -216,7 +220,7 @@ def main():
         param_str = ''.join(["\t\t\t{}: {}\n".format(name, value) for name, value in params.items()])
         choice_list+="\t [{}]: \t{}\n\t\tparameters:\n{}\n".format(i, method, param_str)
         choice_dict[i]=method
-    choice = input( "Projections available: (generate more with vizuka-reduce)"
+    choice = input( "Projections datasets available: (generate more with vizuka-reduce)"
                     ")\n"+choice_list+"\t[?] > ")
     try:
         choice_int=int(choice)
@@ -225,14 +229,7 @@ def main():
         return
     
     selected_method      = choice_dict[choice_int]
-    selected_projections, selected_version, selected_params = projections_available[choice_int]
-
-    if selected_version != version:
-        logging.warn(
-                "Mismatch between file VERSION ({}) and requested VERSION ({})".format(
-                selected_version, version))
-        logging.warn("See --version\nABORTING")
-        return
+    _, _, selected_params = projections_available[choice_int]
 
     x_2D = data_loader.load_projection(
         algorithm_name        =   selected_method,
@@ -267,7 +264,7 @@ def main():
         raw_data, raw_columns = raw
     else:
         logger.info('no raw data provided, all cluster vizualization disabled! (-s and -f options)')
-        raw_data    = []
+        raw_data    = np.array([])
         raw_columns = []
         features_name_to_filter  = []
         features_name_to_display = {}

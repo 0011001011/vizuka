@@ -927,6 +927,8 @@ class Vizualization:
         Export your selected data in a .csv file for analysis
         """
         logging.info('exporting:...')
+        import ipdb
+        ipdb.set_trace()
 
         if self.x_raw.any():
             columns = [

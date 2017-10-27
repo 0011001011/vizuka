@@ -53,14 +53,14 @@ def main():
         '-a', '--algorithm',
         help=(
             'algorithm name to reduce dimensions, available are :\n'
-             + '\t\t\tbuiltin: {}\n'.format(builtin_projectors)
-             + '\t\t\textra plugins: {}'.format(extra_projectors)
+             + 'builtin: {}\n'.format(list(builtin_projectors.keys()))
+             + 'extra plugins: {}'.format(list(extra_projectors.keys()))
              )
          )
     parser.add_argument(
         '-p', '--parameters', action='append',
-        help='specify parameters, e.g: -p perplexity:50 -p learning_rate:0.1\n'
-             '\t\t\twill load default values in config.py if not specified'
+        help='specify parameters, e.g: "-p perplexity:50 -p learning_rate:0.1" '
+             'It will load default values in config.py if not specified'
         )
     parser.add_argument(
         '-v', '--version',
@@ -68,8 +68,8 @@ def main():
     parser.add_argument(
         '--path',
         help='change the location of your data/ folder containing reduced/ (the projections)'
-             ' and set/ (the raw and preprocessed data)'
-             'default to {}'.format(DATA_PATH)
+             ' and set/ (the raw and preprocessed data).'
+             ' Default to {}'.format(BASE_PATH)
         )
     parser.add_argument(
             '--verbose', action="store_true",
