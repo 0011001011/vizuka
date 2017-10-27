@@ -114,12 +114,13 @@ class Cluster_viewer(matplotlib.figure.Figure):
                 for i in columns_to_display
                 }
 
-        def plot_it(plotter, data_to_display, data_name, fig, spec_to_update_, key):
+        def plot_it(plotter, plotter_name, data_to_display, data_name, fig, spec_to_update_, key):
 
             spec_to_update = spec_to_update_[key]
             data = data_to_display[key][data_name]
             axe = plotter(data, fig, spec_to_update)
-            if 'log' in data_to_display[key][data_name]:
+
+            if 'log' in plotter_name:
                 data_name += ' - log'
             data_name +=  ' - {} predictions'.format(key)
 
@@ -132,7 +133,7 @@ class Cluster_viewer(matplotlib.figure.Figure):
                 for plotter_name in self.features_to_display[data_name]:
                     plotter = CLUSTER_PLOTTER[plotter_name]
                     spec_to_update = self.spec_by_name[data_name+plotter_name]
-                    plot_it(plotter, data_to_display, data_name, self, spec_to_update, key) 
+                    plot_it(plotter, plotter_name, data_to_display, data_name, self, spec_to_update, key) 
         
     def reset(self):
         self.clear()
