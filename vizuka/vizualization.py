@@ -103,6 +103,7 @@ class Vizualization:
         self.projected_input = projected_input
         self.projected_input_original = self.projected_input
         self.x_raw = raw_inputs
+        self.x_raw_original = self.x_raw
         self.x_raw_columns = raw_inputs_columns
         self.nb_of_clusters = nb_of_clusters
         self.class_decoder = class_decoder
@@ -294,9 +295,10 @@ class Vizualization:
         self.conciliate_filters(self.filters)
 
     def load_only_some_indexes(self, indexes):
-        self.prediction_outputs = [self.prediction_outputs_original[i] for i in indexes]
+        self.prediction_outputs = [self.prediction_outputs_original[i]  for i in indexes]
         self.projected_input    = [self.projected_input_original[i]     for i in indexes]
         self.correct_outputs    = [self.correct_outputs_original[i]     for i in indexes]
+        self.x_raw              = [self.x_raw_original[i]                        for i in indexes]
 
         self.projection_points_list_by_correct_output = {y: [] for y in self.correct_outputs}
         self.index_by_true_output = {class_:[] for class_ in self.possible_outputs_list}
@@ -977,8 +979,6 @@ class Vizualization:
         Export your selected data in a .csv file for analysis
         """
         logging.info('exporting:...')
-        import ipdb
-        ipdb.set_trace()
 
         if self.x_raw.any():
             columns = [
