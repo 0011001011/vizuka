@@ -33,7 +33,6 @@ def main():
         DATA_PATH,
         VERSION,
         REDUCED_DATA_PATH,
-        REDUCED_DATA_NAME,
         MODEL_PATH,
         INPUT_FILE_BASE_NAME,
         PROJECTION_DEFAULT_PARAMS,

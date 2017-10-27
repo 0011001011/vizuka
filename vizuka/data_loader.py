@@ -12,7 +12,6 @@ from vizuka.config import (
         DEFAULT_PREDICTOR,
         PROJECTION_DEFAULT_PARAMS,
         REDUCED_DATA_PATH,
-        REDUCED_DATA_NAME,
         INPUT_FILE_BASE_NAME,
         DATA_PATH,
         RAW_NAME,
