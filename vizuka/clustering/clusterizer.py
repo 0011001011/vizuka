@@ -98,11 +98,12 @@ class Clusterizer():
             filename = ''.join(
                     [self.get_name(), PARAMETERS_SEPARATOR, version,'.pkl'])
             full_path = os.path.join(path, filename)
-            
+
             if os.path.exists(full_path):
                 logging.info('cluster: found clusters in {}'.format(full_path))
                 return True
             else:
+                logging.info('cluster: no cached clusters found in {}'.format(full_path))
                 return False
 
         def save_cluster(self, version, path=CACHE_PATH):
