@@ -9,6 +9,7 @@ import os
 import logging
 from collections import Counter
 import pickle
+import csv
 
 from scipy import stats
 import numpy as np
@@ -16,7 +17,6 @@ import matplotlib
 matplotlib.use('Qt5Agg')  # noqa
 from matplotlib.gridspec import GridSpec
 from matplotlib import pyplot as plt
-import pandas as pd
 
 from vizuka.helpers import viz_helper
 from vizuka.graphics import drawing
@@ -122,6 +122,7 @@ class Vizualization:
                 **{k:set() for k in features_name_to_filter},
                 }
         self.left_clicks = set()
+        self.selected_clusters = set()
 
         #self.possible_outputs_list = list({self.class_decoder(y_encoded) for y_encoded in self.correct_outputs})
         self.possible_outputs_set = set(self.correct_outputs).union(set(self.prediction_outputs))
@@ -319,6 +320,7 @@ class Vizualization:
         
         self.print_global_summary(self.global_summary_axe)
         self.update_all_heatmaps()
+        self.update_summary()
         self.print_summary(self.summary_axe)
 
     
@@ -336,7 +338,7 @@ class Vizualization:
         
 
     def conciliate_filters(self, filters):
-        
+        saved_zoom = (self.ax.get_xbound(), self.ax.get_ybound())
         to_display = set(range(len(self.projected_input_original)))
 
         if filters["GROUND_TRUTH"]:
@@ -357,22 +359,16 @@ class Vizualization:
         viz_helper.remove_pathCollection(self.ax)
         
         self.load_only_some_indexes(to_display)
-        """
-        drawing.draw_scatterplot_from_indexes(
-                to_display,
-                self.index_bad_predicted,
-                self.index_good_predicted,
-                self.index_not_predicted,
-                self.projected_input,
-                self.ax,
-                )
-        """        
+
         drawing.draw_scatterplot(
                 self.ax,
                 self.well_predicted_projected_points_array,
                 self.misspredicted_projected_points_array,
                 self.not_predicted_projected_points_array
                 )
+        self.ax.set_xbound(saved_zoom[0])
+        self.ax.set_ybound(saved_zoom[1])
+
         self.refresh_graph()
 
     #######################################
@@ -414,9 +410,10 @@ class Vizualization:
         
         # find associated cluster and gather data
         clicked_cluster = self.clusterizer.predict([(x,y)])[0]
+        self.selected_clusters.add(clicked_cluster)
         self.delimit_cluster(clicked_cluster, color=self.manual_cluster_color)
 
-        self.update_summary(clicked_cluster)
+        self.update_summary()
         self.print_summary(self.summary_axe)
         
         # shows additional info if requested (argument -s)
@@ -429,8 +426,11 @@ class Vizualization:
                     )
 
     def do_right_click(self, xy):
+            logging.info("Cleaning state, unselecting clusters, redrawing")
+            print("Cleaning state, unselecting clusters, redrawing")
             # reboot vizualization
             self.left_clicks = set()
+            self.selected_clusters = set()
             self.reset_summary()
             if self.cluster_view:
                 self.cluster_view.reset()
@@ -747,7 +747,47 @@ class Vizualization:
 
         self.refresh_graph()
 
-    def update_summary(self, current_cluster):
+    def update_summary(self):
+        effectif_by_class = {}
+
+        for clr in self.selected_clusters:
+            for cls, effectif in self.nb_of_points_by_class_by_cluster.get(clr,{}).items():
+                effectif_by_class[cls] = effectif_by_class.get(cls,0) + effectif
+        effectif_by_class = {cls:e for cls, e in effectif_by_class.items() if e>0}
+
+
+        self.local_classes  = list(effectif_by_class.keys())
+        self.local_sum      = sum (effectif_by_class.values())
+        self.local_effectif = effectif_by_class
+
+        nb_good_by_class = {cls:sum([self.nb_good_point_by_class_by_cluster.get(clr,{}).get(cls,0) for clr in self.selected_clusters]) for cls in self.local_classes}
+        nb_bad_by_class  = {cls:sum([self.nb_bad_point_by_class_by_cluster.get(clr,{}).get(cls, 0) for clr in self.selected_clusters]) for cls in self.local_classes}
+
+        self.local_bad_count_by_class  = nb_bad_by_class
+        self.local_good_count_by_class = nb_good_by_class
+        
+        for cls in self.local_classes:
+            self.local_accuracy[cls] = (
+                nb_good_by_class.get(cls,0) /
+                (
+                    nb_good_by_class.get(cls,0)
+                    + nb_bad_by_class.get(cls,0)
+                    ))
+
+        confusion = {}
+        for clr in self.selected_clusters:
+            for idx in self.index_by_cluster_label.get(clr,{}):
+                if idx in self.index_bad_predicted:
+                    correct            = self.correct_outputs[idx]
+                    prediction         = self.prediction_outputs[idx]
+                    confusion[correct] = confusion.get(correct, []) + [prediction]
+        
+        self.local_confusion_by_class_sorted = {cls:[] for cls in confusion}
+        for cls, errors in confusion.items():
+            self.local_confusion_by_class_sorted[cls] = Counter(errors).most_common(2)
+
+
+    def update_summary_debile(self, current_cluster):
         """
         Add the data of cluster (:param x_g:, :param y_g:) to the local-tobeplotted summary
 
@@ -779,7 +819,7 @@ class Vizualization:
         self.local_sum = sum(to_include.values()) + self.local_sum
         
         nb_good_point_by_class = self.nb_good_point_by_class_by_cluster[current_cluster]
-        nb_bad_point_by_class = self.nb_bad_point_by_class_by_cluster[current_cluster]
+        nb_bad_point_by_class  = self.nb_bad_point_by_class_by_cluster[current_cluster]
 
         for output_class in new_rows:
             self.local_effectif[output_class] = to_include[output_class]
@@ -846,7 +886,6 @@ class Vizualization:
         :param max_row: max nb of row to add in table summary
         :param axe: the matplotlib axe in which the stats will be plotted
         """
-
         row_labels = list(self.local_classes)
 
         values = [
@@ -879,7 +918,7 @@ class Vizualization:
                         '{:.6}'.format(class_mistaken)+ '({0:.1f}%)'.format(
                             error_count/float(self.local_bad_count_by_class[c])*100
                             )
-                        for class_mistaken, error_count in self.local_confusion_by_class_sorted[c] if error_count != 0
+                        for class_mistaken, error_count in self.local_confusion_by_class_sorted.get(c,[]) if error_count != 0
                         ])
                     ),
             ]
@@ -896,7 +935,7 @@ class Vizualization:
         values     = values[:max_row]
         row_labels = row_labels[:max_row]
         
-        values.append([self.local_sum, .856789, len(self.projected_input), ' '])
+        values.append([self.local_sum, '-', len(self.projected_input), ' '])
         row_labels.append('all')
 
         self.rows = row_labels
@@ -933,15 +972,15 @@ class Vizualization:
         cols = ['accuracy', 'effectif']
         most_common_classes = Counter(
                 {
-                    c:len(self.index_by_true_output[c]) for c in self.possible_outputs_list
+                    c:len(self.index_by_true_output.get(c,[])) for c in self.possible_outputs_list
                     }
                 ).most_common(max_row)
 
         row_labels = np.array(most_common_classes)[:,0]
         values = []
         for c in row_labels:
-            accuracy = self.accuracy_by_class[c]*100
-            effectif = self.nb_of_individual_by_true_output[c]
+            accuracy = self.accuracy_by_class.get(c,0)*100
+            effectif = self.nb_of_individual_by_true_output.get(c,0)
             if len(self.projected_input) == 0:
                 proportion_effectif = 0
             else:
@@ -979,31 +1018,32 @@ class Vizualization:
         Export your selected data in a .csv file for analysis
         """
         logging.info('exporting:...')
+        if output_path == "":
+            logging.warn("No export name specified, aborting")
+            return
 
         if self.x_raw.any():
             columns = [
                 *self.x_raw_columns,
-                'projected coordinates',
                 'predicted class',
-                'well predicted',
+                'projected coordinates',
                 ]
             rows =  [
                         [
                             *self.x_raw[idx],
-                            self.projected_input[idx],
                             self.prediction_outputs[idx],
-                            int(idx in self.index_good_predicted),
+                            self.projected_input[idx],
                             ]
                         for idx,c in enumerate(self.cluster_by_idx)
-                        if c in self.currently_selected_cluster
+                        if c in self.selected_clusters
                         ]
 
-            to_export =  pd.DataFrame(rows, columns=columns)
+            to_export =  [columns, *rows]
 
             if format=='csv':
-                to_export.to_csv(output_path)
-            if format=='hdf5':
-                to_export.to_hdf(output_path, 'data')
+                wr = csv.writer(open(output_path, 'w'))
+                wr.writerows(to_export)
+
             logging.info('exporting: done')
         else:
             logging.info("nothing to export, no raw data provided!")
