@@ -77,8 +77,66 @@ class Cluster_viewer(matplotlib.figure.Figure):
                 if plotter not in CLUSTER_PLOTTER.keys():
                     CLUSTER_PLOTTER[plotter] = make_plotter(plotter)
        
+    def update_cluster_view(self, index_good, index_bad, data_by_index):
+        """
+        Updates the axes with the data of the selected cluster
 
-    def update_cluster_view(self, clicked_cluster, index_by_cluster_label, indexes_good, indexes_bad):
+        index_good: indexes of all good predictions
+        index_bad: indexes of all bad predicitons
+        data_by_index: data
+        """
+        self.clear()
+        self.cluster_view_selected_indexes = set(index_good+index_bad)
+
+        selected_xs_raw  ={'all': [data_by_index[idx] for idx in self.cluster_view_selected_indexes]}
+        if self.show_dichotomy:
+            selected_xs_raw['good'] = [
+                    data_by_index[idx] for idx in self.cluster_view_selected_indexes if idx in index_good]
+            selected_xs_raw['bad' ] = [
+                    data_by_index[idx] for idx in self.cluster_view_selected_indexes if idx in index_bad ]
+        
+
+
+        columns_to_display = [list(self.x_raw_columns).index(i) for i in self.features_to_display]
+        data_to_display = {
+                'all':
+                        {
+                        self.x_raw_columns[i]:[x[i] for x in selected_xs_raw['all']]
+                        for i in columns_to_display
+                        }
+                    }
+        if self.show_dichotomy:
+            data_to_display['good'] = {
+                self.x_raw_columns[i]:[x[i] for x in selected_xs_raw['good']]
+                for i in columns_to_display
+                }
+            data_to_display['bad'] = {
+                self.x_raw_columns[i]:[x[i] for x in selected_xs_raw['bad']]
+                for i in columns_to_display
+                }
+
+        def plot_it(plotter, plotter_name, data_to_display, data_name, fig, spec_to_update_, key):
+
+            spec_to_update = spec_to_update_[key]
+            data = data_to_display[key][data_name]
+            axe = plotter(data, fig, spec_to_update)
+
+            if 'log' in plotter_name:
+                data_name += ' - log'
+            data_name +=  ' - {} predictions'.format(key)
+
+            if axe:
+                axe.set_title(data_name)
+
+
+        for key in ['good', 'bad']:
+            for data_name in self.features_to_display:
+                for plotter_name in self.features_to_display[data_name]:
+                    plotter = CLUSTER_PLOTTER[plotter_name]
+                    spec_to_update = self.spec_by_name[data_name+plotter_name]
+                    plot_it(plotter, plotter_name, data_to_display, data_name, self, spec_to_update, key) 
+
+    def update_cluster_view_complex(self, clicked_cluster, index_by_cluster_label, indexes_good, indexes_bad):
         """
         Updates the axes with the data of the clicked cluster
 
@@ -93,8 +151,10 @@ class Cluster_viewer(matplotlib.figure.Figure):
 
         selected_xs_raw  ={'all': [self.x_raw[idx] for idx in self.cluster_view_selected_indexes]}
         if self.show_dichotomy:
-            selected_xs_raw['good'] = [self.x_raw[idx] for idx in self.cluster_view_selected_indexes if idx in indexes_good]
-            selected_xs_raw['bad' ] = [self.x_raw[idx] for idx in self.cluster_view_selected_indexes if idx in indexes_bad ]
+            selected_xs_raw['good'] = [
+                    self.x_raw[idx] for idx in self.cluster_view_selected_indexes if idx in indexes_good]
+            selected_xs_raw['bad' ] = [
+                    self.x_raw[idx] for idx in self.cluster_view_selected_indexes if idx in indexes_bad ]
         
         columns_to_display = [list(self.x_raw_columns).index(i) for i in self.features_to_display]
         data_to_display = {

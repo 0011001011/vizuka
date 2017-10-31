@@ -322,7 +322,7 @@ class Vizualization:
         self.update_all_heatmaps()
         self.update_summary()
         self.print_summary(self.summary_axe)
-
+        self.update_cluster_view()
     
     def filters_active(self):
         """
@@ -417,13 +417,14 @@ class Vizualization:
         self.print_summary(self.summary_axe)
         
         # shows additional info if requested (argument -s)
-        if self.cluster_view:
-            self.cluster_view.update_cluster_view(
-                    clicked_cluster,
-                    self.index_by_cluster_label,
-                    indexes_good = self.index_good_predicted,
-                    indexes_bad = self.index_bad_predicted,
-                    )
+        self.update_cluster_view()
+
+            # self.cluster_view.update_cluster_view(
+            #        clicked_cluster,
+            #        self.index_by_cluster_label,
+            #        indexs_good = self.index_good_predicted,
+            #        indexes_bad = self.index_bad_predicted,
+            #        )
 
     def do_right_click(self, xy):
             logging.info("Cleaning state, unselecting clusters, redrawing")
@@ -1113,6 +1114,17 @@ class Vizualization:
                 )
         logging.info('exporting: done')
 
+    def update_cluster_view(self):
+        if self.cluster_view:
+            index_selected  = [
+                    idx for clr in self.selected_clusters for idx in self.index_by_cluster_label[clr]]
+            index_good = [idx for idx in self.index_good_predicted if idx in index_selected]
+            index_bad  = [idx for idx in self.index_bad_predicted  if idx in index_selected]
+            self.cluster_view.update_cluster_view(
+                    index_good = index_good,
+                    index_bad  = index_bad,
+                    data_by_index = self.x_raw,
+                    )
 
     def plot(self):
         """
