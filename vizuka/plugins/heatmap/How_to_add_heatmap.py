@@ -1,22 +1,35 @@
+##################################################################
+#
 # HOW TO ADD A CUSTOM HEATMAP ?
 ###############################
-
-# Defines here a heatmap, its name will be the .py name, and request it at vizuka launch
+#
+#
+# This one plugin is a headache to implements : actually you will need
+# to request some variable from the Vizualization object (good luck!)
+#
+# You can define here a heatmap, its name will be the .py name, and
+# you can request it at vizuka launch
 # (vizuka --heatmap1=my_custom_heatmap_name)
-# It should inherits vizuka.heatmap.heatmap.Heatmap (yea sorry 'bout that) and implements the
-# basics methods specified there( very simple). See example below or Abstract class in
-# vizuka.heatmap.heatmap
+#
+# It should inherits vizuka.heatmap.heatmap.Heatmap (yea sorry about
+# that) and implements the basics methods specified there (very simple)
+#
+# See example below or Abstract class in vizuka.heatmap.heatmap
 #
 # One color by cluster !
 #
-# The object vizuka.Vizualization is passed in the constructor by default, you can change this
-# in vizuka.vizualization.request_heatmap() but all the info you may want should be fetchable
-# in this great big object
+# The object vizuka.vizualization.Vizualization is passed in the constructor by
+# default, you can change this in vizuka.vizualization.request_heatmap()
+# if you need other variable but all the info you may want should be
+# fetchable in the Vizualization object
 #
 # Here is a working example, which is simply the accuracy heatmap :
 #
-###############################################################################################
+######################################################################
 
+###################
+# WORKING EXAMPLE #
+#####################################################################
 #
 # import numpy as np
 # import logging
