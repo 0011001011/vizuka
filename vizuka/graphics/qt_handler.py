@@ -87,24 +87,21 @@ class Cluster_viewer(matplotlib.figure.Figure):
         """
         self.clear()
         self.cluster_view_selected_indexes = set(index_good+index_bad)
+        
+        
+        selected_xs_raw  ={}
+        data_to_display = {}
 
-        selected_xs_raw  ={'all': [data_by_index[idx] for idx in self.cluster_view_selected_indexes]}
         if self.show_dichotomy:
             selected_xs_raw['good'] = [
                     data_by_index[idx] for idx in self.cluster_view_selected_indexes if idx in index_good]
             selected_xs_raw['bad' ] = [
                     data_by_index[idx] for idx in self.cluster_view_selected_indexes if idx in index_bad ]
-        
-
+        else:
+            selected_xs_raw['all'] = [
+                    data_by_index[idx] for idx in self.cluster_view_selected_indexes]
 
         columns_to_display = [list(self.x_raw_columns).index(i) for i in self.features_to_display]
-        data_to_display = {
-                'all':
-                        {
-                        self.x_raw_columns[i]:[x[i] for x in selected_xs_raw['all']]
-                        for i in columns_to_display
-                        }
-                    }
         if self.show_dichotomy:
             data_to_display['good'] = {
                 self.x_raw_columns[i]:[x[i] for x in selected_xs_raw['good']]
@@ -114,20 +111,22 @@ class Cluster_viewer(matplotlib.figure.Figure):
                 self.x_raw_columns[i]:[x[i] for x in selected_xs_raw['bad']]
                 for i in columns_to_display
                 }
+        else:
+            data_to_display['all'] = {
+                    self.x_raw_columns[i]:[x[i] for x in selected_xs_raw['all']]
+                    for i in columns_to_display
+                    }
 
         def plot_it(plotter, plotter_name, data_to_display, data_name, fig, spec_to_update_, key):
 
             spec_to_update = spec_to_update_[key]
             data = data_to_display[key][data_name]
             axe = plotter(data, fig, spec_to_update)
-
             if 'log' in plotter_name:
                 data_name += ' - log'
             data_name +=  ' - {} predictions'.format(key)
-
             if axe:
                 axe.set_title(data_name)
-
 
         for key in ['good', 'bad']:
             for data_name in self.features_to_display:

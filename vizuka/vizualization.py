@@ -299,7 +299,7 @@ class Vizualization:
         self.prediction_outputs = [self.prediction_outputs_original[i]  for i in indexes]
         self.projected_input    = [self.projected_input_original[i]     for i in indexes]
         self.correct_outputs    = [self.correct_outputs_original[i]     for i in indexes]
-        self.x_raw              = [self.x_raw_original[i]                        for i in indexes]
+        self.x_raw              = [self.x_raw_original[i]               for i in indexes]
 
         self.projection_points_list_by_correct_output = {y: [] for y in self.correct_outputs}
         self.index_by_true_output = {class_:[] for class_ in self.possible_outputs_list}
@@ -483,6 +483,7 @@ class Vizualization:
         self.local_classes = set()
         self.local_sum = 0
         self.currently_selected_cluster = []
+        self.selected_cluster = set()
 
     def init_clusters(self):
         """
@@ -725,7 +726,6 @@ class Vizualization:
             this_heatmap.update_colors(vizualization=self)
             heatmap_color = this_heatmap.get_all_colors()
 
-            logging.info("heatmaps: drawing in "+str(axe))
             im = axe.imshow(
                     heatmap_color,
                     interpolation='nearest',
@@ -738,35 +738,48 @@ class Vizualization:
                         ),
                     aspect='auto')
 
-            logging.info("heatmaps: "+str(axe)+" ready")
-
             axe.set_xlim(-self.amplitude / 2, self.amplitude / 2)
             axe.set_ylim(-self.amplitude / 2, self.amplitude / 2)
             axe.axis('off')
             axe.set_title(title)
-            logging.info('heatmap, axe, title {} {} {}'.format(this_heatmap, axe, title))
 
         self.refresh_graph()
 
     def update_summary(self):
-        effectif_by_class = {}
+        """
+        Updates the local variables (the variables containing info about currently
+        selected clusters).
 
+        Three objects are important inside the object Vizualization and need to be updated :
+            - self.local_classes contains possible_outputs_list inside current_cluster
+            - self.local_effectif contains the effetif of each label inside current_cluster
+            - self.local_accuracy is the ratio of good/total predicted inside cluster, by label
+            - self.local_confusion_by_class is the error made by the predictor, indexed by true output
+        """
+        effectif_by_class = {}
+        logging.info("local_variables=updating")
+        
+        # Get effectif
         for clr in self.selected_clusters:
             for cls, effectif in self.nb_of_points_by_class_by_cluster.get(clr,{}).items():
                 effectif_by_class[cls] = effectif_by_class.get(cls,0) + effectif
         effectif_by_class = {cls:e for cls, e in effectif_by_class.items() if e>0}
 
-
+        # Set 3 first local variables
         self.local_classes  = list(effectif_by_class.keys())
         self.local_sum      = sum (effectif_by_class.values())
         self.local_effectif = effectif_by_class
 
+        # Counts the good/bad predictions in these clusters
+        logging.info("local_variables=counting good/bad")
         nb_good_by_class = {cls:sum([self.nb_good_point_by_class_by_cluster.get(clr,{}).get(cls,0) for clr in self.selected_clusters]) for cls in self.local_classes}
         nb_bad_by_class  = {cls:sum([self.nb_bad_point_by_class_by_cluster.get(clr,{}).get(cls, 0) for clr in self.selected_clusters]) for cls in self.local_classes}
 
         self.local_bad_count_by_class  = nb_bad_by_class
         self.local_good_count_by_class = nb_good_by_class
         
+        # Gets accuracy
+        logging.info("local_variables=counting accuracy")
         for cls in self.local_classes:
             self.local_accuracy[cls] = (
                 nb_good_by_class.get(cls,0) /
@@ -774,7 +787,9 @@ class Vizualization:
                     nb_good_by_class.get(cls,0)
                     + nb_bad_by_class.get(cls,0)
                     ))
-
+        
+        # Get confusion matrix
+        logging.info("local_variables=calculating confusion")
         confusion = {}
         for clr in self.selected_clusters:
             for idx in self.index_by_cluster_label.get(clr,{}):
@@ -786,85 +801,7 @@ class Vizualization:
         self.local_confusion_by_class_sorted = {cls:[] for cls in confusion}
         for cls, errors in confusion.items():
             self.local_confusion_by_class_sorted[cls] = Counter(errors).most_common(2)
-
-
-    def update_summary_debile(self, current_cluster):
-        """
-        Add the data of cluster (:param x_g:, :param y_g:) to the local-tobeplotted summary
-
-        Three objects are important inside the object Vizualization and need to be updated :
-            - self.currently_selected_cluster is the collection of selected tiles
-            - self.local_classes contains possible_outputs_list inside current_cluster
-            - self.local_effectif contains the effetif of each label inside current_cluster
-            - self.local_sum the sum of local_effectif
-            - self.local_accuracy is the ratio of good/total predicted inside cluster, by label
-
-        :param current_cluster: cluster name selected by click
-        """
-        to_include = self.nb_of_points_by_class_by_cluster.get(current_cluster, {})
-        to_include = { k:to_include[k] for k in to_include if to_include[k]!=0 }
-
-        if current_cluster in self.currently_selected_cluster:
-            return
-        else:
-            self.currently_selected_cluster.append(current_cluster)
-
-        new_rows = set(to_include.keys()) - self.local_classes
-
-        logging.debug("Classes already detected :" + str(self.local_classes))
-        logging.debug("Classes detected on new click :" + str(set(to_include.keys())))
-        logging.debug("Classes to add to summary :" + str(set(new_rows)))
-
-        rows_to_update = self.local_classes.intersection(set(to_include.keys()))
-        self.local_classes = self.local_classes.union(set(to_include.keys()))
-        self.local_sum = sum(to_include.values()) + self.local_sum
-        
-        nb_good_point_by_class = self.nb_good_point_by_class_by_cluster[current_cluster]
-        nb_bad_point_by_class  = self.nb_bad_point_by_class_by_cluster[current_cluster]
-
-        for output_class in new_rows:
-            self.local_effectif[output_class] = to_include[output_class]
-
-            self.local_accuracy[output_class] = (
-                nb_good_point_by_class.get(output_class,0) /
-                (
-                    nb_good_point_by_class.get(output_class,0)
-                    + nb_bad_point_by_class.get(output_class,0)
-                    )
-            )
-        for cluster in self.currently_selected_cluster:
-            for index in self.index_by_cluster_label[cluster]:
-                if index in self.index_bad_predicted:
-                    current_class = self.correct_outputs[index]
-                    self.local_bad_count_by_class[current_class] += 1
-                    self.prediction_outputs[index]
-                    self.local_confusion_by_class[current_class][self.prediction_outputs[index]]+=1
-
-        self.local_confusion_by_class_sorted = {
-                output_class:[] for output_class in self.local_confusion_by_class
-                }
-
-        for output_class, errors in self.local_confusion_by_class.items():
-            self.local_confusion_by_class_sorted[output_class] = Counter(errors).most_common(2)
-
-        for output_class in rows_to_update:
-            self.local_accuracy[output_class] = ((
-                    self.local_accuracy[output_class] * self.local_effectif[output_class]
-                    + (
-                        nb_good_point_by_class.get(output_class,0)
-                        / (
-                            nb_good_point_by_class.get(output_class,0)
-                            + nb_bad_point_by_class.get(output_class,0)
-                            )
-                        * to_include.get(output_class, 0)
-                   )
-                ) / (self.local_effectif[output_class] + to_include.get(output_class, 0))
-            )
-
-            self.local_effectif[output_class] += (
-                    nb_good_point_by_class.get(output_class,0)
-                    + nb_bad_point_by_class.get(output_class,0)
-                    )
+        logging.info("local_variables=ready")
 
     def get_selected_indexes(self):
         """
@@ -887,6 +824,7 @@ class Vizualization:
         :param max_row: max nb of row to add in table summary
         :param axe: the matplotlib axe in which the stats will be plotted
         """
+        logging.info("local_summary=printing")
         row_labels = list(self.local_classes)
 
         values = [
@@ -960,13 +898,14 @@ class Vizualization:
         summary.set_fontsize(8)
         axe.axis('off')
 
-        logging.info("Details=loaded")
+        logging.info("local_summary=ready")
         
     def print_global_summary(self, ax, max_row=9):
         """
         Prints a global summary with the most frequent class and
         their classification accuracy
         """
+        logging.info("global_summary=calculating")
         
         ax.clear()
         ax.axis('off')
@@ -997,6 +936,7 @@ class Vizualization:
         )
         summary.auto_set_font_size(False)
         summary.set_fontsize(8)
+        logging.info("global_summary=ready")
     
     def request_heatmap(self, method, axe, title):
         """
@@ -1023,7 +963,7 @@ class Vizualization:
             logging.warn("No export name specified, aborting")
             return
 
-        if self.x_raw.any():
+        if self.x_raw:
             columns = [
                 *self.x_raw_columns,
                 'predicted class',
@@ -1073,7 +1013,7 @@ class Vizualization:
                 session,
                 open(full_path, 'wb')
                 )
-        self.viz_handler.user_cluster_menulist.add_items([name_clusters])
+        self.viz_handler.user_cluster_menulist.add_items([filename])
 
     def load_clusterization(self, name_clusters):
         """
@@ -1098,6 +1038,10 @@ class Vizualization:
 
         for left_click in left_clicks_to_reproduce:
             self.do_left_click(left_click)
+
+        self.update_summary()
+        self.print_summary(self.summary_axe)
+        self.print_global_summary(self.global_summary_axe)
         
         self.refresh_graph()
 
@@ -1116,15 +1060,19 @@ class Vizualization:
 
     def update_cluster_view(self):
         if self.cluster_view:
+            logging.info('cluster_viewer=sorting indexes')
             index_selected  = [
-                    idx for clr in self.selected_clusters for idx in self.index_by_cluster_label[clr]]
-            index_good = [idx for idx in self.index_good_predicted if idx in index_selected]
-            index_bad  = [idx for idx in self.index_bad_predicted  if idx in index_selected]
+                    idx for clr in self.selected_clusters for idx in self.index_by_cluster_label.get(clr,[])]
+            index_good = [idx for idx in index_selected if idx in self.index_good_predicted]
+            index_bad  = [idx for idx in index_selected if idx in self.index_bad_predicted ]
+
+            logging.info('cluster_viewer=plotting sorted indexes')
             self.cluster_view.update_cluster_view(
-                    index_good = index_good,
-                    index_bad  = index_bad,
+                    index_good    = index_good,
+                    index_bad     = index_bad,
                     data_by_index = self.x_raw,
                     )
+            logging.info('cluster_viewer=ready')
 
     def plot(self):
         """
@@ -1222,6 +1170,4 @@ class Vizualization:
     def refresh_graph(self):
         logging.info('refreshing main window')
         self.viz_handler.refresh()
-        logging.info('refreshing cluster diving')
-        #self.cluster_diver.refresh()
         logging.info("refreshing done")
