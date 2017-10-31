@@ -29,7 +29,7 @@ class EntropyHeatmap(heatmap.Heatmap):
 
         """
         self.all_colors = [[0 for _ in range(vizualization.resolution)] for _ in range(vizualization.resolution)]
-        logging.info('heatmap entropy: drawing')
+        logging.info('heatmap_entropy: drawing')
         centroids_label = vizualization.clusterizer.predict(vizualization.mesh_centroids)
         
         entropys = []

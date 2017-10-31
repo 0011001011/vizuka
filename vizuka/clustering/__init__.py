@@ -60,7 +60,6 @@ def make_clusterizer(method='dummy', **kwargs):
     
     required_parameters = inspect.getargspec(clusterizer_builder).args
     given_parameters    = {name:value for name,value in kwargs.items() if name in required_parameters}
-    logging.info("clusterizer: building a clustering engine with parameters:\n{}".format(given_parameters))
     clusterizer = clusterizer_builder(**given_parameters)
     
     return clusterizer
