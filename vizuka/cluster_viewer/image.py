@@ -30,6 +30,7 @@ class RandomImages(Plotter):
         for idx, inner_spec in enumerate(inner):
             axe = plt.Subplot(fig, inner_spec)
             axe.imshow(selected_data[idx])
+            axe.axis("off")
             fig.add_subplot(axe)
 
         return axe
