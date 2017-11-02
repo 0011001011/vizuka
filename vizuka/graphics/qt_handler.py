@@ -31,13 +31,15 @@ from PyQt5.QtWidgets import (
     QMenu,
     QFileDialog,
     QDialog,
+    QRadioButton,
+    QLabel,
 )
 
 from vizuka.graphics import qt_helpers
 from vizuka.cluster_diving import moar_filters
 from vizuka import clustering
 from vizuka import frontier
-from vizuka.cluster_viewer import make_plotter
+from vizuka.cluster_viewer import make_plotter, list_plotter
 
 
 def onclick_wrapper(onclick):
@@ -71,7 +73,7 @@ class Cluster_viewer(matplotlib.figure.Figure):
                 len(features_to_display.keys()),
                 2, wspace=0.2
                 )
-        
+
         for idx,feature_name in enumerate(features_to_display.keys()):
             for plotter in features_to_display[feature_name]:
                 self.spec_by_name[feature_name+plotter] = {}
@@ -260,6 +262,7 @@ class Viz_handler(Qt_matplotlib_handler):
     def add_figure(self, fig, name):
         self.additional_windows.append(qt_helpers.add_window(self.window, name))
         qt_helpers.add_figure(fig, self.additional_windows[-1], plottings=self.plottings)
+        self.additional_windows[-1].show()
 
     
     def initUI(self):
@@ -344,14 +347,78 @@ class Viz_handler(Qt_matplotlib_handler):
         filterMenu.addMenu(predictClassFilter)
 
         
-        
         navigationMenu = menubar.addMenu('Navigation')
         mouseEnabledAction = QAction('Disable mouse click', window, checkable=True)
         mouseEnabledAction.setChecked = True
         mouseEnabledAction.triggered.connect(self.toogle_detect_mouse_event)
         navigationMenu.addAction(mouseEnabledAction)
 
+        clusterviewMenu   = menubar.addMenu("Cluster info")
+        clustersummaryAct = QAction("Add custom cluster info", window)
+        clustersummaryAct.triggered.connect(self.request_cluster_viewer)
+        clusterviewMenu.addAction(clustersummaryAct)
+
         
+    def request_cluster_viewer(self):
+
+        class AskPlotterWindow(QWidget):
+            def __init__(self, column_name, viz_engine):
+                QWidget.__init__(self)
+
+                layout = QVBoxLayout()
+                self.setLayout(layout)
+                self.viz_engine = viz_engine
+                self.column_name = column_name
+                
+                builtin_pl, extra_pl = list_plotter()
+                available_pl = {**builtin_pl, **extra_pl}
+
+                layout.addWidget(QLabel("The following visualization tools are available"),0)
+                layout.addWidget(QLabel("Which one do you want to use for exploration ?"),1)
+
+                for i,plotter_name in enumerate(available_pl.keys()):
+                    radiobutton = QRadioButton(plotter_name)
+                    radiobutton.plotter_name = plotter_name
+                    radiobutton.toggled.connect(self.on_radio_button_toggled)
+                    layout.addWidget(radiobutton, i+2)
+
+            def on_radio_button_toggled(self):
+                radiobutton = self.sender()
+                if radiobutton.isChecked():
+                    self.viz_engine.add_cluster_view(self.column_name, [radiobutton.plotter_name])
+                    self.destroy()
+
+
+        class AskColumnWindow(QWidget):
+            def __init__(self, viz_engine):
+                QWidget.__init__(self)
+
+                layout = QVBoxLayout()
+                self.setLayout(layout)
+                self.viz_engine = viz_engine
+
+                layout.addWidget(QLabel("Your raw_data_"+self.viz_engine.version+".npz file has thefollowing column\n"),0)
+                layout.addWidget(QLabel("Which one do you want to explore ?"),1)
+
+                for i,column in enumerate(viz_engine.x_raw_columns):
+                    radiobutton = QRadioButton(column)
+                    radiobutton.column_name = column
+                    radiobutton.toggled.connect(self.on_radio_button_toggled)
+                    layout.addWidget(radiobutton, i+2)
+
+            def on_radio_button_toggled(self):
+                radiobutton = self.sender()
+                if radiobutton.isChecked():
+                    global win_2 # hi flake8
+                    win_2 = AskPlotterWindow(radiobutton.column_name, self.viz_engine)
+                    win_2.show()
+                    self.destroy()
+        
+        global win # absolutely not pep8 either
+        win = AskColumnWindow(self.viz_engine)
+        win.show()
+        return win
+
     def is_ready(self):
         self.window.statusBar().showMessage('Ready')
 

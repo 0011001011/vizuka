@@ -1063,14 +1063,14 @@ class Vizualization:
         for clr_view in self.cluster_view:
             clr_view.clear()
 
-    def add_cluster_view(self, feature_to_display, plotter_name):
+    def add_cluster_view(self, feature_to_display, plotter_names):
         logging.info(
                 "cluster_view=adding a feature to display, {}:{}".format(
-                    feature_to_display, plotter_name)
+                    feature_to_display, plotter_names)
                 )
         self.cluster_view.append(
                 Cluster_viewer(
-                    {feature_to_display:plotter_name},
+                    {feature_to_display:plotter_names},
                     self.x_raw,
                     self.x_raw_columns,
                     show_dichotomy=True,
@@ -1079,13 +1079,11 @@ class Vizualization:
         self.additional_figures.append(self.cluster_view[-1])
         self.viz_handler.add_figure(
                 self.additional_figures[-1],
-                "Cluster view: {}".format(plotter_name)
+                "Cluster view: {}".format(plotter_names)
                 )
         logging.info("cluster_view=ready")
 
     def update_cluster_view(self):
-        import ipdb
-        ipdb.set_trace()
         if self.cluster_view:
             logging.info('cluster_viewer=sorting indexes')
             index_selected  = [
@@ -1124,9 +1122,6 @@ class Vizualization:
 
         for feature_to_display,plotter_name in self.features_to_display.items():
             self.add_cluster_view(feature_to_display, plotter_name)
-
-        import ipdb
-        ipdb.set_trace()
 
         # main subplot with the scatter plot
         self.ax = self.main_fig.add_subplot(gs[:2,:3])
