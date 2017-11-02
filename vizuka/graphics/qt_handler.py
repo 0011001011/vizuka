@@ -27,6 +27,10 @@ from PyQt5.QtWidgets import (
     QLineEdit,
     QInputDialog,
     QMessageBox,
+    QAction,
+    QMenu,
+    QFileDialog,
+    QDialog,
 )
 
 from vizuka.graphics import qt_helpers
@@ -135,64 +139,6 @@ class Cluster_viewer(matplotlib.figure.Figure):
                     spec_to_update = self.spec_by_name[data_name+plotter_name]
                     plot_it(plotter, plotter_name, data_to_display, data_name, self, spec_to_update, key) 
 
-    def update_cluster_view_complex(self, clicked_cluster, index_by_cluster_label, indexes_good, indexes_bad):
-        """
-        Updates the axes with the data of the clicked cluster
-
-        clicked cluster: the label of the cluster you clicked
-        index_by_cluster_label: indexs of datas indexed by cluster label (set containing int)
-        indexes_good: indexes of all good predictions
-        indexes_bad: indexes of all bad predicitons
-        """
-        self.clear()
-
-        self.cluster_view_selected_indexes += index_by_cluster_label[clicked_cluster]
-
-        selected_xs_raw  ={'all': [self.x_raw[idx] for idx in self.cluster_view_selected_indexes]}
-        if self.show_dichotomy:
-            selected_xs_raw['good'] = [
-                    self.x_raw[idx] for idx in self.cluster_view_selected_indexes if idx in indexes_good]
-            selected_xs_raw['bad' ] = [
-                    self.x_raw[idx] for idx in self.cluster_view_selected_indexes if idx in indexes_bad ]
-        
-        columns_to_display = [list(self.x_raw_columns).index(i) for i in self.features_to_display]
-        data_to_display = {
-                'all':
-                        {
-                        self.x_raw_columns[i]:[x[i] for x in selected_xs_raw['all']]
-                        for i in columns_to_display
-                        }
-                    }
-        if self.show_dichotomy:
-            data_to_display['good'] = {
-                self.x_raw_columns[i]:[x[i] for x in selected_xs_raw['good']]
-                for i in columns_to_display
-                }
-            data_to_display['bad'] = {
-                self.x_raw_columns[i]:[x[i] for x in selected_xs_raw['bad']]
-                for i in columns_to_display
-                }
-
-        def plot_it(plotter, plotter_name, data_to_display, data_name, fig, spec_to_update_, key):
-
-            spec_to_update = spec_to_update_[key]
-            data = data_to_display[key][data_name]
-            axe = plotter(data, fig, spec_to_update)
-
-            if 'log' in plotter_name:
-                data_name += ' - log'
-            data_name +=  ' - {} predictions'.format(key)
-
-            if axe:
-                axe.set_title(data_name)
-
-
-        for key in ['good', 'bad']:
-            for data_name in self.features_to_display:
-                for plotter_name in self.features_to_display[data_name]:
-                    plotter = CLUSTER_PLOTTER[plotter_name]
-                    spec_to_update = self.spec_by_name[data_name+plotter_name]
-                    plot_it(plotter, plotter_name, data_to_display, data_name, self, spec_to_update, key) 
         
     def reset(self):
         self.clear()
@@ -281,7 +227,7 @@ class Viz_handler(Qt_matplotlib_handler):
         super(Viz_handler, self).__init__(figure)
 
         self.viz_engine = viz_engine
-        self.detect_mouse_event = False
+        self.detect_mouse_event = True
         self.base_onclick = onclick
         self.window.setWindowTitle('Data vizualization')
         self.additional_filters = additional_filters
@@ -306,106 +252,131 @@ class Viz_handler(Qt_matplotlib_handler):
                     )
 
         for fig in self.additional_figures:
-            self.additional_windows.append(qt_helpers.add_window(self.window, 'Cluster viewer'))
-            qt_helpers.add_figure(fig, self.additional_windows[-1], plottings=self.plottings)
-
-
-        """
-        if self.features_to_display:        
-            self.cluster_window = add_window(self.window, 'Cluster view')
-            add_cluster_view(
-                    window=self.cluster_window,
-                    right_dock = QtCore.Qt.RightDockWidgetArea,
-                    features = self.viz_engine.x_raw,
-                    all_features_categories = self.viz_engine.x_raw_columns,
-                    features_to_diplay=features_to_display,
-                    viz_engine=self.viz_engine,
-        """
-
+            self.add_figure(fig, 'Cluster viewer')
 
         # self.add_figure(self.additional_figure, onclick=None, window=self.additional_window)
+        self.initUI()
 
-        # logging.info("textboxs=adding")
-        qt_helpers.add_checkboxes(
-            self.window,
-            "Filter by true class",
-            self.viz_engine.possible_outputs_list,
-            self.viz_engine.filter_by_correct_class,
-            self.right_dock,
-        )
-        qt_helpers.add_checkboxes(
-            self.window,
-            "Filter by predicted class",
-            self.viz_engine.possible_outputs_list,
-            self.viz_engine.filter_by_predicted_class,
-            self.right_dock,
-        )
-        qt_helpers.add_checkboxes(
-            self.window,
-            "Navigation options",
-            ['detect mouse event'],
-            self.toogle_detect_mouse_event,
-            self.right_dock,
-        )
-        # logging.info("textboxs=ready")
+    def add_figure(self, fig, name):
+        self.additional_windows.append(qt_helpers.add_window(self.window, name))
+        qt_helpers.add_figure(fig, self.additional_windows[-1], plottings=self.plottings)
 
-        # add button
-        # logging.info("action buttons=adding")
-        #if self.viz_engine.x_raw:
-        qt_helpers.add_button(
-            self.window,
-            "Export x",
-            self.export,
-            self.right_dock,
-        )
-        qt_helpers.add_button(
-            self.window,
-            "Save clusterization",
-            self.save_clusters,
-            self.right_dock,
-        )
+    
+    def initUI(self):
+        window = self.window
+        
+        window.statusBar().showMessage('Loading...')
 
-        # add menulist
+        menubar  = window.menuBar()
+
+        loadMenu = menubar.addMenu("Load")
+        loadpredictionAction = QAction("Predictions set", window)
+        loadpredictionAction.triggered.connect(self.load_prediction)
+        loadMenu.addAction(loadpredictionAction)
+
+        exportMenu = menubar.addMenu('Export')
+        exportAct = QAction('Export in csv', window)
+        exportAct.triggered.connect(self.export)
+        exportMenu.addAction(exportAct)
+        
+
+        clusteringMenu = menubar.addMenu("Clustering")
+
+        saveclustersAct = QAction('Save current clusters', window)
+        saveclustersAct.triggered.connect(self.save_clusters)
+        clusteringMenu.addAction(saveclustersAct)
+
+        requestClusteringMenu = QMenu('Request clustering', window)
         builtin_cl, extra_cl = clustering.list_clusterizer()
-        self.available_clustering_engines = {**builtin_cl, **extra_cl}
-        qt_helpers.add_menulist(
-            self.window,
-            'Clustering method',
-            'Clusterize', [*self.available_clustering_engines.keys()],
-            self.request_new_clustering,
-            dockarea=self.right_dock,
-        )
+        available_clustering_engines = {**builtin_cl, **extra_cl}
+        for clustering_engine_name in available_clustering_engines.keys():
+            clusteringAct = QAction(clustering_engine_name, window)
+            clusteringAct.triggered.connect(
+                    lambda x, name=clustering_engine_name:self.request_new_clustering(name))
+            requestClusteringMenu.addAction(clusteringAct)
+        clusteringMenu.addMenu(requestClusteringMenu)
 
+        self.loadClusterMenu = QMenu('Load saved clusters', window)
+        for cluster_name in self.viz_engine.saved_clusters:
+            loadAct = QAction(cluster_name, window)
+            loadAct.triggered.connect(
+                    lambda x, name=cluster_name:self.viz_engine.load_clusterization(name))
+            self.loadClusterMenu.addAction(loadAct)
+        clusteringMenu.addMenu(self.loadClusterMenu)
+        
+        frontierMenu = menubar.addMenu('Cluster frontiers')
         builtin_fr, extra_fr = frontier.list_frontiers()
-        qt_helpers.add_menulist(
-            self.window,
-            'Clusters borders',
-            'Delimits',
-            [*builtin_fr.keys(), *extra_fr.keys()],
-            self.viz_engine.request_new_frontiers,
-            self.right_dock,
-        )
-        qt_helpers.add_menulist(
-            self.window,
-            'Predictor set',
-            'Load',
-            self.viz_engine.predictors,
-            self.viz_engine.reload_predict,
-            self.right_dock,
-        )
-        self.user_cluster_menulist = qt_helpers.add_menulist(
-            self.window,
-            'Saved clusters',
-            'Load',
-            self.viz_engine.saved_clusters,
-            self.viz_engine.load_clusterization,
-            self.right_dock,
-        )
+        available_frontiers = {**builtin_fr, **extra_fr}
+        for frontier_name in available_frontiers.keys():
+            frontierAct = QAction(frontier_name, window)
+            frontierAct.triggered.connect(
+                    lambda x, name=frontier_name:self.viz_engine.request_new_frontiers(name))
+            frontierMenu.addAction(frontierAct)
+        
+        filterMenu = menubar.addMenu('Filters')
+
+        trueClassFilter       = QMenu('Filter by true class', window)
+        self.all_true_filters = []
+
+        for cls in self.viz_engine.possible_outputs_list:
+            name = cls if len(cls)<30 else str(cls[:29])+'...'
+            f = QAction(name, window, checkable=True)
+            f.setChecked(False)
+            f.class_ = cls
+            self.all_true_filters.append(f)
+            f.triggered.connect(lambda x:self.viz_engine.filter_by_correct_class(self.all_true_filters))
+            trueClassFilter.addAction(f)
+
+        filterMenu.addMenu(trueClassFilter)
+        
+        predictClassFilter       = QMenu('Filter by predicted class', window)
+        self.all_predicted_filters = []
+
+        for cls in self.viz_engine.possible_outputs_list:
+            name = cls if len(cls)<30 else str(cls[:29])+'...'
+            f = QAction(name, window, checkable=True)
+            f.setChecked(False)
+            f.class_ = cls
+            self.all_predicted_filters.append(f)
+            f.triggered.connect(lambda x:self.viz_engine.filter_by_predicted_class(self.all_predicted_filters))
+            predictClassFilter.addAction(f)
+
+        filterMenu.addMenu(predictClassFilter)
+
+        
+        
+        navigationMenu = menubar.addMenu('Navigation')
+        mouseEnabledAction = QAction('Disable mouse click', window, checkable=True)
+        mouseEnabledAction.setChecked = True
+        mouseEnabledAction.triggered.connect(self.toogle_detect_mouse_event)
+        navigationMenu.addAction(mouseEnabledAction)
+
+        
+    def is_ready(self):
+        self.window.statusBar().showMessage('Ready')
+
+    def load_prediction(self):
+        prediction_filename = self.file_dialog(
+                "Load prediction",
+                self.viz_engine.model_path,
+                "{} Npz file (*{}.npz)".format(self.viz_engine.version, self.viz_engine.version),
+                )
+        if prediction_filename:
+            self.viz_engine.reload_predict(prediction_filename)
+        
+
+    def is_loading(self):
+        self.window.statusBar().showMessage('Loading...')
 
     def pop_dialog(self, msg):
         popup = QMessageBox(self.window)
         popup.setText(msg)
         popup.exec_()
+
+    def file_dialog(self, name, directory, filter):
+        dialog = QFileDialog(self.window, name, directory, filter)
+        if dialog.exec_() == QDialog.Accepted:
+            return dialog.selectedFiles()[0]
 
 
     def save_clusters(self):
@@ -416,7 +387,10 @@ class Viz_handler(Qt_matplotlib_handler):
         if validated:
             if text == '':
                 text = "clusters"
-            self.viz_engine.save_clusterization(text)
+            cluster_name = self.viz_engine.save_clusterization(text)
+            loadAct = QAction(cluster_name, self.window)
+            loadAct.triggered.connect(lambda:self.viz_engine.load_clusterization(cluster_name))
+            self.loadClusterMenu.addAction(loadAct)
 
     def export(self):
         text, validated = QInputDialog.getText(

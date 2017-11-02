@@ -87,7 +87,7 @@ class Vizualization:
 
         self.predictors = [name for name in os.listdir(self.model_path) if version in name]
         self.output_path = output_path
-        self.saved_clusters = os.listdir(self.saved_clusters_path)
+        self.saved_clusters = [f for f in os.listdir(self.saved_clusters_path) if version in f]
         self.version = version
         
         def str_with_default_value(value):
@@ -278,7 +278,7 @@ class Vizualization:
         Filter by class, on the TRUE class of each point
         """
         self.correct_class_to_display = {
-                output_class for output_class, selected in selected_outputs_class_list.items() if selected
+                widget.class_ for widget in selected_outputs_class_list if widget.isChecked()
                 }
         self.filters["GROUND_TRUTH"] = self.correct_class_to_display
         # self.display_by_filter()
@@ -289,7 +289,7 @@ class Vizualization:
         Filter by class, on the PREDICTED class of each point
         """
         self.predicted_class_to_display = {
-                output_class for output_class, selected in selected_outputs_class_list.items() if selected
+                widget.class_ for widget in selected_outputs_class_list if widget.isChecked()
                 }
         self.filters["PREDICTIONS"] = self.predicted_class_to_display
         # self.display_by_filter()
@@ -455,7 +455,7 @@ class Vizualization:
         
         logging.info("scatterplot: drawing observations")
         if self.cluster_view:
-            self.cluster_view.clear()
+            self.clear_cluster_view()
 
         drawing.draw_scatterplot(
                 self.ax,
@@ -1014,6 +1014,7 @@ class Vizualization:
                 open(full_path, 'wb')
                 )
         self.viz_handler.user_cluster_menulist.add_items([filename])
+        return filename
 
     def load_clusterization(self, name_clusters):
         """
@@ -1058,7 +1059,33 @@ class Vizualization:
                 )
         logging.info('exporting: done')
 
+    def clear_cluster_view(self):
+        for clr_view in self.cluster_view:
+            clr_view.clear()
+
+    def add_cluster_view(self, feature_to_display, plotter_name):
+        logging.info(
+                "cluster_view=adding a feature to display, {}:{}".format(
+                    feature_to_display, plotter_name)
+                )
+        self.cluster_view.append(
+                Cluster_viewer(
+                    {feature_to_display:plotter_name},
+                    self.x_raw,
+                    self.x_raw_columns,
+                    show_dichotomy=True,
+                    )
+                )
+        self.additional_figures.append(self.cluster_view[-1])
+        self.viz_handler.add_figure(
+                self.additional_figures[-1],
+                "Cluster view: {}".format(plotter_name)
+                )
+        logging.info("cluster_view=ready")
+
     def update_cluster_view(self):
+        import ipdb
+        ipdb.set_trace()
         if self.cluster_view:
             logging.info('cluster_viewer=sorting indexes')
             index_selected  = [
@@ -1066,12 +1093,13 @@ class Vizualization:
             index_good = [idx for idx in index_selected if idx in self.index_good_predicted]
             index_bad  = [idx for idx in index_selected if idx in self.index_bad_predicted ]
 
-            logging.info('cluster_viewer=plotting sorted indexes')
-            self.cluster_view.update_cluster_view(
-                    index_good    = index_good,
-                    index_bad     = index_bad,
-                    data_by_index = self.x_raw,
-                    )
+            for clr_view in self.cluster_view:
+                logging.info('cluster_viewer=plotting sorted indexes')
+                clr_view.update_cluster_view(
+                        index_good    = index_good,
+                        index_bad     = index_bad,
+                        data_by_index = self.x_raw,
+                        )
             logging.info('cluster_viewer=ready')
 
     def plot(self):
@@ -1081,28 +1109,24 @@ class Vizualization:
         self.init_clusters()
         self.main_fig = matplotlib.figure.Figure()
         #self.cluster_view = matplotlib.figure.Figure()
+        self.cluster_view       = []
+        self.additional_figures = []
 
         gs=GridSpec(3,4)
-        if self.features_to_display:
-            self.cluster_view = Cluster_viewer(
-                    self.features_to_display,
-                    self.x_raw,
-                    self.x_raw_columns,
-                    show_dichotomy=True)
-            additional_figures = [self.cluster_view]
-
-        else:
-            self.cluster_view = None
-            additional_figures = []
-        
         #self.view_details = View_details(self.x_raw)
         self.viz_handler = Viz_handler(
                 viz_engine         = self,
                 figure             = self.main_fig,
                 onclick            = self.onclick,
                 additional_filters = self.features_name_to_filter,
-                additional_figures = additional_figures,
+                additional_figures = self.additional_figures,
                 )
+
+        for feature_to_display,plotter_name in self.features_to_display.items():
+            self.add_cluster_view(feature_to_display, plotter_name)
+
+        import ipdb
+        ipdb.set_trace()
 
         # main subplot with the scatter plot
         self.ax = self.main_fig.add_subplot(gs[:2,:3])
@@ -1157,7 +1181,8 @@ class Vizualization:
         self.reset_viz()
 
         self.request_new_frontiers('none')
-        logging.info('Vizualization=readyy')
+        logging.info('Vizualization=ready')
+        self.viz_handler.is_ready()
 
     def show(self):
         logging.info('showing main window')
