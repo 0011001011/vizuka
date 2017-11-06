@@ -14,17 +14,26 @@ $ pip install vizuka
 ```
 or clone the repo :)
 
+build-essential is required for the wordcloud
+```sh
+# apt-get install build-essential
+```
+
+
 ### How to run?
 
 ```sh
 $ vizuka
 # For a quick working example run :
 $ vizuka --mnist
-# Similar to copy your data and run "vizuka --image:images --version MNIST_example"
+# Similar to downloading MNIST, fit a basic logistic regression then
+# copying your data in the right place and run "vizuka --image:images --version MNIST_example"
 $ vizuka --show-required-files
 # To show the format of files you need to launch a data viz 
 ```
+
 You can add human-readable data visualization in data/set/raw\_data\_VERSION.npz :
+If you didnt, you can still show them in the IHM (menu 'Show cluster info')
 
 ```sh
 $ vizuka -s price:logdensity -s name:wordcloud
@@ -77,11 +86,10 @@ Data viz navigation :
 
 Other options:
 * filter by predictions or by real class.
-* detect mouse event : if unchecked, cluster will not be selected on click (useful for zooming)
+* disable mouse event : if checked, cluster will not be selected on click (useful for zooming)
 * clusterize with an algo, Dummy is a simple grid, KMeans should be used, DBSCAN is experimental.
 * export x : export the raw inputs you selected in an output.csv 
 * cluster borders : draw borders between clusters based on bhattacharyya similarity measure, or just all
-* force number of clusters (for kmeans essentially)
 * choose a different set of predictions to display
 
 What does it needs to be executed ?
