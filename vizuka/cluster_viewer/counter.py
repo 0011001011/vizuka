@@ -1,4 +1,4 @@
-from collections import Counter
+from collections import Counter as pyCounter
 
 import numpy as np
 import matplotlib
@@ -21,8 +21,7 @@ class Counter(Plotter):
         if not data:
             return
         axe = plt.Subplot(fig, spec)
-
-        c = Counter(data)
+        c = pyCounter(data)
         x = [l for l in c.keys()]
         y = [c[l] for l in x]
         
