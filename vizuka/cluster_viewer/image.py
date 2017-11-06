@@ -27,10 +27,13 @@ class RandomImages(Plotter):
         inner = gridspec.GridSpecFromSubplotSpec(
                         5,5,
                         subplot_spec=spec)
+        
+        axes = []
         for idx, inner_spec in enumerate(inner):
             axe = plt.Subplot(fig, inner_spec)
             axe.imshow(selected_data[idx])
             axe.axis("off")
             fig.add_subplot(axe)
+            axes.append(axe)
 
-        return axe
+        return axes[2]
