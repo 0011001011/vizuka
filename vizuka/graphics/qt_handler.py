@@ -166,7 +166,7 @@ class Cluster_viewer(matplotlib.figure.Figure):
                 data_name += ' - log'
             data_name +=  ' - {} predictions'.format(key)
             if axe:
-                axe.set_title(data_name[0])
+                axe.set_title(data_name)
 
         for key in ['good', 'bad']:
             for data_name in self.features_to_display:

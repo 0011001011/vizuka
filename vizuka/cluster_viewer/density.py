@@ -40,6 +40,11 @@ class Density(Plotter):
 
 class LogDensity(Plotter):
 
+    @classmethod
+    def get_help(self):
+        h = "Use it to display the distribution of *numerical* values (logscale)"
+        return h
+
     def __call__(self, data, fig, spec):
         """
         Plot the log-density of your :param: data distribution
