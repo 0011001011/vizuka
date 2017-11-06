@@ -273,16 +273,18 @@ class Viz_handler(Qt_matplotlib_handler):
 
         menubar  = window.menuBar()
 
-        loadMenu = menubar.addMenu("Load")
-        loadpredictionAction = QAction("Predictions set", window)
-        loadpredictionAction.triggered.connect(self.load_prediction)
-        loadMenu.addAction(loadpredictionAction)
-
-        exportMenu = menubar.addMenu('Export')
-        exportAct = QAction('Export in csv', window)
-        exportAct.triggered.connect(self.export)
-        exportMenu.addAction(exportAct)
-        
+        qt_helpers.add_simple_menu(
+                "Load",
+                {"Load a set of predictions":self.load_prediction},
+                menubar,
+                window,
+                )
+        qt_helpers.add_simple_menu(
+                'Export',
+                { 'Export data in selected clusters in csv':self.export },
+                menubar,
+                window,
+                )
 
         clusteringMenu = menubar.addMenu("Clustering")
 
@@ -325,11 +327,24 @@ class Viz_handler(Qt_matplotlib_handler):
         for cls in self.viz_engine.possible_outputs_list:
             name = cls if len(cls)<30 else str(cls[:29])+'...'
             f = QAction(name, window, checkable=True)
-            f.setChecked(False)
+            f.setChecked(True)
             f.class_ = cls
             self.all_true_filters.append(f)
             f.triggered.connect(lambda x:self.viz_engine.filter_by_correct_class(self.all_true_filters))
             trueClassFilter.addAction(f)
+        
+        def select_all_true(boolean=True):
+            for f in self.all_true_filters:
+                f.setChecked(boolean)
+            self.viz_engine.filter_by_correct_class(self.all_true_filters)
+
+        select_all = QAction("Select all", window)
+        select_all.triggered.connect(lambda x:select_all_true(True))
+        trueClassFilter.addAction(select_all)
+        
+        select_none = QAction("Unselect all", window)
+        select_none.triggered.connect(lambda x:select_all_true(False))
+        trueClassFilter.addAction(select_none)
 
         filterMenu.addMenu(trueClassFilter)
         
@@ -339,11 +354,24 @@ class Viz_handler(Qt_matplotlib_handler):
         for cls in self.viz_engine.possible_outputs_list:
             name = cls if len(cls)<30 else str(cls[:29])+'...'
             f = QAction(name, window, checkable=True)
-            f.setChecked(False)
+            f.setChecked(True)
             f.class_ = cls
             self.all_predicted_filters.append(f)
             f.triggered.connect(lambda x:self.viz_engine.filter_by_predicted_class(self.all_predicted_filters))
             predictClassFilter.addAction(f)
+
+        def select_all_predicted(boolean=True):
+            for f in self.all_predicted_filters:
+                f.setChecked(boolean)
+            self.viz_engine.filter_by_predicted_class(self.all_predicted_filters)
+
+        select_all_p = QAction("Select all", window)
+        select_all_p.triggered.connect(lambda x:select_all_predicted(True))
+        predictClassFilter.addAction(select_all_p)
+        
+        select_none_p = QAction("Unselect all", window)
+        select_none_p.triggered.connect(lambda x:select_all_predicted(False))
+        predictClassFilter.addAction(select_none_p)
 
         filterMenu.addMenu(predictClassFilter)
 
@@ -353,7 +381,7 @@ class Viz_handler(Qt_matplotlib_handler):
         mouseEnabledAction.triggered.connect(self.toogle_detect_mouse_event)
         navigationMenu.addAction(mouseEnabledAction)
 
-        clusterviewMenu   = menubar.addMenu("Cluster info")
+        clusterviewMenu   = menubar.addMenu("Cluster exploration")
         clustersummaryAct = QAction("Add custom cluster info", window)
         clustersummaryAct.triggered.connect(self.request_cluster_viewer)
         clusterviewMenu.addAction(clustersummaryAct)
@@ -417,7 +445,7 @@ class Viz_handler(Qt_matplotlib_handler):
                 self.setLayout(layout)
                 self.viz_engine = viz_engine
 
-                layout.addWidget(QLabel("Your raw_data_"+self.viz_engine.version+".npz file has thefollowing column\n"),0)
+                layout.addWidget(QLabel("Your raw_data_"+self.viz_engine.version+".npz file has the following column\n"),0)
                 layout.addWidget(QLabel("Which one do you want to explore ?"),1)
 
                 for i,column in enumerate(viz_engine.x_raw_columns):
@@ -429,15 +457,13 @@ class Viz_handler(Qt_matplotlib_handler):
             def on_radio_button_toggled(self):
                 radiobutton = self.sender()
                 if radiobutton.isChecked():
-                    global win_2 # hi flake8
-                    win_2 = AskPlotterWindow(radiobutton.column_name, self.viz_engine)
-                    win_2.show()
+                    self.kikoo = AskPlotterWindow(radiobutton.column_name, self.viz_engine)
+                    self.kikoo.show()
                     self.destroy()
         
-        global win # absolutely not pep8 either
-        win = AskColumnWindow(self.viz_engine)
-        win.show()
-        return win
+        self.kikoo = AskColumnWindow(self.viz_engine)
+        self.kikoo.show()
+        return self.kikoo
 
     def is_ready(self):
         self.window.statusBar().showMessage('Ready')
