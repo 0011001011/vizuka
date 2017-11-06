@@ -118,17 +118,17 @@ class Vizualization:
         self.features_to_display = features_name_to_display
         self.color_mode = color_mode
         self.cluster_view_selected_indexes = []
-        self.filters = {
-                'PREDICTIONS':set(),
-                'GROUND_TRUTH':set(),
-                **{k:set() for k in features_name_to_filter},
-                }
         self.left_clicks = set()
         self.selected_clusters = set()
 
         #self.possible_outputs_list = list({self.class_decoder(y_encoded) for y_encoded in self.correct_outputs})
         self.possible_outputs_set = set(self.correct_outputs).union(set(self.prediction_outputs))
         self.possible_outputs_set.discard(None)
+        self.filters = {
+                'PREDICTIONS':self.possible_outputs_set,
+                'GROUND_TRUTH':self.possible_outputs_set,
+                **{k:set() for k in features_name_to_filter},
+                }
         self.possible_outputs_list = list(self.possible_outputs_set)
         self.possible_outputs_list.sort()
         # logging.info("correct outputs : %", self.correct_outputs)
@@ -146,6 +146,7 @@ class Vizualization:
                 self.projection_points_list_by_correct_output[possible_output])
             self.nb_of_individual_by_true_output[possible_output] = len(
                 self.projection_points_list_by_correct_output[possible_output])
+        self.projection_points_list_by_correct_output_original = self.projection_points_list_by_correct_output
 
         self.resolution = resolution # counts of tiles per row/column
 
@@ -238,9 +239,13 @@ class Vizualization:
         filename: the name of the predictions file to load, should
         be located in the self.model_path folder
         """
+        old_left_clicks = self.left_clicks
 
         self.prediction_outputs = data_loader.load_predict_byname(filename, path=self.model_path)
         self.prediction_outputs_originals = self.prediction_outputs
+        self.correct_outputs = self.correct_outputs_original
+        self.projected_input = self.projected_input_original
+
         self.calculate_prediction_projection_arrays()
 
         self.print_global_summary(self.global_summary_axe)
@@ -251,9 +256,10 @@ class Vizualization:
         self.reset_summary()
         self.reset_viz()
 
-        for click in self.left_clicks:
+        self.conciliate_filters(self.filters)
+        for click in old_left_clicks:
             self.do_left_click(click)
-
+        
         self.refresh_graph()
         
 
@@ -343,15 +349,13 @@ class Vizualization:
         saved_zoom = (self.ax.get_xbound(), self.ax.get_ybound())
         to_display = set(range(len(self.projected_input_original)))
 
-        if filters["GROUND_TRUTH"]:
-            filtered = filters["GROUND_TRUTH"]
-            to_display = to_display.intersection(set([
-                    idx for idx, class_ in enumerate(self.correct_outputs_original) if class_ in filtered]))
-            
-        if filters["PREDICTIONS"]:
-            filtered = filters["PREDICTIONS"]
-            to_display = to_display.intersection(set([
-                    idx for idx, class_ in enumerate(self.prediction_outputs_original) if class_ in filtered]))
+        filtered = filters["GROUND_TRUTH"]
+        to_display = to_display.intersection(set([
+                idx for idx, class_ in enumerate(self.correct_outputs_original) if class_ in filtered]))
+        
+        filtered = filters["PREDICTIONS"]
+        to_display = to_display.intersection(set([
+                idx for idx, class_ in enumerate(self.prediction_outputs_original) if class_ in filtered]))
         other_filters = {k:v for k,v in filters.items() if k!="PREDICTIONS" and k!="GROUND_TRUTH"}
         for col in other_filters: # other filters are column number identifying features
             if other_filters[col]:
@@ -434,8 +438,7 @@ class Vizualization:
             self.left_clicks = set()
             self.selected_clusters = set()
             self.reset_summary()
-            if self.cluster_view:
-                self.cluster_view.reset()
+            self.clear_cluster_view()
             self.reset_viz()
 
     def reset_viz(self):
@@ -499,7 +502,7 @@ class Vizualization:
 
                 self.clusterizer,
                 self.projected_input,
-                self.projection_points_list_by_correct_output,
+                self.projection_points_list_by_correct_output_original,
                 self.correct_outputs,
                 )
 
@@ -635,6 +638,7 @@ class Vizualization:
                     self.ax,
                     color_mode=self.color_mode
                     )
+            self.refresh_graph()
         except:
             pass
 
@@ -864,7 +868,7 @@ class Vizualization:
                     ),
                 (
                     ' '.join([
-                        '{:.6}'.format(class_mistaken)+ '({0:.1f}%)'.format(
+                        '{:.6}'.format(class_mistaken)+ ' ({0:.1f}%)'.format(
                             error_count/float(self.local_bad_count_by_class[c])*100
                             )
                         for class_mistaken, error_count in self.local_confusion_by_class_sorted.get(c,[]) if error_count != 0
@@ -976,7 +980,7 @@ class Vizualization:
         if np.array(self.x_raw).any():
             columns = [
                 *self.x_raw_columns,
-                'predicted class',
+                'prediction',
                 'projected coordinates',
                 ]
             rows =  [
