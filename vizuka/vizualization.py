@@ -432,7 +432,6 @@ class Vizualization:
 
     def do_right_click(self, xy):
             logging.info("Cleaning state, unselecting clusters, redrawing")
-            print("Cleaning state, unselecting clusters, redrawing")
             # reboot vizualization
             self.left_clicks = set()
             self.selected_clusters = set()
@@ -453,7 +452,7 @@ class Vizualization:
             for i in ax.get_children():
                 if isinstance(i, matplotlib.collections.PathCollection):
                     i.remove()
-                elif isinstance(i, matplotlib.lines.Line2D) or isinstance(i, matplotlib.collections.LineCollection):
+                elif isinstance(i, matplotlib.lines.Line2D):
                     if i.get_color() == self.manual_cluster_color:
                         i.remove()
         
@@ -1087,6 +1086,8 @@ class Vizualization:
                 "Cluster view: {}".format(plotter_names)
                 )
         logging.info("cluster_view=ready")
+        if self.selected_clusters:
+            self.update_cluster_view()
 
     def update_cluster_view(self):
         if self.cluster_view:

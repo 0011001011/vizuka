@@ -14,6 +14,7 @@ matplotlib.use('Qt5Agg')  # noqa
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
 from matplotlib.backends.backend_qt5agg import NavigationToolbar2QT as NavigationToolbar
 import matplotlib.gridspec as gridspec
+from matplotlib import pyplot as plt
 
 from PyQt5 import QtCore, QtWidgets
 from PyQt5.QtWidgets import (
@@ -83,7 +84,39 @@ class Cluster_viewer(matplotlib.figure.Figure):
 
                 if plotter not in CLUSTER_PLOTTER.keys():
                     CLUSTER_PLOTTER[plotter] = make_plotter(plotter)
-       
+        
+        def plot_help(plotter, plotter_name, data_name, fig, spec_to_update_, key, y):
+
+            spec_to_update = spec_to_update_[key]
+            axe = plt.Subplot(fig, spec_to_update)
+            axe.axis("off")
+            text = (
+                    'Here will be displayed the distribution of the column {}\n'.format(data_name)
+                    +"The visualisation tool '{}' will be used\n\n".format(plotter_name)
+                    +'Click on a cluster to begin'
+                    )
+            axe.text(
+                    0.5, 0.5,
+                    text,
+                    horizontalalignment='center',
+                    verticalalignment=y,
+                    )
+            fig.add_subplot(axe)
+
+            if 'log' in plotter_name:
+                data_name += ' - log'
+            data_name +=  ' - {} predictions'.format(key)
+            if axe:
+                axe.set_title(data_name)
+
+        for key in ['good', 'bad']:
+            for data_name in self.features_to_display:
+                for plotter_name in self.features_to_display[data_name]:
+                    plotter = CLUSTER_PLOTTER[plotter_name]
+                    spec_to_update = self.spec_by_name[data_name+plotter_name]
+                    y = 'top' if key=='good' else 'bottom'
+                    plot_help(plotter, plotter_name, data_name, self, spec_to_update, key, y)
+
     def update_cluster_view(self, index_good, index_bad, data_by_index):
         """
         Updates the axes with the data of the selected cluster
@@ -133,7 +166,7 @@ class Cluster_viewer(matplotlib.figure.Figure):
                 data_name += ' - log'
             data_name +=  ' - {} predictions'.format(key)
             if axe:
-                axe.set_title(data_name)
+                axe.set_title(data_name[0])
 
         for key in ['good', 'bad']:
             for data_name in self.features_to_display:
