@@ -40,8 +40,31 @@ def draw_scatterplot_from_indexes(
     draw_scatterplot(axe, good_to_display, bad_to_display, special_to_display)
 
 
+def draw_scatterplot(vizualization, axe, color_mode="by_prediction"):
+    if color_mode=="by_prediction":
+        draw_scatterplot_by_prediction(
+                axe,
+                vizualization.well_predicted_projected_points_array,
+                vizualization.mispredicted_projected_points_array,
+                vizualization.not_predicted_projected_points_array,
+                )
+    elif color_mode=="by_true_class":
+        draw_scatterplot_by_class(
+                axe,
+                vizualization.projection_points_list_by_correct_output,
+                )
 
-def draw_scatterplot(
+def draw_scatterplot_by_class(axe, classes):
+    for class_, projections in classes.items():
+        if len(projections) > 0:
+            axe.scatter(
+                x=projections[:, 0],
+                y=projections[:, 1],
+                marker="+"
+            )
+
+
+def draw_scatterplot_by_prediction(
         axe,
         well_predicted_array,
         badly_predicted_array,

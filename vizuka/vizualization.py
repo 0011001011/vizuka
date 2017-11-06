@@ -55,6 +55,7 @@ class Vizualization:
             features_name_to_filter=[],
             features_name_to_display={},
             heatmaps_requested = ['entropy', 'accuracy'],
+            color_mode = 'by_prediction',
             class_decoder=(lambda x: x), class_encoder=(lambda x: x),
             output_path='output.csv',
             base_path=BASE_PATH,
@@ -115,6 +116,7 @@ class Vizualization:
         self.predicted_class_to_display = {}
         self.feature_to_display_by_col = {}
         self.features_to_display = features_name_to_display
+        self.color_mode = color_mode
         self.cluster_view_selected_indexes = []
         self.filters = {
                 'PREDICTIONS':set(),
@@ -213,7 +215,7 @@ class Vizualization:
 
         (
             self.well_predicted_projected_points_array,
-            self.misspredicted_projected_points_array,
+            self.mispredicted_projected_points_array,
             self.not_predicted_projected_points_array,
 
             ) = viz_helper.get_projections_from_index(
@@ -361,10 +363,9 @@ class Vizualization:
         self.load_only_some_indexes(to_display)
 
         drawing.draw_scatterplot(
+                self,
                 self.ax,
-                self.well_predicted_projected_points_array,
-                self.misspredicted_projected_points_array,
-                self.not_predicted_projected_points_array
+                color_mode = self.color_mode,
                 )
         self.ax.set_xbound(saved_zoom[0])
         self.ax.set_ybound(saved_zoom[1])
@@ -458,10 +459,9 @@ class Vizualization:
             self.clear_cluster_view()
 
         drawing.draw_scatterplot(
+                self,
                 self.ax,
-                self.well_predicted_projected_points_array,
-                self.misspredicted_projected_points_array,
-                self.not_predicted_projected_points_array
+                color_mode = self.color_mode,
                 )
         logging.info("scatterplot: ready")
 
@@ -627,6 +627,16 @@ class Vizualization:
         # return (self.resolution - int(((index - index % self.resolution) / self.resolution)) - 1,
         #         index % self.resolution)
 
+    def request_color_mode(self, mode):
+        self.color_mode = mode
+        try:
+            drawing.draw_scatterplot(
+                    self,
+                    self.ax,
+                    color_mode=self.color_mode
+                    )
+        except:
+            pass
 
     def request_new_frontiers(self, method):
         """
@@ -963,7 +973,7 @@ class Vizualization:
             logging.warn("No export name specified, aborting")
             return
 
-        if self.x_raw:
+        if np.array(self.x_raw).any():
             columns = [
                 *self.x_raw_columns,
                 'predicted class',
@@ -1044,6 +1054,8 @@ class Vizualization:
         self.print_summary(self.summary_axe)
         self.print_global_summary(self.global_summary_axe)
         
+        self.update_all_heatmaps()
+        self.request_new_frontiers('none')
         self.refresh_graph()
 
     

@@ -28,6 +28,7 @@ from PyQt5.QtWidgets import (
     QInputDialog,
     QMessageBox,
     QAction,
+    QActionGroup,
     QMenu,
     QFileDialog,
     QDialog,
@@ -349,7 +350,6 @@ class Viz_handler(Qt_matplotlib_handler):
         
         navigationMenu = menubar.addMenu('Navigation')
         mouseEnabledAction = QAction('Disable mouse click', window, checkable=True)
-        mouseEnabledAction.setChecked = True
         mouseEnabledAction.triggered.connect(self.toogle_detect_mouse_event)
         navigationMenu.addAction(mouseEnabledAction)
 
@@ -357,6 +357,26 @@ class Viz_handler(Qt_matplotlib_handler):
         clustersummaryAct = QAction("Add custom cluster info", window)
         clustersummaryAct.triggered.connect(self.request_cluster_viewer)
         clusterviewMenu.addAction(clustersummaryAct)
+
+                
+        colorMenu = menubar.addMenu("Color mode")
+        color_modes = {
+                'Colorize correctness of predictions':"by_prediction",
+                'Colorize by classes':"by_true_class",
+                }
+        def on_color_radio_button_toggled(s):
+            radiobutton = s.sender()
+            if radiobutton.isChecked():
+                self.viz_engine.request_color_mode(color_modes[radiobutton.column_name])
+        radio_color_group = QActionGroup(colorMenu, exclusive=True)
+        for i,mode in enumerate(color_modes.keys()):
+            radiobutton = QAction(mode, radio_color_group, checkable=True)
+            radiobutton.column_name = mode
+            radiobutton.toggled.connect(lambda x:on_color_radio_button_toggled(radiobutton))
+            if 'Colorize correctness of predictions' == mode:
+                radiobutton.setChecked(True)
+            colorMenu.addAction(radiobutton)
+        
 
         
     def request_cluster_viewer(self):
