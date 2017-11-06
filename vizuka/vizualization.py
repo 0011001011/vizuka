@@ -163,7 +163,6 @@ class Vizualization:
         self.local_bad_count_by_class = {class_:0 for class_ in self.possible_outputs_list}
         self.local_classes = set()
         self.local_sum = 0
-        self.currently_selected_cluster = []
         self.cursor_ids = [0]
 
         # Get the real possible_outputs_list found in true y
@@ -193,7 +192,7 @@ class Vizualization:
                 xs=self.projected_input_original,
                 nb_of_clusters=self.nb_of_clusters,
                 mesh=self.mesh_centroids,
-                method='dummy',
+                method='grid',
                 )
         logging.info('clustering engine=ready')
         self.normalize_frontier = True
@@ -449,6 +448,7 @@ class Vizualization:
         logging.info("scatterplot: removing specific objects")
 
         self.left_clicks = set()
+        self.selected_clusters = set()
         for ax in self.axes_needing_borders:
             for i in ax.get_children():
                 if isinstance(i, matplotlib.collections.PathCollection):
@@ -468,6 +468,7 @@ class Vizualization:
                 )
         logging.info("scatterplot: ready")
 
+
     def reset_summary(self):
         """
         Reset the local summary
@@ -485,8 +486,10 @@ class Vizualization:
                 }
         self.local_classes = set()
         self.local_sum = 0
-        self.currently_selected_cluster = []
-        self.selected_cluster = set()
+        self.selected_clusters = set()
+
+        self.summary_axe.clear()
+        self.summary_axe.axis('off')
 
     def init_clusters(self):
         """
@@ -817,16 +820,6 @@ class Vizualization:
             self.local_confusion_by_class_sorted[cls] = Counter(errors).most_common(2)
         logging.info("local_variables=ready")
 
-    def get_selected_indexes(self):
-        """
-        Find indexes of xs in selected clusters
-        """
-        indexes_selected = []
-        for cluster in self.currently_selected_cluster:
-            for index in self.index_by_cluster_label[cluster]:
-                indexes_selected.append(index)
-
-        return indexes_selected
 
     def print_summary(self, axe, max_row=15):
         """
@@ -888,17 +881,20 @@ class Vizualization:
         values     = values[:max_row]
         row_labels = row_labels[:max_row]
         
-        values.append([self.local_sum, '-', len(self.projected_input), ' '])
+        values.append([self.local_sum, '-', '{} (100\%)'.format(len(self.projected_input)), ' '])
         row_labels.append('all')
 
         self.rows = row_labels
 
         cols = [
-                '#class_local (#class_local/#class)',
-                'accuracy local (delta accuracy) - p-value',
-                 '#class (#class/#all_class)',
-                 'common mistakes'
-                 ]
+                '#class (in cluster)\n'
+                '(#class (in cluster) /#class)',
+                'accuracy (in cluster)\n'
+                '(delta with accuracy (general)) - p-value',
+                '#class\n'
+                '(#class /#all_class)',
+                'common mistakes'
+                ]
         
         axe.clear()
         summary = axe.table(
@@ -907,6 +903,11 @@ class Vizualization:
             colLabels=cols,
             loc='center',
         )
+
+        cells = summary.get_celld()
+        for i in range(0,4):
+            cells[(0,i)].set_height(cells[(1,0)].get_height()*2)
+
         
         summary.auto_set_font_size(False)
         summary.set_fontsize(8)
@@ -1063,18 +1064,6 @@ class Vizualization:
         self.refresh_graph()
 
     
-    def view_details_figure(self):
-        """
-        Deprecated, was used to display a scatterplot of your selected cluster(s)
-        Unusable because too laggy and bloated graphics
-        """
-        logging.info('exporting:...')
-        indexes = self.get_selected_indexes()
-        self.viz_handler.set_additional_graph(
-                self.view_details.update(indexes)
-                )
-        logging.info('exporting: done')
-
     def clear_cluster_view(self):
         for clr_view in self.cluster_view:
             clr_view.clear()

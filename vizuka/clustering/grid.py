@@ -23,7 +23,7 @@ class DummyClusterizer(Clusterizer):
 
         self.kdtree = cKDTree(mesh)
         self.engine = None
-        self.method='dummy'
+        self.method='grid'
 
     def fit(self, xs):
         """

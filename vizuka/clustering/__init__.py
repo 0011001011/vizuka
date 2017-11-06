@@ -8,14 +8,14 @@ import logging
 from vizuka.clustering import (
         kMeans,
         dbscan,
-        dummy,
+        grid,
         clusterizer,
         )
 
 from vizuka.plugins import clustering as clustering_plugins
 
 def get_required_arguments(method_name):
-    if method_name=='dummy':
+    if method_name=='grid':
         return []
     else:
         builtin, extra = list_clusterizer()
@@ -26,7 +26,7 @@ def list_clusterizer():
     built_in_clusterizers = {
             'kmeans':kMeans.KmeansClusterizer,
             'dbscan':dbscan.DBSCANClusterizer,
-            'dummy':dummy.DummyClusterizer,
+            'grid':grid.DummyClusterizer,
             }
 
     extra_cluterizers = {}
@@ -41,13 +41,13 @@ def list_clusterizer():
     return built_in_clusterizers, extra_cluterizers
     
 
-def make_clusterizer(method='dummy', **kwargs):
+def make_clusterizer(method='grid', **kwargs):
     """
     Clusterize the data with specified algorithm
     Naively assume you pass the right parameters for the right algo
 
     :param data:       array with shape (n,2) of inputs to clusterize
-    :param method:     algo to use, supported: kmeans, dbscan, dummy
+    :param method:     algo to use, supported: kmeans, dbscan,grid 
     :param n_clusters: nb of clusters to find (if applicable)
 
     :return: a clusterizer object (instance of child of Clusterizer())
