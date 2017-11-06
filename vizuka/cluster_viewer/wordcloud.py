@@ -9,6 +9,11 @@ from vizuka.cluster_viewer.plotter import Plotter
 
 class Wordcloud(Plotter):
 
+    @classmethod
+    def get_help(self):
+        h = "Use it to display the distribution of words (works with sentences)"
+        return h
+
     def __call__(self, data, fig, spec):
         """
         Finds occurrence of each word and draw a wordcloud

@@ -9,6 +9,11 @@ from vizuka.cluster_viewer.plotter import Plotter
 
 class Counter(Plotter):
 
+    @classmethod
+    def get_help(self):
+        h = "Use it to display a counter, for *categorical* values"
+        return h
+
     def __call__(self, data, fig, spec):
         """
         Show a counter of each class occurrences

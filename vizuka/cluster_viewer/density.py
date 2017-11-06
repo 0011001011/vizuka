@@ -7,6 +7,11 @@ from vizuka.cluster_viewer.plotter import Plotter
 
 class Density(Plotter):
 
+    @classmethod
+    def get_help(self):
+        h = "Use it to display the distribution of *numerical* values"
+        return h
+
     def __call__(self, data, fig, spec):
         """
         Plot the density of your :param: data distribution

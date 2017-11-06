@@ -457,8 +457,8 @@ class Viz_handler(Qt_matplotlib_handler):
                 layout.addWidget(QLabel("The following visualization tools are available"),0)
                 layout.addWidget(QLabel("Which one do you want to use for exploration ?"),1)
 
-                for i,plotter_name in enumerate(available_pl.keys()):
-                    radiobutton = QRadioButton(plotter_name)
+                for i,(plotter_name, plotter_class) in enumerate(available_pl.items()):
+                    radiobutton = QRadioButton(plotter_name +' - '+plotter_class.get_help())
                     radiobutton.plotter_name = plotter_name
                     radiobutton.toggled.connect(self.on_radio_button_toggled)
                     layout.addWidget(radiobutton, i+2)

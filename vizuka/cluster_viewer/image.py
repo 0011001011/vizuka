@@ -9,6 +9,11 @@ from vizuka.cluster_viewer.plotter import Plotter
 
 class RandomImages(Plotter):
 
+    @classmethod
+    def get_help(self):
+        h = "Use it to display 25 randomly selected images"
+        return h
+
     def __call__(self, data, fig, spec):
         """
         Plots some random images found in the :param data: list given
