@@ -231,17 +231,33 @@ class Vizualization:
                 self.prediction_outputs,
                 self.possible_outputs_list)
 
-        
+
+    def compare(self):
+        diff = 0
+        a = self.prediction_outputs
+        b = self.correct_outputs
+        for i in range(max(len(a),len(b))):
+            diff+=(a[i]==b[i])
+        print(diff)
+        return diff
+
     def reload_predict(self, filename):
         """
         Call this function if the predictor set has changed
         filename: the name of the predictions file to load, should
         be located in the self.model_path folder
         """
+        def compare(a,b):
+            diff = 0
+            for i in range(max(len(a),len(b))):
+                diff+=(a[i]==b[i])
+            print(diff)
+            return diff
         old_left_clicks = self.left_clicks
 
         self.prediction_outputs = data_loader.load_predict_byname(filename, path=self.model_path)
-        self.prediction_outputs_originals = self.prediction_outputs
+        self.prediction_outputs_original = self.prediction_outputs
+
         self.correct_outputs = self.correct_outputs_original
         self.projected_input = self.projected_input_original
 
@@ -254,13 +270,11 @@ class Vizualization:
 
         self.reset_summary()
         self.reset_viz()
-
         self.conciliate_filters(self.filters)
         for click in old_left_clicks:
             self.do_left_click(click)
         
         self.refresh_graph()
-        
 
 
     def filter_by_feature(self, feature_col, selected_feature_list):
@@ -445,7 +459,7 @@ class Vizualization:
         ..note:: does not touch the summary array, for this use self.reset_summary()
         """
         logging.info("scatterplot: removing specific objects")
-
+        
         self.left_clicks = set()
         self.selected_clusters = set()
         for ax in self.axes_needing_borders:
