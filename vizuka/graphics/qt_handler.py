@@ -190,7 +190,7 @@ class Qt_matplotlib_handler():
 
         # configure the app + main window
         self.app = QApplication(sys.argv)
-        self.window = QMainWindow()
+        self.window = QMainWindow(parent=None)
         self.features_to_filter=None
         self.figure = figure
 
