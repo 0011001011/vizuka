@@ -6,6 +6,7 @@ This is a collection of tools to represent and navigate through the high-dimensi
  * The module should be agnostic of the data provided.
  * It ships with MNIST for quick testing.
 
+![alt zoomview](docs/zoom_view.png)
 Usage
 -----
 ### How to install ?
