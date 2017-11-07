@@ -1109,7 +1109,7 @@ class Vizualization:
         self.additional_figures.append(self.cluster_view[-1])
         self.viz_handler.add_figure(
                 self.additional_figures[-1],
-                "Cluster view: {}".format(plotter_names)
+                "Cluster view: {}".format(plotter_names[0])
                 )
         logging.info("cluster_view=ready")
         if self.selected_clusters:

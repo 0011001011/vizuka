@@ -430,10 +430,10 @@ class Viz_handler(Qt_matplotlib_handler):
         
     
     def add_raw_filter(self):
-        self.kikoo = AskColumnWindow(self.viz_engine, next_window=self.addCustomFilter)
+        self.kikoo = AskColumnWindow(self.window, self.viz_engine, next_window=self.addCustomFilter)
         self.kikoo.show()
 
-    def addCustomFilter(self, column_name, viz_engine):
+    def addCustomFilter(self,_, column_name, viz_engine):
 
         customFilter            = QMenu('Filter by {}'.format(column_name), self.window)
         column_index            = viz_engine.x_raw_columns.tolist().index(column_name)
@@ -471,7 +471,7 @@ class Viz_handler(Qt_matplotlib_handler):
         self.filterMenu.addMenu(customFilter)
         
     def request_cluster_viewer(self):
-        self.kikoo = AskColumnWindow(self.viz_engine, next_window=AskPlotterWindow)
+        self.kikoo = AskColumnWindow(self.window, self.viz_engine, next_window=AskPlotterWindow)
         self.kikoo.show()
 
     def is_ready(self):
@@ -536,9 +536,9 @@ class Viz_handler(Qt_matplotlib_handler):
         return self.viz_engine.request_new_clustering(clustering_engine_name, self.clustering_params)
 
 
-class AskPlotterWindow(QWidget):
-    def __init__(self, column_name, viz_engine):
-        QWidget.__init__(self)
+class AskPlotterWindow(QDialog):
+    def __init__(self, parent, column_name, viz_engine):
+        super(AskPlotterWindow, self).__init__(parent)
 
         layout = QVBoxLayout()
         self.setLayout(layout)
@@ -566,9 +566,10 @@ class AskPlotterWindow(QWidget):
             self.destroy()
 
 
-class AskColumnWindow(QWidget):
-    def __init__(self, viz_engine, next_window):
-        QWidget.__init__(self)
+class AskColumnWindow(QDialog):
+    def __init__(self, parent, viz_engine, next_window):
+        super(AskColumnWindow, self).__init__(parent)
+        self.parent = parent
         
         self.next_window = next_window
         layout = QVBoxLayout()
@@ -587,5 +588,5 @@ class AskColumnWindow(QWidget):
     def on_radio_button_toggled(self):
         radiobutton = self.sender()
         if radiobutton.isChecked():
-            self.kikoo = self.next_window(radiobutton.column_name, self.viz_engine)
+            self.kikoo = self.next_window(self.parent, radiobutton.column_name, self.viz_engine)
             self.destroy()

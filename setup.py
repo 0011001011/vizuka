@@ -15,7 +15,7 @@ data = {
 
 setup(
         name='Vizuka',
-        version='0.35.5',
+        version='0.35.6',
         packages=find_packages(),#['vizuka/'],
         package_data = data,
         entry_points = {
