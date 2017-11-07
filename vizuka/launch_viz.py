@@ -243,6 +243,7 @@ def main():
         _, _, selected_params = projections_available[choice_int]
     except KeyError:
         logging.warn("Don't be silly, enter a valid int number (between 0 and {})".format(len(choice_dict)-1))
+        logging.warn("ABORTING")
         return
 
     x_2D = data_loader.load_projection(

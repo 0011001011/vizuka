@@ -127,6 +127,11 @@ def main():
                             )
 
     do_reduce(algorithm_name, parameters, version, data_path, reduced_path)
+    
+    cmd_to_launch = "vizuka"
+    cmd_to_launch+= (' --version {}'.format(version) if version!=VERSION else '')
+    cmd_to_launch+= ('--path {}'.format(args.path) if args.path != BASE_PATH else '')
+    print('"Projection done, you can now launch "vizuka"')
 
 if __name__=='__main__':
     main()
