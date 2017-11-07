@@ -37,6 +37,7 @@ def main():
         INPUT_FILE_BASE_NAME,
         PROJECTION_DEFAULT_PARAMS,
         DEFAULT_PROJECTOR,
+        path_builder,
     )
 
     print(Figlet().renderText('Vizuka'))
@@ -102,10 +103,14 @@ def main():
     args = parser.parse_args()
     
     path                 = args.path
-    MODEL_PATH           = os.path.join(args.path, MODEL_PATH)
-    INPUT_FILE_BASE_NAME = os.path.join(args.path, INPUT_FILE_BASE_NAME)
-    REDUCED_DATA_PATH    = os.path.join(args.path, REDUCED_DATA_PATH)
-    DATA_PATH            = os.path.join(args.path, DATA_PATH)
+    (
+        DATA_PATH,
+        REDUCED_DATA_PATH,
+        MODEL_PATH,
+        _,
+        _,
+        _,
+        ) = path_builder(path)
 
     no_vizualize = args.no_vizualize
     no_plot      = args.no_plot

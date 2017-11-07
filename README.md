@@ -31,7 +31,10 @@ $ vizuka --mnist
 $ vizuka --show-required-files
 # To show the format of files you need to launch a data viz
 
-# EXAMPLE : you have your preprocessed data in ~/data/set/preprocessed_MYDATASET01.npz and predictions in ~/data/set/predict_MYDATASET01.npz, run :
+# EXAMPLE :
+# you have your preprocessed data in ~/data/set/preprocessed_MYDATASET01.npz
+#                 and predictions in ~/data/set/predict_MYDATASET01.npz
+# Run :
 $ vizuka --path ~/data --version MYDATASET01
 ```
 

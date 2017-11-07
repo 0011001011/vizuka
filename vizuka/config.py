@@ -10,7 +10,7 @@ import os
 
 
 def path_builder(base_path):
-    return [ os.path.join(base_path, relative) for relative in [
+    folders = [ os.path.join(base_path, relative) for relative in [
                         'set/',
                         'reduced/',
                         'models/',
@@ -19,6 +19,10 @@ def path_builder(base_path):
                         'saved_clusters/',
                         ]
         ]
+    for folder in folders:
+        if not os.path.exists(folder):
+            os.makedirs(folder)
+    return folders
 
 # Build all path from one base
 BASE_PATH = os.path.join(os.path.dirname(__file__), 'data/')
