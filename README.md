@@ -29,7 +29,10 @@ $ vizuka --mnist
 # Similar to downloading MNIST, fit a basic logistic regression then
 # copying your data in the right place and run "vizuka --image:images --version MNIST_example"
 $ vizuka --show-required-files
-# To show the format of files you need to launch a data viz 
+# To show the format of files you need to launch a data viz
+
+# EXAMPLE : you have your preprocessed data in ~/data/set/preprocessed_MYDATASET01.npz and predictions in ~/data/set/predict_MYDATASET01.npz, run :
+$ vizuka --path ~/data --version MYDATASET01
 ```
 
 You can add human-readable data visualization in data/set/raw\_data\_VERSION.npz :
@@ -45,7 +48,7 @@ It assumes you already have your 2D data, projection will be done if launched fo
 $ vizuka-reduce --algorithm tsne --parameters perplexity:50 learning_rate:1000
 # similar to vizuka-reduce actually
 # or 
-$ vizuka-reduce --algorithm pca # which is quite bad
+$ vizuka-reduce --algorithm pca # which is quite bad (tsne MUCH better for various reasons)
 ```
 
 It will search in \_\_package\_\_/data/ the datas but you can force your own with __--path__ argument
