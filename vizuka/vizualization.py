@@ -232,27 +232,12 @@ class Vizualization:
                 self.possible_outputs_list)
 
 
-    def compare(self):
-        diff = 0
-        a = self.prediction_outputs
-        b = self.correct_outputs
-        for i in range(max(len(a),len(b))):
-            diff+=(a[i]==b[i])
-        print(diff)
-        return diff
-
     def reload_predict(self, filename):
         """
         Call this function if the predictor set has changed
         filename: the name of the predictions file to load, should
         be located in the self.model_path folder
         """
-        def compare(a,b):
-            diff = 0
-            for i in range(max(len(a),len(b))):
-                diff+=(a[i]==b[i])
-            print(diff)
-            return diff
         old_left_clicks = self.left_clicks
 
         self.prediction_outputs = data_loader.load_predict_byname(filename, path=self.model_path)
@@ -738,6 +723,7 @@ class Vizualization:
         :param method: clustering engine to use ..seealso:clustering module
         :param params: a dict with the parameters
         """
+        saved_zoom = (self.ax.get_xbound(), self.ax.get_ybound())
 
         method = method.lower()
         self.request_clusterizer(method, params)
@@ -755,6 +741,8 @@ class Vizualization:
 
         self.reset_summary()
         self.reset_viz()
+        self.ax.set_xbound(saved_zoom[0])
+        self.ax.set_ybound(saved_zoom[1])
         self.refresh_graph()
 
     def update_all_heatmaps(self):
