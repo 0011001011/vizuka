@@ -64,7 +64,7 @@ A nice tool to draw clusters, find details about inside distribution and zoom in
 Example with MNIST toy dataset (vizuka --mnist): (**for real life example please scroll down**)
 
 ![alt zoomview](docs/main_view.png)
-
+![alt colorview](docs/color_alternative.png)
 ![alt clusterview](docs/cluster_view.png)
 
 
