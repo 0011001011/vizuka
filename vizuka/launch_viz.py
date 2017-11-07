@@ -117,21 +117,26 @@ def main():
     heatmap2    = args.heatmap2
     verbose     = args.verbose
 
-    print("VERSION: Loading dataset labeled {} (cf --version)".format(version))
+    print(
+            'Generate 2D projections with cmd "vizuka-reduce"\n'
+            "VERSION: Loading dataset labeled {} (cf --version)".format(version)
+            )
 
     if verbose:
         logger.setLevel(logging.DEBUG)
 
     if args.show_required_files:
         print(
-        'VERSION: string that identifies your dataset (default is MNIST_example)\n\n'
-        '\nVizuka needs the following files :\n\n'
+        '\n\nVizuka needs the following files :\n\n'
+        '\nVERSION:\t string that identifies your dataset (default is MNIST_example)\n'
+        'PATH:\t The folder data/ is located in '+str(os.path.dirname(__file__))+', you can use --path to change it\n'
+        'FORMAT: all are .npz file\n\n'
         'REQUIRED:\n'
         '=========\n'
         '\t + data/set/preprocessed_inputs_VERSION.npz\n'
         '\t ------------------------------------------\n'
-        '\t\t x:\t preprocessed inputs\n'
-        '\t\t y:\t outputs to be predicted\n'
+        '\t\t x:\t preprocessed inputs, your feature space\n'
+        '\t\t y:\t outputs to be predicted, the "true" class\n'
         '\t\t NB:\t this is the only mandatory file, the following is highly recommended:\n'
         '\n\n'
         'OPTIONAL BUT USEFUL:\n'
@@ -140,7 +145,7 @@ def main():
         '\t -------------------------------------------------------------\n'
         '\t\t y:\t predictions returned by your algorithm\n'
         '\t\t NB:\t should be same formatting as in preprocessed_inputs_VERSION["y"])\n'
-        "\t\t NB:\t if you don't have one, use --force-no-predict\n"
+        "\t\t\t\t if you don't have one, use --force-no-predict\n"
         '\n\n'
         '\t + data/set/raw_data.npz -> optional\n'
         '\t --------------------------\n'
@@ -198,6 +203,12 @@ def main():
             )
     if not loaded:
         logging.warn("No data found\nCorresponding file not found: {}\nPlease check --show-required-files".format(preprocessed_filename))
+        if version=='MNIST':
+            print(
+                    '\n\nIf you are trying to load the MNIST example, you need to launch'
+                    ' "vizuka --mnist" in order to download the test data (code in vizuka/example/)'
+                    )
+
         return
 
     logger.info('preprocessed_dataset=loaded')
@@ -222,8 +233,12 @@ def main():
         logging.warn("Please enter a valid dataset number! (e.g: 0)\nABORTING")
         return
     
-    selected_method      = choice_dict[choice_int]
-    _, _, selected_params = projections_available[choice_int]
+    try:
+        selected_method      = choice_dict[choice_int]
+        _, _, selected_params = projections_available[choice_int]
+    except KeyError:
+        logging.warn("Don't be silly, enter a valid int number (between 0 and {})".format(len(choice_dict)-1))
+        return
 
     x_2D = data_loader.load_projection(
         algorithm_name        =   selected_method,
