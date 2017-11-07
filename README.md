@@ -22,37 +22,28 @@ build-essential is required for the wordcloud
 
 ### How to run?
 
+
 ```sh
-$ vizuka
-# For a quick working example run :
+$ vizuka # launch the visualization tool
+
+# For a quick working example with MNIST run :
 $ vizuka --mnist
-# Similar to downloading MNIST, fit a basic logistic regression then
-# copying your data in the right place and run "vizuka --image:images --version MNIST_example"
+# Similar to downloading MNIST, fit a basic logistic and project in 2D with tSNE
+
 $ vizuka --show-required-files
 # To show the format of files you need to launch a data viz
+```
 
+But you don't want to use MNIST toy-dataset right ? Here is a complete working example:
+```sh
 # EXAMPLE :
 # you have your preprocessed data in ~/data/set/preprocessed_MYDATASET01.npz
 #                 and predictions in ~/data/set/predict_MYDATASET01.npz
 # Run :
-$ vizuka --path ~/data --version MYDATASET01
+$ vizuka-reduce --path ~/data --version MYDATASET01 # projects in 2D
+$ vizuka 	--path ~/data --version MYDATASET01
 ```
 
-You can add human-readable data visualization in data/set/raw\_data\_VERSION.npz :
-If you didnt, you can still show them in the IHM (menu 'Show cluster info')
-
-```sh
-$ vizuka -s price:logdensity -s name:wordcloud
-# vizuka --feature-to-show raw_variable_name:{wordcloud|counter|density|logdensity|images}
-```
-
-It assumes you already have your 2D data, projection will be done if launched for the first time (not for MNIST toy example)
-```sh
-$ vizuka-reduce --algorithm tsne --parameters perplexity:50 learning_rate:1000
-# similar to vizuka-reduce actually
-# or 
-$ vizuka-reduce --algorithm pca # which is quite bad (tsne MUCH better for various reasons)
-```
 
 It will search in \_\_package\_\_/data/ the datas but you can force your own with __--path__ argument
 
