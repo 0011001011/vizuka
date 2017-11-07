@@ -277,7 +277,20 @@ class Vizualization:
         self.refresh_graph()
 
 
-    def filter_by_feature(self, feature_col, selected_feature_list):
+    def filter_by_feature(self, feature_col, selected_features):
+        """
+        Updates the list of index to display, filter with :
+
+        feature_col: the column of the feature in "originals"
+        selected_feature_list: list of checked/unchecked feature to display
+        """
+        featured_data_to_display = {
+                widget.class_ for widget in selected_features[feature_col] if widget.isChecked()
+                }
+        self.filters[feature_col] = featured_data_to_display
+        self.conciliate_filters(self.filters)
+
+    def filter_by_feature_old(self, feature_col, selected_feature_list):
         """
         Updates the list of index to display, filter with :
 
@@ -285,11 +298,11 @@ class Vizualization:
         selected_feature_list: list of checked/unchecked feature to display
         """
 
-        featured_data = [
+        featured_data_to_display = [
                 item for item, selected in selected_feature_list.items() if selected
                 ]
-        self.feature_to_display_by_col[feature_col] = featured_data
-        self.filters[feature_col] = featured_data
+        self.feature_to_display_by_col[feature_col] = featured_data_to_display
+        self.filters[feature_col] = featured_data_to_display
 
         # self.display_by_filter()
         self.conciliate_filters(self.filters)
@@ -370,10 +383,9 @@ class Vizualization:
         to_display = to_display.intersection(set([
                 idx for idx, class_ in enumerate(self.prediction_outputs_original) if class_ in filtered]))
         other_filters = {k:v for k,v in filters.items() if k!="PREDICTIONS" and k!="GROUND_TRUTH"}
-        for col in other_filters: # other filters are column number identifying features
-            if other_filters[col]:
-                to_display.intersection(set([
-                    idx for idx, x in enumerate(self.x_raw) if x[col] not in other_filters[col]]))
+        for col in other_filters: # other filters are column number identified features
+            filtered_by_feature = {idx for idx, x in enumerate(self.x_raw_original) if x[col] in other_filters[col]}
+            to_display = to_display.intersection(filtered_by_feature)
 
         viz_helper.remove_pathCollection(self.ax)
         
@@ -894,7 +906,7 @@ class Vizualization:
         values     = values[:max_row]
         row_labels = row_labels[:max_row]
         
-        values.append([self.local_sum, '-', '{} (100\%)'.format(len(self.projected_input)), ' '])
+        values.append([self.local_sum, '-', '{} (100%)'.format(len(self.projected_input)), ' '])
         row_labels.append('all')
 
         self.rows = row_labels
@@ -1136,7 +1148,6 @@ class Vizualization:
                 viz_engine         = self,
                 figure             = self.main_fig,
                 onclick            = self.onclick,
-                additional_filters = self.features_name_to_filter,
                 additional_figures = self.additional_figures,
                 )
 

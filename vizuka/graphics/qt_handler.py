@@ -5,17 +5,16 @@ proud of everything written down there.
 
 This should be rewritten with QtCreator's help.
 """
-import matplotlib
 import sys
 import logging
 import os
 
+import matplotlib
 matplotlib.use('Qt5Agg')  # noqa
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
 from matplotlib.backends.backend_qt5agg import NavigationToolbar2QT as NavigationToolbar
 import matplotlib.gridspec as gridspec
 from matplotlib import pyplot as plt
-
 from PyQt5 import QtCore, QtWidgets
 from PyQt5.QtWidgets import (
     QApplication,
@@ -36,9 +35,9 @@ from PyQt5.QtWidgets import (
     QRadioButton,
     QLabel,
 )
+import numpy as np
 
 from vizuka.graphics import qt_helpers
-from vizuka.cluster_diving import moar_filters
 from vizuka import clustering
 from vizuka import frontier
 from vizuka.cluster_viewer import make_plotter, list_plotter
@@ -249,7 +248,6 @@ class Viz_handler(Qt_matplotlib_handler):
             viz_engine,
             figure,
             onclick,
-            additional_filters=[],
             additional_figures=[],
             ):
         """
@@ -266,26 +264,14 @@ class Viz_handler(Qt_matplotlib_handler):
         self.detect_mouse_event = True
         self.base_onclick = onclick
         self.window.setWindowTitle('Data vizualization')
-        self.additional_filters = additional_filters
         self.additional_figures = additional_figures
+        self.all_custom_filters = {}
 
         self.additional_windows = []
 
         # add the main figure
         qt_helpers.add_figure(self.figure, window=self.window, plottings=self.plottings, onclick=self.onclick)
         #self.cluster_diver = Cluster_diver(self.x_raw, self.x_raw_columns, ['ape_code'])
-
-        # add additional window
-        if self.additional_filters:
-            self.additional_windows.append(qt_helpers.add_window(self.window, 'moar filters'))
-            moar_filters(
-                    window=self.additional_windows[-1],
-                    right_dock=QtCore.Qt.RightDockWidgetArea,
-                    features = self.viz_engine.x_raw,
-                    all_features_categories = self.viz_engine.x_raw_columns,
-                    features_to_filter=additional_filters,
-                    viz_engine=self.viz_engine,
-                    )
 
         for fig in self.additional_figures:
             self.add_figure(fig, 'Cluster viewer')
@@ -352,7 +338,7 @@ class Viz_handler(Qt_matplotlib_handler):
                     lambda x, name=frontier_name:self.viz_engine.request_new_frontiers(name))
             frontierMenu.addAction(frontierAct)
         
-        filterMenu = menubar.addMenu('Filters')
+        self.filterMenu = menubar.addMenu('Filters')
 
         trueClassFilter       = QMenu('Filter by true class', window)
         self.all_true_filters = []
@@ -379,7 +365,7 @@ class Viz_handler(Qt_matplotlib_handler):
         select_none.triggered.connect(lambda x:select_all_true(False))
         trueClassFilter.addAction(select_none)
 
-        filterMenu.addMenu(trueClassFilter)
+        self.filterMenu.addMenu(trueClassFilter)
         
         predictClassFilter       = QMenu('Filter by predicted class', window)
         self.all_predicted_filters = []
@@ -406,7 +392,11 @@ class Viz_handler(Qt_matplotlib_handler):
         select_none_p.triggered.connect(lambda x:select_all_predicted(False))
         predictClassFilter.addAction(select_none_p)
 
-        filterMenu.addMenu(predictClassFilter)
+        self.filterMenu.addMenu(predictClassFilter)
+
+        moreFilterAction = QAction("Add a filter from raw data", self.window)
+        moreFilterAction.triggered.connect(lambda x:self.add_raw_filter())
+        self.filterMenu.addAction(moreFilterAction)
 
         
         navigationMenu = menubar.addMenu('Navigation')
@@ -438,65 +428,51 @@ class Viz_handler(Qt_matplotlib_handler):
                 radiobutton.setChecked(True)
             colorMenu.addAction(radiobutton)
         
+    
+    def add_raw_filter(self):
+        self.kikoo = AskColumnWindow(self.viz_engine, next_window=self.addCustomFilter)
+        self.kikoo.show()
 
+    def addCustomFilter(self, column_name, viz_engine):
+
+        customFilter            = QMenu('Filter by {}'.format(column_name), self.window)
+        column_index            = viz_engine.x_raw_columns.tolist().index(column_name)
+        classes                 = set(np.array(viz_engine.x_raw)[:,column_index])
+        self.all_custom_filters[column_index] = []
+
+        for cls in classes:
+            name = str(cls)
+            f = QAction(name, self.window, checkable=True)
+            f.setChecked(True)
+            f.class_ = cls
+            self.all_custom_filters[column_index].append(f)
+            f.triggered.connect(lambda x:self.viz_engine.filter_by_feature(
+                column_index,
+                self.all_custom_filters,
+                ))
+            customFilter.addAction(f)
+
+        def select_all_custom(boolean=True):
+            for f in self.all_custom_filters[column_index]:
+                f.setChecked(boolean)
+            self.viz_engine.filter_by_feature(
+                column_index,
+                self.all_custom_filters,
+                )
+
+        select_all_c = QAction("Select all", self.window)
+        select_all_c.triggered.connect(lambda x:select_all_custom(True))
+        customFilter.addAction(select_all_c)
+        
+        select_none_c = QAction("Unselect all", self.window)
+        select_none_c.triggered.connect(lambda x:select_all_custom(False))
+        customFilter.addAction(select_none_c)
+
+        self.filterMenu.addMenu(customFilter)
         
     def request_cluster_viewer(self):
-
-        class AskPlotterWindow(QWidget):
-            def __init__(self, column_name, viz_engine):
-                QWidget.__init__(self)
-
-                layout = QVBoxLayout()
-                self.setLayout(layout)
-                self.viz_engine = viz_engine
-                self.column_name = column_name
-                
-                builtin_pl, extra_pl = list_plotter()
-                available_pl = {**builtin_pl, **extra_pl}
-
-                layout.addWidget(QLabel("The following visualization tools are available"),0)
-                layout.addWidget(QLabel("Which one do you want to use for exploration ?"),1)
-
-                for i,(plotter_name, plotter_class) in enumerate(available_pl.items()):
-                    radiobutton = QRadioButton(plotter_name +' - '+plotter_class.get_help())
-                    radiobutton.plotter_name = plotter_name
-                    radiobutton.toggled.connect(self.on_radio_button_toggled)
-                    layout.addWidget(radiobutton, i+2)
-
-            def on_radio_button_toggled(self):
-                radiobutton = self.sender()
-                if radiobutton.isChecked():
-                    self.viz_engine.add_cluster_view(self.column_name, [radiobutton.plotter_name])
-                    self.destroy()
-
-
-        class AskColumnWindow(QWidget):
-            def __init__(self, viz_engine):
-                QWidget.__init__(self)
-
-                layout = QVBoxLayout()
-                self.setLayout(layout)
-                self.viz_engine = viz_engine
-
-                layout.addWidget(QLabel("Your raw_data_"+self.viz_engine.version+".npz file has the following column\n"),0)
-                layout.addWidget(QLabel("Which one do you want to explore ?"),1)
-
-                for i,column in enumerate(viz_engine.x_raw_columns):
-                    radiobutton = QRadioButton(column)
-                    radiobutton.column_name = column
-                    radiobutton.toggled.connect(self.on_radio_button_toggled)
-                    layout.addWidget(radiobutton, i+2)
-
-            def on_radio_button_toggled(self):
-                radiobutton = self.sender()
-                if radiobutton.isChecked():
-                    self.kikoo = AskPlotterWindow(radiobutton.column_name, self.viz_engine)
-                    self.kikoo.show()
-                    self.destroy()
-        
-        self.kikoo = AskColumnWindow(self.viz_engine)
+        self.kikoo = AskColumnWindow(self.viz_engine, next_window=AskPlotterWindow)
         self.kikoo.show()
-        return self.kikoo
 
     def is_ready(self):
         self.window.statusBar().showMessage('Ready')
@@ -558,3 +534,58 @@ class Viz_handler(Qt_matplotlib_handler):
             self.clustering_params[requested_param]=float(text)
 
         return self.viz_engine.request_new_clustering(clustering_engine_name, self.clustering_params)
+
+
+class AskPlotterWindow(QWidget):
+    def __init__(self, column_name, viz_engine):
+        QWidget.__init__(self)
+
+        layout = QVBoxLayout()
+        self.setLayout(layout)
+        self.viz_engine = viz_engine
+        self.column_name = column_name
+        
+        builtin_pl, extra_pl = list_plotter()
+        available_pl = {**builtin_pl, **extra_pl}
+
+        layout.addWidget(QLabel("The following visualization tools are available"),0)
+        layout.addWidget(QLabel("Which one do you want to use for exploration ?"),1)
+
+        for i,(plotter_name, plotter_class) in enumerate(available_pl.items()):
+            radiobutton = QRadioButton(plotter_name +' - '+plotter_class.get_help())
+            radiobutton.plotter_name = plotter_name
+            radiobutton.toggled.connect(self.on_radio_button_toggled)
+            layout.addWidget(radiobutton, i+2)
+
+        self.show()
+
+    def on_radio_button_toggled(self):
+        radiobutton = self.sender()
+        if radiobutton.isChecked():
+            self.viz_engine.add_cluster_view(self.column_name, [radiobutton.plotter_name])
+            self.destroy()
+
+
+class AskColumnWindow(QWidget):
+    def __init__(self, viz_engine, next_window):
+        QWidget.__init__(self)
+        
+        self.next_window = next_window
+        layout = QVBoxLayout()
+        self.setLayout(layout)
+        self.viz_engine = viz_engine
+
+        layout.addWidget(QLabel("Your raw_data_"+self.viz_engine.version+".npz file has the following column\n"),0)
+        layout.addWidget(QLabel("Which one do you want to explore ?"),1)
+
+        for i,column in enumerate(viz_engine.x_raw_columns):
+            radiobutton = QRadioButton(column)
+            radiobutton.column_name = column
+            radiobutton.toggled.connect(self.on_radio_button_toggled)
+            layout.addWidget(radiobutton, i+2)
+
+    def on_radio_button_toggled(self):
+        radiobutton = self.sender()
+        if radiobutton.isChecked():
+            self.kikoo = self.next_window(radiobutton.column_name, self.viz_engine)
+            self.destroy()
