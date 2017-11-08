@@ -55,11 +55,11 @@ Plugin structure
 Add your plugins in vizuka/plugins/
 
 You can define your own:
-	* dimension reduction algorithm
-	* heatmaps
-	* clustering engines
-	* cluster delimiter (frontiers)
-	* cluster viewer (cf last image)
+ * dimension reduction algorithm
+ * heatmaps
+ * clustering engines
+ * cluster delimiter (frontiers)
+ * cluster viewer (cf last image)
 
 Only thing to do : use the *vizuka/plugin/dimension\_reduction/* (for e.g) and follow the instruction from *How\_to\_add\_dimension\_reduction\_plugin.py*
 
