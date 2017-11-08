@@ -1,8 +1,12 @@
 Data vizualization
 ==================
 
-This is a collection of tools to represent and navigate through the high-dimensional data. The algorithm t-SNE is default to construct the 2D space. The module should be agnostic of the data provided. It ships with MNIST.
+This is a collection of tools to represent and navigate through the high-dimensional data.
+ * The algorithm t-SNE is default to construct the 2D space.
+ * The module should be agnostic of the data provided.
+ * It ships with MNIST for quick testing.
 
+![alt zoomview](docs/zoom_view.png)
 Usage
 -----
 ### How to install ?
@@ -11,43 +15,56 @@ $ pip install vizuka
 ```
 or clone the repo :)
 
+build-essential is required for the wordcloud
+```sh
+# apt-get install build-essential
+```
+
+
 ### How to run?
 
+
 ```sh
-$ vizuka
-# For a quick working example run :
+$ vizuka # launch the visualization tool
+
+# For a quick working example with MNIST run :
 $ vizuka --mnist
-# Similar to copy your data and run "vizuka --image:images --version _MNIST_example"
-```
-You can add human-readable data visualization in data/set/RAW\_NAME+VERSION.npz (default 'originals\_MNIST\_example.npz') :
+# Similar to downloading MNIST, fit a basic logistic and project in 2D with tSNE
 
-```sh
-$ vizuka -s price:logdensity -s name:wordcloud
-# --feature-to-show raw_variable_name:{wordcloud|counter|density|logdensity|images}
+$ vizuka --show-required-files
+# To show the format of files you need to launch a data viz
 ```
 
-It assumes you already have your 2D data, projection will be done if launched for the first time (not for MNIST toy example)
-You can force for PCA reduction prior to t-SNE :
+But you don't want to use MNIST toy-dataset right ? Here is a complete working example:
 ```sh
-$ vizuka --reduce --use_pca 0.99 # Use PCA to reduce dimension and keep 99% of explained variance, then tSNE
+# EXAMPLE :
+# you have your preprocessed data in ~/data/set/preprocessed_MYDATASET01.npz
+#                 and predictions in ~/data/set/predict_MYDATASET01.npz
+# Run :
+$ vizuka-reduce --path ~/data --version MYDATASET01 # projects in 2D
+$ vizuka 	--path ~/data --version MYDATASET01
 ```
+
 
 It will search in \_\_package\_\_/data/ the datas but you can force your own with __--path__ argument
 
-* Note that if you are effectively doing big data you should uncomment MulticoreTSNE in vizuka/dim_reduction.py unless you want to discover t-SNE crashed with a segfault. Instructions for installation can be found in requirements/requirements.apt
+* Note that if you are effectively doing big data you should install **MulticoreTSNE** in vizuka/dimension\_reduction/tSNE.py unless you want to discover t-SNE crashed with a segfault. Instructions for installation can be found in requirements/requirements.apt
 
-### How to improve ?
-Add your plugins in vizuka/plugins/
-You can define your own heatmaps, clustering engines, cluster viewer (cf 2nd image)
+I want to add a specific tool to this visualization ? // how to contribute ?
+----------------
+Add your plugins in vizuka/plugins/ 
+You can define your own heatmaps, clustering engines, cluster viewer (cf 2nd image), read plugins/heatmap/How\_to\_add\_heatmap.py for documentation.
+
+Using the plugins/ directory it will not interfere with the original code ! If it works do not hesitate to make a PR
 
 What will I get ?
 -----------------
 
 A nice tool to draw clusters, find details about inside distribution and zoom in.
-Example with MNIST toy dataset (vizuka --mnist): (for real life example please scroll down)
+Example with MNIST toy dataset (vizuka --mnist): (**for real life example please scroll down**)
 
 ![alt zoomview](docs/main_view.png)
-
+![alt colorview](docs/color_alternative.png)
 ![alt clusterview](docs/cluster_view.png)
 
 
@@ -67,24 +84,14 @@ Data viz navigation :
 
 Other options:
 * filter by predictions or by real class.
-* detect mouse event : if unchecked, cluster will not be selected on click (useful for zooming)
+* disable mouse event : if checked, cluster will not be selected on click (useful for zooming)
 * clusterize with an algo, Dummy is a simple grid, KMeans should be used, DBSCAN is experimental.
 * export x : export the raw inputs you selected in an output.csv 
 * cluster borders : draw borders between clusters based on bhattacharyya similarity measure, or just all
-* force number of clusters (for kmeans essentially)
 * choose a different set of predictions to display
 
 What does it needs to be executed ?
 -----------------------------------
-
-vizuka needs the following files to be put in \_\_package\_\_/data:
-* pre-processed transactions with the output you want to predict.
-* 2D-projections: (optional)
-    * a t-SNE (or another dimension-reduction nD-to-2D algorithm) output representing pre-processed data in a 2D-space **or**
-    * parameters for t-SNE (optional, default ones are provided)
-* your predictions (optional but recommended)
-* raw transactions (optional) which will be used to display additional human-understandable info.
-
 
 ```sh
 $ vizuka --show-required-files
@@ -125,9 +132,9 @@ Vizuka needs the following files :
 Typical use-case :
 ------------------
 
-You have your preprocessed data ? Cool, this is the only mandatory file you need. Place it in the folder *data/set/preprocessed_inputs_VERSION.npz*, VERSION being a string specific to this specific dataset. It must contains at least the key 'x' representing the vectors you learn from. If you have both the correct output and your own predicitons (inside *data/models/ALGONAMEpredict_VERSION.npz* and key 'pred')that your algo try to predict, place it under the key 'y', the data viz will be much more useful !
+You have your preprocessed data ? Cool, this is the only mandatory file you need. Place it in the folder *data/set/preprocessed_inputs_VERSION.npz*, VERSION being a string specific to this specific dataset. It must contains at least the key 'x' representing the vectors you learn from. If you have both the correct output and your own predicitons (inside *data/models/ALGONAMEpredict_VERSION.npz* and key 'pred' *predict_VERSION.npz* will be the default loaded) that your algo try to predict, place it under the key 'y', the data viz will be much more useful !
 
-Optionally you can add an *original_VERSION.npz* file containing raw data non-preprocessed. The vector should be the key "originals" and the name of the human-readable "features" in the key "columns".
+Optionally you can add an *raw_data_VERSION.npz* file containing raw data non-preprocessed. The vector should be the key "originals" and the name of the human-readable "features" in the key "columns".
 
 Now you may want to launch Vizuka ! First do specify the parameters fitting your needs in config.py. And take some coffee. Or two. Or three. Vizuka is busy reducing the dimension.
 

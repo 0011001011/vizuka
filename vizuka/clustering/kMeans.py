@@ -1,24 +1,23 @@
-import pickle
+from sklearn.cluster import KMeans
 
-import numpy as np
-from matplotlib import pyplot as plt
-from sklearn.cluster import KMeans, DBSCAN
-from scipy.spatial import cKDTree
-import logging
-
-from vizuka import vizualization
 from vizuka.clustering.clusterizer import Clusterizer
 
 
 class KmeansClusterizer(Clusterizer):
 
-    def __init__(self, n_clusters=120, *args, **kwargs):
+    def __init__(self, number_of_clusters=15):
         """
-        Uses sklearn kmeans, accepts same arguments.
-        Default nb of cluster : 120
+        Uses sklearn kmeans
         """
-        self.engine = KMeans(n_clusters=n_clusters, *args, **kwargs)
-        self.method='kmeans'
+        self.register_parameters(
+                parameters={'number_of_clusters':number_of_clusters})
+
+        self.method = 'kmeans'
+        self.number_of_clusters = number_of_clusters
+
+        self.engine = KMeans(
+                n_clusters=int(float(self.number_of_clusters)),
+                )
 
     def fit(self, xs):
         """

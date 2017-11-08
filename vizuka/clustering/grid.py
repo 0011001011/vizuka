@@ -13,16 +13,17 @@ class DummyClusterizer(Clusterizer):
     hum.. empty yes.
     """
 
-    def __init__(self, mesh):
+    def __init__(self, mesh=[]):
         """
         Inits the "engine" by giving it a resolution.
         The resolution will be the square root of the
         nb of clusters.
         """
-        self.mesh   = mesh
-        self.kdtree = cKDTree(self.mesh)
+        self.register_parameters(parameters={})
+
+        self.kdtree = cKDTree(mesh)
         self.engine = None
-        self.method='dummy'
+        self.method='grid'
 
     def fit(self, xs):
         """
@@ -39,5 +40,3 @@ class DummyClusterizer(Clusterizer):
         data is, it is considered as a cluster label
         """
         return self.kdtree.query(xs)[1]
-        # return [self.kdtree.query(x)[1] for x in xs]
-

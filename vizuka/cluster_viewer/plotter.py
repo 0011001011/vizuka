@@ -8,6 +8,11 @@ class Plotter(object):
     Cf vizuka/.cluster_viewer.counter for a simple example
     """
 
+    @classmethod
+    def get_help(self):
+        h = ""
+        return h
+
     def __call__(self, data, fig, spec):
         """
         :param: data is a list of the observations

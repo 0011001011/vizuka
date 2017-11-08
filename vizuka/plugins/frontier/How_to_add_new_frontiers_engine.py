@@ -7,7 +7,7 @@
 # Simply creates a class in a new module that
 # implements vizuka.similarity.similarity.Similarity
 #
-# Below is a simple example, to draw all frontiers
+# Below is a simple example, to draw all frontiers (alpha is 1)
 #
 ########################################################################
 
@@ -26,4 +26,4 @@
 #         """
 #         Draw all frontiers
 #         """
-#         return 0
+#         return 1 # Here 1 means "solid", 0 is "invisible. .5 for mid-solid

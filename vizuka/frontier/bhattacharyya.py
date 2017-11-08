@@ -1,9 +1,9 @@
 import math
 import numpy as np
 
-from vizuka.similarity import similarity
+from vizuka.frontier import similarity
 
-class BhattacharyyaSimilarity(similarity.Similarity):
+class Bhattacharyya(similarity.Similarity):
 
     def __init__(self):
         pass
@@ -23,7 +23,7 @@ class BhattacharyyaSimilarity(similarity.Similarity):
         for i in {*dict1, *dict2}:
             s+=(dict1.get(i,0)*dict2.get(i,0))**.5
             if inside01:
-                max_value_possible+= (max(dict1.get(i,0),dict2.get(i,0))**.5)
+                max_value_possible += (max(dict1.get(i,0),dict2.get(i,0))**.5)
         if inside01:
             return -math.log(s)/max_value_possible if s!=0 else -np.inf
         else:

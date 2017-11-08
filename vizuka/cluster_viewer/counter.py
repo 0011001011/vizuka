@@ -1,4 +1,4 @@
-from collections import Counter
+from collections import Counter as pyCounter
 
 import numpy as np
 import matplotlib
@@ -9,6 +9,11 @@ from vizuka.cluster_viewer.plotter import Plotter
 
 class Counter(Plotter):
 
+    @classmethod
+    def get_help(self):
+        h = "Use it to display a counter, for *categorical* values"
+        return h
+
     def __call__(self, data, fig, spec):
         """
         Show a counter of each class occurrences
@@ -16,23 +21,22 @@ class Counter(Plotter):
         :param: data is a list of the observations
         :param: fig is the Figure on which the axe will be drawn
         :param:spec is the GridSpec for the axe
-
         :return: the axe with the visualization
         """
         if not data:
             return
         axe = plt.Subplot(fig, spec)
-
-        c = Counter(data)
+        c = pyCounter(data)
         x = [l for l in c.keys()]
         y = [c[l] for l in x]
-
         
         order = np.argsort(y)
+        
         y = [y[i] for i in order]
         x = [x[i] for i in order]
 
         graduation = np.linspace(0, len(y), len(y))
+
         axe.bar(height=y, left=graduation)
         axe.set_xticks(graduation)
         axe.set_xticklabels([str(i) for i in x])

@@ -6,12 +6,10 @@ See class Vizualization
 """
 import sys
 import os
-import time
 import logging
-import math
-import itertools
 from collections import Counter
 import pickle
+import csv
 
 from scipy import stats
 import numpy as np
@@ -19,21 +17,18 @@ import matplotlib
 matplotlib.use('Qt5Agg')  # noqa
 from matplotlib.gridspec import GridSpec
 from matplotlib import pyplot as plt
-import pandas as pd
-import wordcloud
 
 from vizuka.helpers import viz_helper
 from vizuka.graphics import drawing
 from vizuka import clustering
-from vizuka import similarity
+from vizuka import frontier
 from vizuka import data_loader
 from vizuka import heatmap
-from vizuka.cluster_diving import Cluster_viewer
+from vizuka.graphics.qt_handler import Cluster_viewer
 from vizuka.graphics.qt_handler import Viz_handler
 from vizuka.config import (
-        MODEL_PATH,
-        CACHE_PATH,
-        SAVED_CLUSTERS_PATH,
+        path_builder,
+        BASE_PATH,
         )
 
 
@@ -60,9 +55,10 @@ class Vizualization:
             features_name_to_filter=[],
             features_name_to_display={},
             heatmaps_requested = ['entropy', 'accuracy'],
+            color_mode = 'by_prediction',
             class_decoder=(lambda x: x), class_encoder=(lambda x: x),
             output_path='output.csv',
-            model_path=MODEL_PATH,
+            base_path=BASE_PATH,
             version='',
             ):
         """
@@ -79,10 +75,20 @@ class Vizualization:
         self.last_time = {}
 
         self.manual_cluster_color = 'cyan'
+        
+        (
+                self.data_path,
+                self.reduced_data_path,
+                self.model_path,
+                self.graph_path,
+                self.cache_path, 
+                self.saved_clusters_path,
+                
+                ) = path_builder(base_path)
+
+        self.predictors = [name for name in os.listdir(self.model_path) if version in name]
         self.output_path = output_path
-        self.predictors = os.listdir(model_path)
-        self.saved_clusters = os.listdir(SAVED_CLUSTERS_PATH)
-        self.model_path = model_path
+        self.saved_clusters = [f for f in os.listdir(self.saved_clusters_path) if version in f]
         self.version = version
         
         def str_with_default_value(value):
@@ -91,10 +97,14 @@ class Vizualization:
             return str(value)
 
         self.correct_outputs = [str_with_default_value(correct_output) for correct_output in correct_outputs]
+        self.correct_outputs_original = self.correct_outputs
         self.prediction_outputs = [str_with_default_value(predicted_output) for predicted_output in predicted_outputs]
+        self.prediction_outputs_original = self.prediction_outputs
         
         self.projected_input = projected_input
+        self.projected_input_original = self.projected_input
         self.x_raw = raw_inputs
+        self.x_raw_original = self.x_raw
         self.x_raw_columns = raw_inputs_columns
         self.nb_of_clusters = nb_of_clusters
         self.class_decoder = class_decoder
@@ -106,23 +116,25 @@ class Vizualization:
         self.predicted_class_to_display = {}
         self.feature_to_display_by_col = {}
         self.features_to_display = features_name_to_display
+        self.color_mode = color_mode
         self.cluster_view_selected_indexes = []
-        self.filters = {
-                'PREDICTIONS':set(),
-                'GROUND_TRUTH':set(),
-                **{k:set() for k in features_name_to_filter},
-                }
         self.left_clicks = set()
+        self.selected_clusters = set()
 
         #self.possible_outputs_list = list({self.class_decoder(y_encoded) for y_encoded in self.correct_outputs})
         self.possible_outputs_set = set(self.correct_outputs).union(set(self.prediction_outputs))
         self.possible_outputs_set.discard(None)
+        self.filters = {
+                'PREDICTIONS':self.possible_outputs_set,
+                'GROUND_TRUTH':self.possible_outputs_set,
+                **{k:set() for k in features_name_to_filter},
+                }
         self.possible_outputs_list = list(self.possible_outputs_set)
         self.possible_outputs_list.sort()
         # logging.info("correct outputs : %", self.correct_outputs)
         self.projection_points_list_by_correct_output = {y: [] for y in self.correct_outputs}
-        self.nb_of_individual_by_true_output = {}
         self.index_by_true_output = {class_:[] for class_ in self.possible_outputs_list}
+        self.nb_of_individual_by_true_output = {}
 
         for index, projected_input in enumerate(self.projected_input):
             self.projection_points_list_by_correct_output[self.correct_outputs[index]].append(projected_input)
@@ -134,6 +146,7 @@ class Vizualization:
                 self.projection_points_list_by_correct_output[possible_output])
             self.nb_of_individual_by_true_output[possible_output] = len(
                 self.projection_points_list_by_correct_output[possible_output])
+        self.projection_points_list_by_correct_output_original = self.projection_points_list_by_correct_output
 
         self.resolution = resolution # counts of tiles per row/column
 
@@ -150,12 +163,11 @@ class Vizualization:
         self.local_bad_count_by_class = {class_:0 for class_ in self.possible_outputs_list}
         self.local_classes = set()
         self.local_sum = 0
-        self.currently_selected_cluster = []
         self.cursor_ids = [0]
 
         # Get the real possible_outputs_list found in true y
 
-        self.amplitude = viz_helper.find_amplitude(self.projected_input)
+        self.amplitude = viz_helper.find_amplitude(self.projected_input_original)
 
         mesh = np.meshgrid(
                 np.arange(
@@ -177,10 +189,10 @@ class Vizualization:
 
         logging.info('clustering engine=fitting')
         self.clusterizer = clustering.make_clusterizer(
-                xs=self.projected_input,
+                xs=self.projected_input_original,
                 nb_of_clusters=self.nb_of_clusters,
                 mesh=self.mesh_centroids,
-                method='dummy',
+                method='grid',
                 )
         logging.info('clustering engine=ready')
         self.normalize_frontier = True
@@ -203,7 +215,7 @@ class Vizualization:
 
         (
             self.well_predicted_projected_points_array,
-            self.misspredicted_projected_points_array,
+            self.mispredicted_projected_points_array,
             self.not_predicted_projected_points_array,
 
             ) = viz_helper.get_projections_from_index(
@@ -213,25 +225,27 @@ class Vizualization:
                     self.projected_input,
                     )
 
-    
-        # Sort good/bad/not predictions in t-SNE space
-        logging.info("projections=listing")
-        
         self.accuracy_by_class = viz_helper.get_accuracy_by_class(
                 self.index_by_true_output,
                 self.correct_outputs,
                 self.prediction_outputs,
                 self.possible_outputs_list)
 
-        
+
     def reload_predict(self, filename):
         """
         Call this function if the predictor set has changed
         filename: the name of the predictions file to load, should
         be located in the self.model_path folder
         """
+        old_left_clicks = self.left_clicks
 
         self.prediction_outputs = data_loader.load_predict_byname(filename, path=self.model_path)
+        self.prediction_outputs_original = self.prediction_outputs
+
+        self.correct_outputs = self.correct_outputs_original
+        self.projected_input = self.projected_input_original
+
         self.calculate_prediction_projection_arrays()
 
         self.print_global_summary(self.global_summary_axe)
@@ -241,15 +255,27 @@ class Vizualization:
 
         self.reset_summary()
         self.reset_viz()
-
-        for click in self.left_clicks:
+        self.conciliate_filters(self.filters)
+        for click in old_left_clicks:
             self.do_left_click(click)
-
-        self.refresh_graph()
         
+        self.refresh_graph()
 
 
-    def filter_by_feature(self, feature_col, selected_feature_list):
+    def filter_by_feature(self, feature_col, selected_features):
+        """
+        Updates the list of index to display, filter with :
+
+        feature_col: the column of the feature in "originals"
+        selected_feature_list: list of checked/unchecked feature to display
+        """
+        featured_data_to_display = {
+                widget.class_ for widget in selected_features[feature_col] if widget.isChecked()
+                }
+        self.filters[feature_col] = featured_data_to_display
+        self.conciliate_filters(self.filters)
+
+    def filter_by_feature_old(self, feature_col, selected_feature_list):
         """
         Updates the list of index to display, filter with :
 
@@ -257,11 +283,11 @@ class Vizualization:
         selected_feature_list: list of checked/unchecked feature to display
         """
 
-        featured_data = [
+        featured_data_to_display = [
                 item for item, selected in selected_feature_list.items() if selected
                 ]
-        self.feature_to_display_by_col[feature_col] = featured_data
-        self.filters[feature_col] = featured_data
+        self.feature_to_display_by_col[feature_col] = featured_data_to_display
+        self.filters[feature_col] = featured_data_to_display
 
         # self.display_by_filter()
         self.conciliate_filters(self.filters)
@@ -271,7 +297,7 @@ class Vizualization:
         Filter by class, on the TRUE class of each point
         """
         self.correct_class_to_display = {
-                output_class for output_class, selected in selected_outputs_class_list.items() if selected
+                widget.class_ for widget in selected_outputs_class_list if widget.isChecked()
                 }
         self.filters["GROUND_TRUTH"] = self.correct_class_to_display
         # self.display_by_filter()
@@ -282,43 +308,82 @@ class Vizualization:
         Filter by class, on the PREDICTED class of each point
         """
         self.predicted_class_to_display = {
-                output_class for output_class, selected in selected_outputs_class_list.items() if selected
+                widget.class_ for widget in selected_outputs_class_list if widget.isChecked()
                 }
         self.filters["PREDICTIONS"] = self.predicted_class_to_display
         # self.display_by_filter()
         self.conciliate_filters(self.filters)
 
-    def conciliate_filters(self, filters):
-        
-        to_display = set(range(len(self.projected_input)))
-        print(filters)
+    def load_only_some_indexes(self, indexes):
+        self.prediction_outputs = [self.prediction_outputs_original[i]  for i in indexes]
+        self.projected_input    = [self.projected_input_original[i]     for i in indexes]
+        self.correct_outputs    = [self.correct_outputs_original[i]     for i in indexes]
+        self.x_raw              = [self.x_raw_original[i]               for i in indexes]
 
-        if filters["GROUND_TRUTH"]:
-            filtered = filters["GROUND_TRUTH"]
-            to_display = to_display.intersection(set([
-                    idx for idx, class_ in enumerate(self.correct_outputs) if class_ in filtered]))
-            
-        if filters["PREDICTIONS"]:
-            filtered = filters["PREDICTIONS"]
-            to_display = to_display.intersection(set([
-                    idx for idx, class_ in enumerate(self.prediction_outputs) if class_ in filtered]))
-        other_filters = {k:v for k,v in filters.items() if k!="PREDICTIONS" and k!="GROUND_TRUTH"}
+        self.projection_points_list_by_correct_output = {y: [] for y in self.correct_outputs}
+        self.index_by_true_output = {class_:[] for class_ in self.possible_outputs_list}
+        
+        for index, projected_input in enumerate(self.projected_input):
+            self.projection_points_list_by_correct_output[self.correct_outputs[index]].append(projected_input)
+            self.index_by_true_output[self.correct_outputs[index]].append(index)
+
+        # convert dict values to np.array
+        for possible_output in self.projection_points_list_by_correct_output:
+            self.projection_points_list_by_correct_output[possible_output] = np.array(
+                self.projection_points_list_by_correct_output[possible_output])
+            self.nb_of_individual_by_true_output[possible_output] = len(
+                self.projection_points_list_by_correct_output[possible_output])
+
+        self.calculate_prediction_projection_arrays()
+        self.init_clusters()
+        
+        self.print_global_summary(self.global_summary_axe)
+        self.update_all_heatmaps()
+        self.update_summary()
+        self.print_summary(self.summary_axe)
+        self.update_cluster_view()
+    
+    def filters_active(self):
+        """
+        True if some filters are active
+        """
+
+        additional_filters_active = False
+        other_filters = {k:v for k,v in self.filters.items() if k!="PREDICTIONS" and k!="GROUND_TRUTH"}
         for col in other_filters: # other filters are column number identifying features
-            if other_filters[col]:
-                to_display.intersection(set([
-                    idx for idx, x in enumerate(self.x_raw) if x[col] not in other_filters[col]]))
+            additional_filters_active = additional_filters_active or other_filters[col]
+
+        return self.filters["GROUND_TRUTH"] or self.filters["PREDICTIONS"] or additional_filters_active
+        
+
+    def conciliate_filters(self, filters):
+        saved_zoom = (self.ax.get_xbound(), self.ax.get_ybound())
+        to_display = set(range(len(self.projected_input_original)))
+
+        filtered = filters["GROUND_TRUTH"]
+        to_display = to_display.intersection(set([
+                idx for idx, class_ in enumerate(self.correct_outputs_original) if class_ in filtered]))
+        
+        filtered = filters["PREDICTIONS"]
+        to_display = to_display.intersection(set([
+                idx for idx, class_ in enumerate(self.prediction_outputs_original) if class_ in filtered]))
+        other_filters = {k:v for k,v in filters.items() if k!="PREDICTIONS" and k!="GROUND_TRUTH"}
+        for col in other_filters: # other filters are column number identified features
+            filtered_by_feature = {idx for idx, x in enumerate(self.x_raw_original) if x[col] in other_filters[col]}
+            to_display = to_display.intersection(filtered_by_feature)
 
         viz_helper.remove_pathCollection(self.ax)
+        
+        self.load_only_some_indexes(to_display)
 
-        drawing.draw_scatterplot_from_indexes(
-                to_display,
-                self.index_bad_predicted,
-                self.index_good_predicted,
-                self.index_not_predicted,
-                self.projected_input,
+        drawing.draw_scatterplot(
+                self,
                 self.ax,
+                color_mode = self.color_mode,
                 )
-                
+        self.ax.set_xbound(saved_zoom[0])
+        self.ax.set_ybound(saved_zoom[1])
+
         self.refresh_graph()
 
     #######################################
@@ -341,7 +406,6 @@ class Vizualization:
 
         self.summary_axe.clear()
         self.summary_axe.axis('off')
-        
 
         if left_click:
             self.do_left_click((x,y))
@@ -361,25 +425,29 @@ class Vizualization:
         
         # find associated cluster and gather data
         clicked_cluster = self.clusterizer.predict([(x,y)])[0]
+        self.selected_clusters.add(clicked_cluster)
         self.delimit_cluster(clicked_cluster, color=self.manual_cluster_color)
-        self.update_summary(clicked_cluster)
 
+        self.update_summary()
         self.print_summary(self.summary_axe)
         
         # shows additional info if requested (argument -s)
-        if self.cluster_view:
-            self.cluster_view.update_cluster_view(
-                    clicked_cluster,
-                    self.index_by_cluster_label,
-                    indexes_good = self.index_good_predicted,
-                    indexes_bad = self.index_bad_predicted,
-                    )
+        self.update_cluster_view()
+
+            # self.cluster_view.update_cluster_view(
+            #        clicked_cluster,
+            #        self.index_by_cluster_label,
+            #        indexs_good = self.index_good_predicted,
+            #        indexes_bad = self.index_bad_predicted,
+            #        )
 
     def do_right_click(self, xy):
+            logging.info("Cleaning state, unselecting clusters, redrawing")
             # reboot vizualization
             self.left_clicks = set()
+            self.selected_clusters = set()
             self.reset_summary()
-            self.cluster_view.reset()
+            self.clear_cluster_view()
             self.reset_viz()
 
     def reset_viz(self):
@@ -388,25 +456,28 @@ class Vizualization:
         ..note:: does not touch the summary array, for this use self.reset_summary()
         """
         logging.info("scatterplot: removing specific objects")
+        
+        self.left_clicks = set()
+        self.selected_clusters = set()
         for ax in self.axes_needing_borders:
             for i in ax.get_children():
                 if isinstance(i, matplotlib.collections.PathCollection):
                     i.remove()
-                elif isinstance(i, matplotlib.lines.Line2D) or isinstance(i, matplotlib.collections.LineCollection):
+                elif isinstance(i, matplotlib.lines.Line2D):
                     if i.get_color() == self.manual_cluster_color:
                         i.remove()
         
         logging.info("scatterplot: drawing observations")
         if self.cluster_view:
-            self.cluster_view.clear()
+            self.clear_cluster_view()
 
         drawing.draw_scatterplot(
+                self,
                 self.ax,
-                self.well_predicted_projected_points_array,
-                self.misspredicted_projected_points_array,
-                self.not_predicted_projected_points_array
+                color_mode = self.color_mode,
                 )
         logging.info("scatterplot: ready")
+
 
     def reset_summary(self):
         """
@@ -425,7 +496,10 @@ class Vizualization:
                 }
         self.local_classes = set()
         self.local_sum = 0
-        self.currently_selected_cluster = []
+        self.selected_clusters = set()
+
+        self.summary_axe.clear()
+        self.summary_axe.axis('off')
 
     def init_clusters(self):
         """
@@ -441,7 +515,7 @@ class Vizualization:
 
                 self.clusterizer,
                 self.projected_input,
-                self.projection_points_list_by_correct_output,
+                self.projection_points_list_by_correct_output_original,
                 self.correct_outputs,
                 )
 
@@ -569,6 +643,17 @@ class Vizualization:
         # return (self.resolution - int(((index - index % self.resolution) / self.resolution)) - 1,
         #         index % self.resolution)
 
+    def request_color_mode(self, mode):
+        self.color_mode = mode
+        try:
+            drawing.draw_scatterplot(
+                    self,
+                    self.ax,
+                    color_mode=self.color_mode
+                    )
+            self.refresh_graph()
+        except:
+            pass
 
     def request_new_frontiers(self, method):
         """
@@ -583,7 +668,9 @@ class Vizualization:
                     child.remove()
                     logging.info("removing a line collection")
 
-        self.similarity_measure = similarity.make_frontier(method).compare
+        similarity = frontier.make_frontier(method)
+        self.similarity_measure = similarity.compare
+
         if method == 'bhattacharyya':
             self.normalize_frontier=True
         elif method =='all':
@@ -602,74 +689,44 @@ class Vizualization:
         self.refresh_graph()
         logging.info('frontiers : applied '+method)
 
-    def get_clusterizer_cache_file_name(self, method):
-        """
-        Makes a filename for the pickled object of your clusterizer
-        """
-        if os.path.exists(method):
-            return method, True
-        base_path, nb_of_clusters, clustering_method, version = (
-            self.model_path,
-            self.nb_of_clusters,
-            self.version,
-            method,
-        )
-        if not os.path.exists(base_path):
-            # if the base path isn't valid (for whatever reason, saves into dev/null)
-            logging.info("path not valid : {}".format(base_path))
-            return os.devnull, False
-            
-        cache_path = CACHE_PATH
-        if not os.path.exists(cache_path):
-            os.makedirs(cache_path)
-        cluster_filename = '_'.join(
-                [str(x) for x in [
-                    nb_of_clusters,
-                    version,
-                    clustering_method
-                    ]])
-        cluster_filename+='.pkl'
-
-        cluster_path = os.path.join(cache_path, cluster_filename)
-
-        if os.path.exists(cluster_path):
-            logging.info("loading the clusterizer in {}".format(cluster_path))
-            return (cluster_path), True
-        
-        logging.info("no clusterizer in {}".format(cluster_path))
-        return cluster_path, False
-
-    def request_clusterizer(self, method):
+    def request_clusterizer(self, method, params):
         """
         Creates the clustering engine depending on the method you require
         Actually different engine use different initialisations
+
+        :param params: the parameters as a dict, of the clustering
+        :param method: the name of the clustering engine
         """
-
         logging.info("cluster: requesting a new " + method + " engine")
-        cache_file_path, loadable = self.get_clusterizer_cache_file_name(method)
+        self.clusterizer = clustering.make_clusterizer(
+                method = method,
+                mesh = self.mesh_centroids,
+                **params,
+                )
 
-        if loadable:
-            logging.info("loading clusterizer")
-            self.clusterizer = clustering.load_cluster(cache_file_path)
+        if (not self.filters_active()) and self.clusterizer.loadable(version=self.version):
+            logging.info("cluster: found cached clustering, loading..")
+            self.clusterizer = self.clusterizer.load_cluster(version=self.version)
+            logging.info("cluster: ready")
         else:
-            self.clusterizer = clustering.make_clusterizer(
-                    xs = self.projected_input,
-                    method = method,
-                    nb_of_clusters=self.nb_of_clusters,
-                    mesh = self.mesh_centroids,
-                    )
+            logging.info("cluster: fitting the clusters")
+            self.clusterizer.fit(self.projected_input_original)
+            if not self.filters_active():
+                logging.info("cluster: saving the clusters")
+                self.clusterizer.save_cluster(version=self.version)
+            logging.info("cluster: ready")
             
-            self.clusterizer.save_cluster(cache_file_path)
-
-
-    def request_new_clustering(self, method):
+    def request_new_clustering(self, method, params):
         """
         Init and fit a new clustering engin, then update the heatmaps
 
         :param method: clustering engine to use ..seealso:clustering module
+        :param params: a dict with the parameters
         """
+        saved_zoom = (self.ax.get_xbound(), self.ax.get_ybound())
+
         method = method.lower()
-        self.request_clusterizer(method)
+        self.request_clusterizer(method, params)
 
         self.init_clusters()
         self.update_all_heatmaps()
@@ -684,6 +741,8 @@ class Vizualization:
 
         self.reset_summary()
         self.reset_viz()
+        self.ax.set_xbound(saved_zoom[0])
+        self.ax.set_ybound(saved_zoom[1])
         self.refresh_graph()
 
     def update_all_heatmaps(self):
@@ -697,7 +756,6 @@ class Vizualization:
             this_heatmap.update_colors(vizualization=self)
             heatmap_color = this_heatmap.get_all_colors()
 
-            logging.info("heatmaps: drawing in "+str(axe))
             im = axe.imshow(
                     heatmap_color,
                     interpolation='nearest',
@@ -710,104 +768,71 @@ class Vizualization:
                         ),
                     aspect='auto')
 
-            logging.info("heatmaps: "+str(axe)+" ready")
-
             axe.set_xlim(-self.amplitude / 2, self.amplitude / 2)
             axe.set_ylim(-self.amplitude / 2, self.amplitude / 2)
             axe.axis('off')
             axe.set_title(title)
-            logging.info('heatmap, axe, title {} {} {}'.format(this_heatmap, axe, title))
 
         self.refresh_graph()
 
-    def update_summary(self, current_cluster):
+    def update_summary(self):
         """
-        Add the data of cluster (:param x_g:, :param y_g:) to the local-tobeplotted summary
+        Updates the local variables (the variables containing info about currently
+        selected clusters).
 
         Three objects are important inside the object Vizualization and need to be updated :
-            - self.currently_selected_cluster is the collection of selected tiles
             - self.local_classes contains possible_outputs_list inside current_cluster
             - self.local_effectif contains the effetif of each label inside current_cluster
-            - self.local_sum the sum of local_effectif
             - self.local_accuracy is the ratio of good/total predicted inside cluster, by label
-
-        :param current_cluster: cluster name selected by click
+            - self.local_confusion_by_class is the error made by the predictor, indexed by true output
         """
-        to_include = self.nb_of_points_by_class_by_cluster.get(current_cluster, {})
-        to_include = { k:to_include[k] for k in to_include if to_include[k]!=0 }
-
-        if current_cluster in self.currently_selected_cluster:
-            return
-        else:
-            self.currently_selected_cluster.append(current_cluster)
-
-        new_rows = set(to_include.keys()) - self.local_classes
-
-        logging.debug("Classes already detected :" + str(self.local_classes))
-        logging.debug("Classes detected on new click :" + str(set(to_include.keys())))
-        logging.debug("Classes to add to summary :" + str(set(new_rows)))
-
-        rows_to_update = self.local_classes.intersection(set(to_include.keys()))
-        self.local_classes = self.local_classes.union(set(to_include.keys()))
-        self.local_sum = sum(to_include.values()) + self.local_sum
+        effectif_by_class = {}
+        logging.info("local_variables=updating")
         
-        nb_good_point_by_class = self.nb_good_point_by_class_by_cluster[current_cluster]
-        nb_bad_point_by_class = self.nb_bad_point_by_class_by_cluster[current_cluster]
+        # Get effectif
+        for clr in self.selected_clusters:
+            for cls, effectif in self.nb_of_points_by_class_by_cluster.get(clr,{}).items():
+                effectif_by_class[cls] = effectif_by_class.get(cls,0) + effectif
+        effectif_by_class = {cls:e for cls, e in effectif_by_class.items() if e>0}
 
-        for output_class in new_rows:
-            self.local_effectif[output_class] = to_include[output_class]
+        # Set 3 first local variables
+        self.local_classes  = list(effectif_by_class.keys())
+        self.local_sum      = sum (effectif_by_class.values())
+        self.local_effectif = effectif_by_class
 
-            self.local_accuracy[output_class] = (
-                nb_good_point_by_class.get(output_class,0) /
+        # Counts the good/bad predictions in these clusters
+        logging.info("local_variables=counting good/bad")
+        nb_good_by_class = {cls:sum([self.nb_good_point_by_class_by_cluster.get(clr,{}).get(cls,0) for clr in self.selected_clusters]) for cls in self.local_classes}
+        nb_bad_by_class  = {cls:sum([self.nb_bad_point_by_class_by_cluster.get(clr,{}).get(cls, 0) for clr in self.selected_clusters]) for cls in self.local_classes}
+
+        self.local_bad_count_by_class  = nb_bad_by_class
+        self.local_good_count_by_class = nb_good_by_class
+        
+        # Gets accuracy
+        logging.info("local_variables=counting accuracy")
+        for cls in self.local_classes:
+            self.local_accuracy[cls] = (
+                nb_good_by_class.get(cls,0) /
                 (
-                    nb_good_point_by_class.get(output_class,0)
-                    + nb_bad_point_by_class.get(output_class,0)
-                    )
-            )
-        for cluster in self.currently_selected_cluster:
-            for index in self.index_by_cluster_label[cluster]:
-                if index in self.index_bad_predicted:
-                    current_class = self.correct_outputs[index]
-                    self.local_bad_count_by_class[current_class] += 1
-                    self.prediction_outputs[index]
-                    self.local_confusion_by_class[current_class][self.prediction_outputs[index]]+=1
+                    nb_good_by_class.get(cls,0)
+                    + nb_bad_by_class.get(cls,0)
+                    ))
+        
+        # Get confusion matrix
+        logging.info("local_variables=calculating confusion")
+        confusion = {}
+        for clr in self.selected_clusters:
+            for idx in self.index_by_cluster_label.get(clr,{}):
+                if idx in self.index_bad_predicted:
+                    correct            = self.correct_outputs[idx]
+                    prediction         = self.prediction_outputs[idx]
+                    confusion[correct] = confusion.get(correct, []) + [prediction]
+        
+        self.local_confusion_by_class_sorted = {cls:[] for cls in confusion}
+        for cls, errors in confusion.items():
+            self.local_confusion_by_class_sorted[cls] = Counter(errors).most_common(2)
+        logging.info("local_variables=ready")
 
-        self.local_confusion_by_class_sorted = {
-                output_class:[] for output_class in self.local_confusion_by_class
-                }
-
-        for output_class, errors in self.local_confusion_by_class.items():
-            self.local_confusion_by_class_sorted[output_class] = Counter(errors).most_common(2)
-
-        for output_class in rows_to_update:
-            self.local_accuracy[output_class] = ((
-                    self.local_accuracy[output_class] * self.local_effectif[output_class]
-                    + (
-                        nb_good_point_by_class.get(output_class,0)
-                        / (
-                            nb_good_point_by_class.get(output_class,0)
-                            + nb_bad_point_by_class.get(output_class,0)
-                            )
-                        * to_include.get(output_class, 0)
-                   )
-                ) / (self.local_effectif[output_class] + to_include.get(output_class, 0))
-            )
-
-            self.local_effectif[output_class] += (
-                    nb_good_point_by_class.get(output_class,0)
-                    + nb_bad_point_by_class.get(output_class,0)
-                    )
-
-    def get_selected_indexes(self):
-        """
-        Find indexes of xs in selected clusters
-        """
-        indexes_selected = []
-        for cluster in self.currently_selected_cluster:
-            for index in self.index_by_cluster_label[cluster]:
-                indexes_selected.append(index)
-
-        return indexes_selected
 
     def print_summary(self, axe, max_row=15):
         """
@@ -819,7 +844,7 @@ class Vizualization:
         :param max_row: max nb of row to add in table summary
         :param axe: the matplotlib axe in which the stats will be plotted
         """
-
+        logging.info("local_summary=printing")
         row_labels = list(self.local_classes)
 
         values = [
@@ -849,10 +874,10 @@ class Vizualization:
                     ),
                 (
                     ' '.join([
-                        '{:.6}'.format(class_mistaken)+ '({0:.1f}%)'.format(
+                        '{:.6}'.format(class_mistaken)+ ' ({0:.1f}%)'.format(
                             error_count/float(self.local_bad_count_by_class[c])*100
                             )
-                        for class_mistaken, error_count in self.local_confusion_by_class_sorted[c] if error_count != 0
+                        for class_mistaken, error_count in self.local_confusion_by_class_sorted.get(c,[]) if error_count != 0
                         ])
                     ),
             ]
@@ -869,56 +894,67 @@ class Vizualization:
         values     = values[:max_row]
         row_labels = row_labels[:max_row]
         
-        values.append([self.local_sum, .856789, len(self.projected_input), ' '])
+        values.append([self.local_sum, '-', '{} (100%)'.format(len(self.projected_input)), ' '])
         row_labels.append('all')
 
         self.rows = row_labels
 
         cols = [
-                '#class_local (#class_local/#class)',
-                'accuracy local (delta accuracy) - p-value',
-                 '#class (#class/#all_class)',
-                 'common mistakes'
-                 ]
-
+                '#class (in cluster)\n'
+                '(#class (in cluster) /#class)',
+                'accuracy (in cluster)\n'
+                '(delta with accuracy (general)) - p-value',
+                '#class\n'
+                '(#class /#all_class)',
+                'common mistakes'
+                ]
+        
+        axe.clear()
         summary = axe.table(
             cellText=values,
             rowLabels=row_labels,
             colLabels=cols,
             loc='center',
         )
+
+        cells = summary.get_celld()
+        for i in range(0,4):
+            cells[(0,i)].set_height(cells[(1,0)].get_height()*2)
+
+        
         summary.auto_set_font_size(False)
         summary.set_fontsize(8)
-        logging.info("Details=loaded")
+        axe.axis('off')
+
+        logging.info("local_summary=ready")
         
     def print_global_summary(self, ax, max_row=9):
         """
         Prints a global summary with the most frequent class and
         their classification accuracy
         """
+        logging.info("global_summary=calculating")
         
         ax.clear()
         ax.axis('off')
         cols = ['accuracy', 'effectif']
         most_common_classes = Counter(
                 {
-                    c:len(self.index_by_true_output[c]) for c in self.possible_outputs_list
+                    c:len(self.index_by_true_output.get(c,[])) for c in self.possible_outputs_list
                     }
                 ).most_common(max_row)
 
         row_labels = np.array(most_common_classes)[:,0]
-        values = [
-            [
-                '{0:.2f}'.format(self.accuracy_by_class[c]*100)+"%",
-                (
-                    '{0:.0f} ({1:.2f}%)'.format(
-                        self.nb_of_individual_by_true_output[c],
-                        self.nb_of_individual_by_true_output[c] / float(len(self.projected_input)) * 100
-                        )
-                    ),
-            ]
-            for c in row_labels
-        ]
+        values = []
+        for c in row_labels:
+            accuracy = self.accuracy_by_class.get(c,0)*100
+            effectif = self.nb_of_individual_by_true_output.get(c,0)
+            if len(self.projected_input) == 0:
+                proportion_effectif = 0
+            else:
+                proportion_effectif = effectif / float(len(self.projected_input)) * 100
+
+            values.append(['{0:.2f}'.format(accuracy)+"%", '{0:.0f} ({1:.2f}%)'.format(effectif, proportion_effectif)])
 
         summary = ax.table(
             cellText=values,
@@ -928,6 +964,7 @@ class Vizualization:
         )
         summary.auto_set_font_size(False)
         summary.set_fontsize(8)
+        logging.info("global_summary=ready")
     
     def request_heatmap(self, method, axe, title):
         """
@@ -950,78 +987,138 @@ class Vizualization:
         Export your selected data in a .csv file for analysis
         """
         logging.info('exporting:...')
+        if output_path == "":
+            logging.warn("No export name specified, aborting")
+            return
 
-        if self.x_raw.any():
+        if np.array(self.x_raw).any():
             columns = [
                 *self.x_raw_columns,
+                'prediction',
                 'projected coordinates',
-                'predicted class',
-                'well predicted',
                 ]
             rows =  [
                         [
                             *self.x_raw[idx],
-                            self.projected_input[idx],
                             self.prediction_outputs[idx],
-                            int(idx in self.index_good_predicted),
+                            self.projected_input[idx],
                             ]
                         for idx,c in enumerate(self.cluster_by_idx)
-                        if c in self.currently_selected_cluster
+                        if c in self.selected_clusters
                         ]
 
-            to_export =  pd.DataFrame(rows, columns=columns)
+            to_export =  [columns, *rows]
 
             if format=='csv':
-                to_export.to_csv(output_path)
-            if format=='hdf5':
-                to_export.to_hdf(output_path, 'data')
+                wr = csv.writer(open(output_path, 'w'))
+                wr.writerows(to_export)
+
             logging.info('exporting: done')
         else:
             logging.info("nothing to export, no raw data provided!")
+    
 
-    def save_clusterization(self, name_clusters='clusters.pkl'):
+    def make_clusterization_name(self, name_clusters):
         """
-        Basically loads a clusterizer and replays a sequence of leftclicks
+        Filename containing the saved session
         """
-        cache_file_path, _ = self.get_clusterizer_cache_file_name(self.clusterizer.method)
-        self.clusterizer.save_cluster(cache_file_path)
+        return name_clusters + '#' + self.version + '.pkl'
+
+    def save_clusterization(self, name_clusters='clusters'):
+        """
+        Basically saves a clusterizer and replays a sequence of leftclicks
+        """
+        if (' ' in name_clusters) or ('.' in name_clusters):
+            self.viz_handler.pop_dialog("Please do not use space or '.' in name!")
+            return
+
+        filename  = self.make_clusterization_name(name_clusters)
+        session   = (self.version, self.clusterizer, self.left_clicks) 
+        full_path = os.path.join(self.saved_clusters_path, filename)
+
+        logging.info("user clusters: saving in {}".format(full_path))
         pickle.dump(
-                (cache_file_path, self.left_clicks),
-                open(os.path.join(self.model_path, 'user_clusters', name_clusters), 'wb')
+                session,
+                open(full_path, 'wb')
                 )
-        self.viz_handler.user_cluster_menulist.add_items([name_clusters])
+        self.viz_handler.user_cluster_menulist.add_items([filename])
+        return filename
 
-    def load_clusterization(self, name):
+    def load_clusterization(self, name_clusters):
         """
-        Basically saves clustering engine and sequence of left_clicks
+        Basically loads clustering engine and sequence of left_clicks
         """
+        full_path = os.path.join(self.saved_clusters_path, name_clusters)
+
+        version_to_load, clusterizer, left_clicks_to_reproduce = pickle.load(
+                open(full_path, 'rb'),
+                )
+        
+        if version_to_load != self.version:
+            self.viz_handler.pop_dialog(
+                    "Impossible to load clusters : bad VERSION (dataset do not match)")
+            return
+        
         self.reset_viz()
         self.left_clicks = set()
-
-        cache_file_path, left_clicks_to_reproduce = pickle.load(
-                open(os.path.join(self.model_path, 'user_clusters', name), 'rb'),
-                )
-        self.request_new_clustering(cache_file_path)
+        self.clusterizer = clusterizer
+        self.init_clusters()
         self.reset_summary()
 
         for left_click in left_clicks_to_reproduce:
             self.do_left_click(left_click)
+
+        self.update_summary()
+        self.print_summary(self.summary_axe)
+        self.print_global_summary(self.global_summary_axe)
         
+        self.update_all_heatmaps()
+        self.request_new_frontiers('none')
         self.refresh_graph()
 
     
-    def view_details_figure(self):
-        """
-        Deprecated, was used to display a scatterplot of your selected cluster(s)
-        Unusable because too laggy and bloated graphics
-        """
-        logging.info('exporting:...')
-        indexes = self.get_selected_indexes()
-        self.viz_handler.set_additional_graph(
-                self.view_details.update(indexes)
-                )
-        logging.info('exporting: done')
+    def clear_cluster_view(self):
+        for clr_view in self.cluster_view:
+            clr_view.clear()
 
+    def add_cluster_view(self, feature_to_display, plotter_names):
+        logging.info(
+                "cluster_view=adding a feature to display, {}:{}".format(
+                    feature_to_display, plotter_names)
+                )
+        self.cluster_view.append(
+                Cluster_viewer(
+                    {feature_to_display:plotter_names},
+                    self.x_raw,
+                    self.x_raw_columns,
+                    show_dichotomy=True,
+                    )
+                )
+        self.additional_figures.append(self.cluster_view[-1])
+        self.viz_handler.add_figure(
+                self.additional_figures[-1],
+                "Cluster view: {}".format(plotter_names[0])
+                )
+        logging.info("cluster_view=ready")
+        if self.selected_clusters:
+            self.update_cluster_view()
+
+    def update_cluster_view(self):
+        if self.cluster_view:
+            logging.info('cluster_viewer=sorting indexes')
+            index_selected  = [
+                    idx for clr in self.selected_clusters for idx in self.index_by_cluster_label.get(clr,[])]
+            index_good = [idx for idx in index_selected if idx in self.index_good_predicted]
+            index_bad  = [idx for idx in index_selected if idx in self.index_bad_predicted ]
+
+            for clr_view in self.cluster_view:
+                logging.info('cluster_viewer=plotting sorted indexes')
+                clr_view.update_cluster_view(
+                        index_good    = index_good,
+                        index_bad     = index_bad,
+                        data_by_index = self.x_raw,
+                        )
+            logging.info('cluster_viewer=ready')
 
     def plot(self):
         """
@@ -1030,28 +1127,20 @@ class Vizualization:
         self.init_clusters()
         self.main_fig = matplotlib.figure.Figure()
         #self.cluster_view = matplotlib.figure.Figure()
+        self.cluster_view       = []
+        self.additional_figures = []
 
         gs=GridSpec(3,4)
-        if self.features_to_display:
-            self.cluster_view = Cluster_viewer(
-                    self.features_to_display,
-                    self.x_raw,
-                    self.x_raw_columns,
-                    show_dichotomy=True)
-            additional_figures = [self.cluster_view]
-
-        else:
-            self.cluster_view = None
-            additional_figures = []
-        
         #self.view_details = View_details(self.x_raw)
         self.viz_handler = Viz_handler(
                 viz_engine         = self,
                 figure             = self.main_fig,
                 onclick            = self.onclick,
-                additional_filters = self.features_name_to_filter,
-                additional_figures = additional_figures,
+                additional_figures = self.additional_figures,
                 )
+
+        for feature_to_display,plotter_name in self.features_to_display.items():
+            self.add_cluster_view(feature_to_display, plotter_name)
 
         # main subplot with the scatter plot
         self.ax = self.main_fig.add_subplot(gs[:2,:3])
@@ -1106,7 +1195,8 @@ class Vizualization:
         self.reset_viz()
 
         self.request_new_frontiers('none')
-        logging.info('Vizualization=readyy')
+        logging.info('Vizualization=ready')
+        self.viz_handler.is_ready()
 
     def show(self):
         logging.info('showing main window')
@@ -1119,6 +1209,4 @@ class Vizualization:
     def refresh_graph(self):
         logging.info('refreshing main window')
         self.viz_handler.refresh()
-        logging.info('refreshing cluster diving')
-        #self.cluster_diver.refresh()
         logging.info("refreshing done")

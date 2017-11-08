@@ -1,4 +1,4 @@
-from vizuka.similarity import similarity
+from vizuka.frontier import similarity
 
 class AllFrontiers(similarity.Similarity):
     def __init__(self):
@@ -7,7 +7,7 @@ class AllFrontiers(similarity.Similarity):
         """
         Draw all frontiers
         """
-        return 0
+        return 1
 
 class NoneFrontiers(similarity.Similarity):
     def __init__(self):
@@ -16,5 +16,5 @@ class NoneFrontiers(similarity.Similarity):
         """
         Draw none frontiers
         """
-        return 1
+        return 0
 

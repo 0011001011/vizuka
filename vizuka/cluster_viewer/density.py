@@ -6,6 +6,12 @@ from matplotlib import pyplot as plt
 from vizuka.cluster_viewer.plotter import Plotter
 
 class Density(Plotter):
+
+    @classmethod
+    def get_help(self):
+        h = "Use it to display the distribution of *numerical* values"
+        return h
+
     def __call__(self, data, fig, spec):
         """
         Plot the density of your :param: data distribution
@@ -33,6 +39,12 @@ class Density(Plotter):
         return axe
 
 class LogDensity(Plotter):
+
+    @classmethod
+    def get_help(self):
+        h = "Use it to display the distribution of *numerical* values (logscale)"
+        return h
+
     def __call__(self, data, fig, spec):
         """
         Plot the log-density of your :param: data distribution

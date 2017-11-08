@@ -40,8 +40,31 @@ def draw_scatterplot_from_indexes(
     draw_scatterplot(axe, good_to_display, bad_to_display, special_to_display)
 
 
+def draw_scatterplot(vizualization, axe, color_mode="by_prediction"):
+    if color_mode=="by_prediction":
+        draw_scatterplot_by_prediction(
+                axe,
+                vizualization.well_predicted_projected_points_array,
+                vizualization.mispredicted_projected_points_array,
+                vizualization.not_predicted_projected_points_array,
+                )
+    elif color_mode=="by_true_class":
+        draw_scatterplot_by_class(
+                axe,
+                vizualization.projection_points_list_by_correct_output,
+                )
 
-def draw_scatterplot(
+def draw_scatterplot_by_class(axe, classes):
+    for class_, projections in classes.items():
+        if len(projections) > 0:
+            axe.scatter(
+                x=projections[:, 0],
+                y=projections[:, 1],
+                marker="+"
+            )
+
+
+def draw_scatterplot_by_prediction(
         axe,
         well_predicted_array,
         badly_predicted_array,
@@ -88,6 +111,8 @@ def apply_borders(vizualization, normalize_frontier, frontier_builder, *args):
 
     logging.info('borders: calculating')
     centroids_cluster_by_index = vizualization.clusterizer.predict(vizualization.mesh_centroids)
+    empty_cluster_distribution = {cl:0 for cl in vizualization.possible_outputs_list}
+
     for index, xy in enumerate(vizualization.mesh_centroids):
         current_centroid_label = centroids_cluster_by_index[index]
         if index > vizualization.resolution:
@@ -95,8 +120,10 @@ def apply_borders(vizualization, normalize_frontier, frontier_builder, *args):
             if label_down_neighbor != current_centroid_label:
                 if (label_down_neighbor, current_centroid_label) not in frontier:
                     current_frontier = frontier_builder(
-                                vizualization.nb_of_points_by_class_by_cluster[label_down_neighbor],
-                                vizualization.nb_of_points_by_class_by_cluster[current_centroid_label]
+                                vizualization.nb_of_points_by_class_by_cluster.get(
+                                    label_down_neighbor, empty_cluster_distribution),
+                                vizualization.nb_of_points_by_class_by_cluster.get(
+                                    current_centroid_label, empty_cluster_distribution)
                                 )
                     if current_frontier > -np.inf:
                         frontier[(label_down_neighbor, current_centroid_label)] = current_frontier
@@ -105,10 +132,11 @@ def apply_borders(vizualization, normalize_frontier, frontier_builder, *args):
             label_left_neighbor = centroids_cluster_by_index[index-1]
             if label_left_neighbor != current_centroid_label:
                 if (label_left_neighbor, current_centroid_label) not in frontier:
-                    
                     current_frontier = frontier_builder(
-                                vizualization.nb_of_points_by_class_by_cluster[label_left_neighbor],
-                                vizualization.nb_of_points_by_class_by_cluster[current_centroid_label]
+                                vizualization.nb_of_points_by_class_by_cluster.get(
+                                    label_left_neighbor, empty_cluster_distribution),
+                                vizualization.nb_of_points_by_class_by_cluster.get(
+                                    current_centroid_label, empty_cluster_distribution)
                                 )
                     if current_frontier > -np.inf:
                         frontier[(label_left_neighbor, current_centroid_label)] = current_frontier
@@ -145,7 +173,7 @@ def apply_borders(vizualization, normalize_frontier, frontier_builder, *args):
 
     lines = []
 
-    logging.info('borders: drawing')
+    logging.info('borders: generating graphic lines')
     for index, (x, y) in enumerate(vizualization.mesh_centroids):
 
         current_centroid_label = centroids_cluster_by_index[index]
@@ -172,9 +200,10 @@ def apply_borders(vizualization, normalize_frontier, frontier_builder, *args):
                         ydata=(y-vizualization.size_centroid/2, y+vizualization.size_centroid/2),
                         frontier_density=frontier_density))
     
-                    line_collection_lines = [list(zip(elt['xdata'], elt['ydata'])) for elt in lines]
+    line_collection_lines = [list(zip(elt['xdata'], elt['ydata'])) for elt in lines]
     line_collection_colors = [(*elt['color'], elt['alpha']) for elt in lines]
     
+    logging.info('borders: adding lines to graph')
     for axe in axes:
         axe.add_artist(
                 matplotlib.collections.LineCollection(

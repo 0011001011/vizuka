@@ -3,25 +3,30 @@ import pkgutil
 import inspect
 import importlib
 import pickle
+import logging
 
 from vizuka.clustering import (
         kMeans,
-        DBSCAN,
-        dummy,
+        dbscan,
+        grid,
         clusterizer,
         )
 
 from vizuka.plugins import clustering as clustering_plugins
 
-def load_cluster(path):
-    with open(path, 'rb') as f:
-        return pickle.load(f)
+def get_required_arguments(method_name):
+    if method_name=='grid':
+        return []
+    else:
+        builtin, extra = list_clusterizer()
+        available_clusterizers = {**builtin, **extra}
+        return inspect.getargspec(available_clusterizers[method_name]).args[1:]
 
 def list_clusterizer():
     built_in_clusterizers = {
             'kmeans':kMeans.KmeansClusterizer,
-            'dbscan':DBSCAN.DBSCANClusterizer,
-            'dummy':dummy.DummyClusterizer,
+            'dbscan':dbscan.DBSCANClusterizer,
+            'grid':grid.DummyClusterizer,
             }
 
     extra_cluterizers = {}
@@ -36,13 +41,13 @@ def list_clusterizer():
     return built_in_clusterizers, extra_cluterizers
     
 
-def make_clusterizer(xs, method='kmeans', **kwargs):
+def make_clusterizer(method='grid', **kwargs):
     """
     Clusterize the data with specified algorithm
     Naively assume you pass the right parameters for the right algo
 
     :param data:       array with shape (n,2) of inputs to clusterize
-    :param method:     algo to use, supported: kmeans, dbscan, dummy
+    :param method:     algo to use, supported: kmeans, dbscan,grid 
     :param n_clusters: nb of clusters to find (if applicable)
 
     :return: a clusterizer object (instance of child of Clusterizer())
@@ -52,17 +57,9 @@ def make_clusterizer(xs, method='kmeans', **kwargs):
     available_clusterizers = {**built_in_clusterizers, **extra_clusterizers}
     
     clusterizer_builder = available_clusterizers.get(method, None)
-
-    if method == 'kmeans':
-        clusterizer = clusterizer_builder(
-                kwargs['nb_of_clusters'],
-                )
-    elif method == 'dbscan':
-        clusterizer = clusterizer_builder()
-    else:
-        clusterizer = clusterizer_builder(
-                mesh=kwargs['mesh'],
-                )
     
-    clusterizer.fit(xs)
+    required_parameters = inspect.getargspec(clusterizer_builder).args
+    given_parameters    = {name:value for name,value in kwargs.items() if name in required_parameters}
+    clusterizer = clusterizer_builder(**given_parameters)
+    
     return clusterizer

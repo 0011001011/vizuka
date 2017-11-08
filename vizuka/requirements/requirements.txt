@@ -1,7 +1,7 @@
 scipy
 numpy
 sklearn
-pandas
 matplotlib
 pyqt5
 wordcloud
+pyfiglet

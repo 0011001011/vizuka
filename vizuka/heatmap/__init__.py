@@ -15,10 +15,12 @@ def list_heatmap():
     """
     List all the available heatmaps
     First it looks in this directory, then in plugin/heatmaps/
-    All heatmaps must inherit vizuka.heatmap.heatmap.Heatmap to be detectable
+    All heatmaps must inherit vizuka.heatmap.heatmap.Heatmap
+    to be detectable
     
-    :return: a dict with built-in heatmaps and their respective constructor
-             and a dict with plugins heatmaps and their respective constructor
+    :return: a dict with built-in heatmaps and their respective
+             constructor, and a dict with plugins heatmaps and
+            their respective constructor
     """
     built_in_heatmap= {
             'accuracy' : accuracy.AccuracyHeatmap,
@@ -40,7 +42,8 @@ def list_heatmap():
 
 def make_heatmap(method):
     """
-    Gets a list of all available heatmap constructors and returns the correct one
+    Gets a list of all available heatmap constructors
+    and returns the correct one
 
     :param method: the name of the heatmap you want
     """

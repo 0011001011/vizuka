@@ -20,16 +20,16 @@ class EntropyHeatmap(heatmap.Heatmap):
         """
         Prepares an entropy heatmap
 
-        This method is a heatmap_builder returning a list of patches to be
-        plotted somewhere
-        The maximum entropy for the Vizualization is calculated and used as
-        normalization parameter,
+        This method is a heatmap_builder returning a list of patches
+        to be plotted somewhere. The maximum entropy for the
+        Vizualization is calculated and used as normalization parameter.
+
         The plot is actually a logplot as it is more eye-friendly
         ..seealso:: add_heatmap
 
         """
-        self.all_colors = [[0 for _ in range(vizualization.resolution)] for _ in range(vizualization.resolution) ]
-        logging.info('heatmap entropy: drawing')
+        self.all_colors = [[0 for _ in range(vizualization.resolution)] for _ in range(vizualization.resolution)]
+        logging.info('heatmap_entropy: drawing')
         centroids_label = vizualization.clusterizer.predict(vizualization.mesh_centroids)
         
         entropys = []

@@ -13,8 +13,19 @@ from PyQt5.QtWidgets import (
     QSizePolicy,
     QDockWidget,
     QLineEdit,
+    QAction,
     QInputDialog,
 )
+
+def add_simple_menu(name, triggers_by_submenu_name, menubar, window):
+    menu = menubar.addMenu(name)
+    for subname, action in triggers_by_submenu_name.items():
+        a = QAction(subname, window)
+        a.triggered.connect(action)
+        menu.addAction(a)
+
+
+
 def add_menulist(window, menu_name, button_name, categories, onlaunch, dockarea):
     """
     Add a menu list with action button
