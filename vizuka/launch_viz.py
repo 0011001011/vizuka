@@ -210,12 +210,11 @@ def main():
 
     if not loaded:
         logging.warn("No data found\nCorresponding file not found: {}\nPlease check --show-required-files".format(preprocessed_filename))
-        if version=='MNIST':
+        if version=='MNIST_example':
             print(
                     '\n\nIf you are trying to load the MNIST example, you need to launch'
                     ' "vizuka --mnist" in order to download the test data (code in vizuka/example/)'
                     )
-
         return
 
     logger.info('preprocessed_dataset=loaded')
