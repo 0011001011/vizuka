@@ -1,4 +1,4 @@
-Data vizualization
+Data visualization
 ==================
 
 This is a collection of tools to represent and navigate through the high-dimensional data.
@@ -131,7 +131,7 @@ OPTIONAL BUT USEFUL:
 	 + data/set/raw_data.npz -> optional
 	 --------------------------
 		 x:		 array of inputs BEFORE preprocessing
-					 probably human-readable, thus useful for vizualization
+					 probably human-readable, thus useful for visualization
 		 columns:	 the name of the columns variable in x
 		 NB:	 this file is used if you run vizuka with
 			    --feature-name-to-display COLUMN_NAME:PLOTTER COLUMN_NAME2:PLOTTER2 or
