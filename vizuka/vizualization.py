@@ -704,16 +704,16 @@ class Vizualization:
                 **params,
                 )
 
-        if (not self.filters_active()) and self.clusterizer.loadable(version=self.version):
+        if (not self.filters_active()) and self.clusterizer.loadable(self.version, self.cache_path):
             logging.info("cluster: found cached clustering, loading..")
-            self.clusterizer = self.clusterizer.load_cluster(version=self.version)
+            self.clusterizer = self.clusterizer.load_cluster(self.version, self.cache_path)
             logging.info("cluster: ready")
         else:
             logging.info("cluster: fitting the clusters")
             self.clusterizer.fit(self.projected_input_original)
             if not self.filters_active():
                 logging.info("cluster: saving the clusters")
-                self.clusterizer.save_cluster(version=self.version)
+                self.clusterizer.save_cluster(self.version, self.cache_path)
             logging.info("cluster: ready")
             
     def request_new_clustering(self, method, params):
