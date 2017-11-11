@@ -129,7 +129,7 @@ OPTIONAL BUT USEFUL:
 				 if you don't have one, use --force-no-predict
 
 
-	 + data/set/raw_data.npz -> optional
+	 + data/set/raw_data_VERSION.npz -> optional
 	 --------------------------
 		 x:		 array of inputs BEFORE preprocessing
 					 probably human-readable, thus useful for visualization
