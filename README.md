@@ -38,8 +38,9 @@ $ vizuka --show-required-files
 But you don't want to use MNIST toy-dataset right ? Here is a complete working example:
 ```sh
 # EXAMPLE :
-# you have your preprocessed data in ~/data/set/preprocessed_MYDATASET01.npz
-#                 and predictions in ~/data/set/predict_MYDATASET01.npz
+# you have your preprocessed data in 		~/data/set/preprocessed_MYDATASET01.npz
+#                 and predictions in 		~/data/set/predict_MYDATASET01.npz
+#		  optionnaly the raw dataset in ~/data/set/raw_data_MYDATASET01.npz
 # Run :
 $ vizuka-reduce --path ~/data --version MYDATASET01 # projects in 2D
 $ vizuka 	--path ~/data --version MYDATASET01
