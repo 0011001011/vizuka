@@ -1,8 +1,8 @@
 Data visualization
 ==================
 
-This is a collection of tools to represent and navigate through the high-dimensional data.
- * The algorithm t-SNE is default to construct the 2D space.
+This is a collection of tools to represent and navigate through high-dimensional datasets.
+ * The algorithm t-SNE is set as default to construct the 2D space.
  * The module should be agnostic of the data provided.
  * It ships with MNIST for quick testing.
 
