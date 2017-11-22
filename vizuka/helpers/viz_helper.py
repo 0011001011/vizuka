@@ -133,6 +133,9 @@ def cluster_label_mesh(
     clusteriser of the vizualization
     """
 
+    if len(data)==0:
+        return {}, set(), {}, []
+
     cluster_by_idx = clusterizer.predict(data)
     all_cluster_labels = set(cluster_by_idx)
     index_by_cluster_label = { cluster_label:[] for cluster_label in all_cluster_labels }

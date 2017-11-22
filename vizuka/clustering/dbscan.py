@@ -1,24 +1,34 @@
-import pickle
-
 import numpy as np
 from matplotlib import pyplot as plt
-from sklearn.cluster import KMeans, DBSCAN
+from sklearn.cluster import DBSCAN
 from scipy.spatial import cKDTree
 import logging
 
-from vizuka import vizualization
 from vizuka.clustering.clusterizer import Clusterizer
 
 
 class DBSCANClusterizer(Clusterizer):
 
-    def __init__(self, *args, **kwargs):
+    def __init__(self, epsilon=1.5, min_samples=30):
         """
         Inits a DBSCAN clustering engine from sklearn
-        Accepts the same arguments
         """
-        self.engine = DBSCAN(n_jobs=4, eps=1.6, min_samples=30, *args, **kwargs)
+        self.epsilon     = float(epsilon)
+        self.min_samples = int(float(min_samples))
+
+        self.register_parameters(
+                parameters={
+                    'epsilon'    : self.epsilon,
+                    'min_samples': self.min_samples}
+                )
+
         self.method='dbscan'
+
+        self.engine = DBSCAN(
+                n_jobs      = 4,
+                eps         = self.epsilon,
+                min_samples = self.min_samples,
+                )
 
     def fit(self, xs):
         """

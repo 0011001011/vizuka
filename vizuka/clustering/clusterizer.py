@@ -11,14 +11,34 @@ Also, adds it in make_clusterizer obviously
     predict - to find out the cluster of a (x,y)
 '''
 import pickle
-
-from matplotlib import pyplot as plt
+import os
 import logging
 
+from matplotlib import pyplot as plt
+
+from vizuka.config import (
+        CACHE_PATH,
+        NAME_VALUE_SEPARATOR,
+        PARAMETERS_SEPARATOR,
+        )
 
 class Clusterizer():
 
-        def __init__(self, *args, **kwargs):
+        def get_param_from_name(name):
+            """
+            Returns the method and parameters of the clusterizer
+            from its name
+            """
+            params = {}
+            blocks = name.split(PARAMETERS_SEPARATOR)
+            method = blocks[0]
+            for block in blocks[1:]:
+                if block:
+                    name, value  = block.split(NAME_VALUE_SEPARATOR)
+                    params[name] = value
+            return method, params
+
+        def __init__(self, **kwargs):
             """
             Builds a clusterizer object e.g: kmeans
             Do not know the datas at this point, just pass it the bare
@@ -27,8 +47,31 @@ class Clusterizer():
             :param *args **kwargs: parameters passed to the clusterizer engine
                                    it can literally be whatever you want
             """
-            self.engine = None
-            self.method=''
+            pass
+
+        def register_parameters(self, parameters):
+            """
+            Register the parameters of the clusterizer to generate a name
+            The name will be used for saving clusterizer in cache file (pickle)
+            and replay session with Load clusterization in Vizuka main window
+
+            :param parameters: a dict with the parameters of the clustering engine
+            """
+            self.parameters = parameters
+
+        def get_name(self):
+            """
+            Returns a unique name for the clustering engine
+            This name alone is not sufficient to find which cached clustering engine to
+            reload as different datasets have a different clustering
+            """
+            ordered_parameters_name = list(self.parameters)
+            ordered_parameters_name.sort()
+
+            return ''.join([
+                    self.method,PARAMETERS_SEPARATOR,
+                    *[ str(name)+NAME_VALUE_SEPARATOR+str(self.parameters[name])+PARAMETERS_SEPARATOR for name in ordered_parameters_name ]
+                    ])[:-1]
 
         def fit(self, xs):
             """
@@ -51,10 +94,37 @@ class Clusterizer():
             """
             return (0, ) * len(xs)
         
+        def loadable(self, version, path=CACHE_PATH):
+            filename = ''.join(
+                    [self.get_name(), PARAMETERS_SEPARATOR, version,'.pkl'])
+            full_path = os.path.join(path, filename)
 
-        def save_cluster(self, path):
-            with open(path, 'wb') as f:
+            if os.path.exists(full_path):
+                logging.info('cluster: found clusters in {}'.format(full_path))
+                return True
+            else:
+                logging.info('cluster: no cached clusters found in {}'.format(full_path))
+                return False
+
+        def save_cluster(self, version, path=CACHE_PATH):
+            filename = ''.join(
+                    [self.get_name(), PARAMETERS_SEPARATOR, version,'.pkl'])
+            full_path = os.path.join(path, filename)
+            logging.info('cluster: saving clusters in {}'.format(full_path))
+            with open(full_path, 'wb') as f:
                 pickle.dump(self, f)
+        
+
+        def load_cluster(self, version, path=CACHE_PATH):
+            filename = ''.join(
+                    [self.get_name(), PARAMETERS_SEPARATOR, version,'.pkl'])
+            full_path = os.path.join(path, filename)
+            logging.info('cluster: loading clusters in {}'.format(full_path))
+            with open(full_path, 'rb') as f:
+                loaded = pickle.load(f)
+                self = loaded
+                return loaded
+
 
 
 
