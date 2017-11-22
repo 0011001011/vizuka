@@ -943,14 +943,23 @@ class Vizualization:
         Export your selected data in a .csv file for analysis
         """
         logging.info('exporting:...')
-
-        if self.x_raw.any():
-            columns = [
-                *self.x_raw_columns,
+        
+        columns = [
                 'projected coordinates',
                 'predicted class',
                 'well predicted',
                 ]
+        rows =    [
+                [
+                    self.projected_input[idx],
+                    self.prediction_outputs[idx],
+                    int(idx in self.index_good_predicted),
+                    ]
+                for idx,c in enumerate(self.cluster_by_idx)
+                if c in self.currently_selected_cluster
+                ]
+        if self.x_raw.any():
+            columns = [*self.x_raw_columns, *columns]
             rows =  [
                         [
                             *self.x_raw[idx],
@@ -962,15 +971,13 @@ class Vizualization:
                         if c in self.currently_selected_cluster
                         ]
 
-            to_export =  pd.DataFrame(rows, columns=columns)
+        to_export =  pd.DataFrame(rows, columns=columns)
 
-            if format=='csv':
-                to_export.to_csv(output_path)
-            if format=='hdf5':
-                to_export.to_hdf(output_path, 'data')
-            logging.info('exporting: done')
-        else:
-            logging.info("nothing to export, no raw data provided!")
+        if format=='csv':
+            to_export.to_csv(output_path)
+        if format=='hdf5':
+            to_export.to_hdf(output_path, 'data')
+        logging.info('exporting: done')
 
     def save_clusterization(self, name_clusters='clusters.pkl'):
         """
