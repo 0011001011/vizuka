@@ -275,6 +275,7 @@ def main():
             return
     
     raw = data_loader.load_raw(version, DATA_PATH)
+
     if raw:
         logger.info("loading raw transactions for analysis..")
         raw_data, raw_columns = raw
