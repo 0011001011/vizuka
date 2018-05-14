@@ -66,6 +66,6 @@ np.savez(
         )
 
 shutil.copy(
-        os.path.join(os.path.dirname(__file__), 'tsne#MNIST_example#learning_rate::1000#n_iter::12000#perplexity::50.npz'),
+        os.path.join(os.path.dirname(__file__), 'tsne#MNIST_example#learning_rate@@1000#n_iter@@12000#perplexity@@50.npz'),
         REDUCED_DATA_PATH,
         )
