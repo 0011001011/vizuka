@@ -3,5 +3,4 @@ numpy
 sklearn
 matplotlib
 pyqt5
-wordcloud
 pyfiglet
