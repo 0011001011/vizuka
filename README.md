@@ -6,7 +6,7 @@ This is a collection of tools to represent and navigate through high-dimensional
  * The module should be agnostic of the data provided.
  * It ships with MNIST for quick testing.
 
-For commercial use, and user support, please contact Onogone (http://onogonoe.com) who propose a business version with additional features.
+For commercial use, and user support, please contact Onogone (http://onogone.com) who propose a business version with additional features.
 
 ![alt zoomview](docs/zoom_view.png)
 Usage
